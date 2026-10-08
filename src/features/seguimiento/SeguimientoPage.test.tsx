@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { jsonResponse, mockFetch, renderWithProviders } from '@/test/utils'
 import type { Seguimiento } from '@/types/api'
+import { MENSAJE_ESTADO } from './estados'
 import { SeguimientoPage } from './SeguimientoPage'
 
 vi.mock('next-themes', () => ({ useTheme: () => ({ resolvedTheme: 'light', setTheme: vi.fn() }) }))
@@ -98,5 +99,32 @@ describe('SeguimientoPage (pública)', () => {
     expect(aviso).toHaveTextContent('Motivo: Destinatario ausente')
     const progreso = screen.getByRole('list', { name: 'Progreso del envío' })
     expect(within(progreso).getByText('En reparto').closest('li')).toHaveAttribute('aria-current', 'step')
+  })
+})
+
+describe('personaje del estado', () => {
+  const ESTADOS = ['REGISTRADO', 'EN_TRANSITO', 'EN_REPARTO', 'ENTREGADO', 'NO_ENTREGADO', 'NOVEDAD', 'CANCELADO'] as const
+
+  it.each(ESTADOS)('muestra la ilustración y el mensaje de %s, a la derecha (móvil y escritorio)', async (estado) => {
+    mockFetch(() => jsonResponse({ ...seguimiento, estado, historial: [{ ...seguimiento.historial[0]!, estado }] }))
+    renderWithProviders(<SeguimientoPage />, { route: '/seguimiento/40425', path: '/seguimiento/:numeroGuia' })
+
+    await screen.findByText('Guía 40425')
+    // Uno en la cabecera de la tarjeta (móvil) y otro grande en la columna derecha (escritorio).
+    const personajes = screen.getAllByTestId('personaje-estado')
+    expect(personajes).toHaveLength(2)
+    for (const p of personajes) {
+      expect(p).toHaveAttribute('data-estado', estado)
+      expect(p).toHaveAttribute('aria-hidden', 'true')
+    }
+    const lateral = screen.getByRole('complementary', { name: 'Estado de tu encomienda' })
+    expect(within(lateral).getByText(MENSAJE_ESTADO[estado].titulo)).toBeInTheDocument()
+    expect(within(lateral).getByText(MENSAJE_ESTADO[estado].texto)).toBeInTheDocument()
+  })
+
+  it('no muestra el personaje mientras no hay resultado', () => {
+    mockFetch(() => jsonResponse({}))
+    renderWithProviders(<SeguimientoPage />, { route: '/seguimiento', path: '/seguimiento' })
+    expect(screen.queryByTestId('personaje-estado')).not.toBeInTheDocument()
   })
 })

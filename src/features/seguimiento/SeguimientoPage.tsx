@@ -19,6 +19,8 @@ import { ESTADO_TONO } from '@/features/envios/ui'
 import { MENSAJE_GUIA_INVALIDA, normalizarGuia } from '@/features/envios/guia'
 import { consultarGuiaParaAgente, HERRAMIENTAS_PUBLICAS } from '@/features/landing/agente'
 import { useSeguimiento } from './api'
+import { MENSAJE_ESTADO } from './estados'
+import { PersonajeEstado } from './PersonajeEstado'
 
 /** Aviso para estados fuera del camino feliz, con el motivo registrado. */
 function AvisoEntrega({ estado, historial }: { estado: Estado; historial: EventoHistorial[] }) {
@@ -128,10 +130,11 @@ export function SeguimientoPage({ embebido = false }: { embebido?: boolean }) {
         </header>
       )}
 
-      <main className={cn('space-y-6', embebido ? 'max-w-2xl' : 'mx-auto max-w-2xl px-4 py-8 sm:py-12')}>
-        <div className={cn('space-y-2', !embebido && 'text-center')}>
-          <h1 className="text-2xl font-semibold tracking-tight">{embebido ? 'Rastreo de envíos' : 'Rastrea tu encomienda'}</h1>
-          <p className="text-sm text-muted-foreground">Ingresa el número de tu guía, con o sin los ceros de adelante (ej. 0040425).</p>
+      <main className={cn('space-y-6', embebido ? 'max-w-5xl' : 'mx-auto max-w-5xl px-4 py-8 sm:py-12')}>
+        <div className={cn('space-y-6', embebido ? 'max-w-2xl' : 'mx-auto max-w-2xl')}>
+          <div className={cn('space-y-2', !embebido && 'text-center')}>
+            <h1 className="text-2xl font-semibold tracking-tight">{embebido ? 'Rastreo de envíos' : 'Rastrea tu encomienda'}</h1>
+            <p className="text-sm text-muted-foreground">Ingresa el número de tu guía, con o sin los ceros de adelante (ej. 0040425).</p>
         </div>
 
         <form
@@ -191,32 +194,49 @@ export function SeguimientoPage({ embebido = false }: { embebido?: boolean }) {
           </Card>
         )}
 
+        </div>
+
         {data && (
-          <Card>
-            <CardHeader className="flex flex-row items-start justify-between gap-4">
-              <div className="space-y-1">
-                <CardTitle className="font-mono">Guía {data.numeroGuia}</CardTitle>
-                <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  {data.origen}
-                  <ArrowRight className="size-3.5" />
-                  {data.destino}
-                </p>
-                <p className="text-sm" data-testid="seguimiento-items">
-                  {resumenItems(data.items)} <span className="text-muted-foreground">· {piezasLabel(data.totalPiezas)}</span>
-                </p>
-                <p className="text-xs text-muted-foreground">Registrado {formatDateTime(data.creadoEn)}</p>
-              </div>
-              <EstadoBadge estado={data.estado} />
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <AvisoEntrega estado={data.estado} historial={data.historial} />
-              <Stepper estado={data.estado} />
-              <section className="space-y-3 border-t pt-5" aria-label="Historial">
-                <SectionLabel>Historial</SectionLabel>
-                <HistorialTimeline eventos={data.historial} />
-              </section>
-            </CardContent>
-          </Card>
+          // Escritorio: datos a la izquierda y el personaje del estado, grande, a la derecha.
+          <div className="grid items-start gap-6 md:grid-cols-[minmax(0,1fr)_18rem] lg:grid-cols-[minmax(0,1fr)_22rem]">
+            <Card>
+              <CardHeader className="flex flex-row items-start justify-between gap-3">
+                <div className="min-w-0 space-y-1">
+                  <CardTitle className="font-mono">Guía {data.numeroGuia}</CardTitle>
+                  <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    {data.origen}
+                    <ArrowRight className="size-3.5" />
+                    {data.destino}
+                  </p>
+                  <p className="text-sm" data-testid="seguimiento-items">
+                    {resumenItems(data.items)} <span className="text-muted-foreground">· {piezasLabel(data.totalPiezas)}</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground">Registrado {formatDateTime(data.creadoEn)}</p>
+                </div>
+                {/* Móvil: el personaje también va a la derecha, junto a los datos de la guía. */}
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  <EstadoBadge estado={data.estado} />
+                  <PersonajeEstado estado={data.estado} className="-mr-2 size-28 sm:size-32 md:hidden" />
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <AvisoEntrega estado={data.estado} historial={data.historial} />
+                <Stepper estado={data.estado} />
+                <section className="space-y-3 border-t pt-5" aria-label="Historial">
+                  <SectionLabel>Historial</SectionLabel>
+                  <HistorialTimeline eventos={data.historial} />
+                </section>
+              </CardContent>
+            </Card>
+            <aside
+              aria-label="Estado de tu encomienda"
+              className="hidden rounded-2xl border bg-card p-6 text-center md:sticky md:top-6 md:block"
+            >
+              <PersonajeEstado estado={data.estado} className="mx-auto w-full max-w-72" />
+              <p className="mt-2 text-lg font-semibold tracking-tight text-balance">{MENSAJE_ESTADO[data.estado].titulo}</p>
+              <p className="mt-1 text-sm text-pretty text-muted-foreground">{MENSAJE_ESTADO[data.estado].texto}</p>
+            </aside>
+          </div>
         )}
       </main>
     </div>
