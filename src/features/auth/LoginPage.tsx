@@ -64,7 +64,7 @@ export function LoginPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Iniciar sesión</CardTitle>
+            <CardTitle className="text-center">Iniciar sesión</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
