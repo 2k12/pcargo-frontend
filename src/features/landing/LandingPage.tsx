@@ -1,10 +1,14 @@
 import {
   ArrowRight,
+  BadgeCheck,
+  Check,
   Clock,
+  HandCoins,
   LogIn,
   Mail,
   MapPin,
   MessageCircle,
+  Navigation,
   PackageCheck,
   PackageSearch,
   Phone,
@@ -15,7 +19,7 @@ import {
 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { Logo } from '@/components/brand/PCargoLogo'
+import { Logo, LogoMark } from '@/components/brand/PCargoLogo'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -29,12 +33,17 @@ import type { TipoCargaCodigo } from '@/types/api'
 import { useCatalogoPublico } from './api'
 import { matrizTarifas, tarifaDesde } from './cobertura'
 import { CotizadorPublico } from './components/CotizadorPublico'
+import { MenuMovil, WhatsAppFlotante } from './components/MenuMovil'
+import { EntregaDomicilio } from './ilustraciones/EntregaDomicilio'
+import { HeroPaisaje } from './ilustraciones/HeroPaisaje'
+import { MapaCobertura } from './ilustraciones/MapaCobertura'
 import { MARCA, whatsappUrl } from './marca'
 
 const ANIO = new Date().getFullYear()
 
 const NAV = [
   { href: '#servicios', label: 'Servicios' },
+  { href: '#como-funciona', label: 'Cómo funciona' },
   { href: '#cobertura', label: 'Cobertura' },
   { href: '#cotizar', label: 'Cotizar' },
   { href: '#contacto', label: 'Contacto' },
@@ -48,18 +57,20 @@ const DESCRIPCION_CARGA: Record<TipoCargaCodigo, string> = {
 }
 
 const PASOS = [
-  { icon: Store, titulo: 'Deja o agenda tu envío', texto: 'Acércate a nuestra oficina o escríbenos por WhatsApp y retiramos tu encomienda.' },
-  { icon: PackageCheck, titulo: 'Recibe tu código', texto: 'Te entregamos un código de seguimiento PC-XXXXXXXX con el costo exacto.' },
+  { icon: Store, titulo: 'Deja o agenda tu envío', texto: 'Acércate a nuestra oficina en Ibarra o escríbenos por WhatsApp y coordinamos el retiro.' },
+  { icon: PackageCheck, titulo: 'Recibe tu código', texto: 'Te entregamos un código de seguimiento PC-XXXXXXXX con el costo exacto, sin sorpresas.' },
   { icon: Truck, titulo: 'Entregamos a domicilio', texto: 'Llevamos tu encomienda hasta la puerta del destinatario y puedes seguirla en línea.' },
 ]
+
+const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(MARCA.oficina.direccion)}`
 
 function Seccion({ id, titulo, subtitulo, children, className }: { id?: string; titulo: string; subtitulo?: string; children: React.ReactNode; className?: string }) {
   return (
     <section id={id} className={cn('scroll-mt-20 py-16 sm:py-24', className)}>
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="mb-10 max-w-2xl space-y-3">
-          <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">{titulo}</h2>
-          {subtitulo && <p className="text-muted-foreground">{subtitulo}</p>}
+          <h2 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">{titulo}</h2>
+          {subtitulo && <p className="text-muted-foreground text-pretty">{subtitulo}</p>}
         </div>
         {children}
       </div>
@@ -67,7 +78,7 @@ function Seccion({ id, titulo, subtitulo, children, className }: { id?: string; 
   )
 }
 
-function Rastreador() {
+function Rastreador({ className }: { className?: string }) {
   const navigate = useNavigate()
   const [codigo, setCodigo] = useState('')
   const buscar = (e: FormEvent) => {
@@ -76,7 +87,7 @@ function Rastreador() {
     if (c) navigate(`/seguimiento/${c}`)
   }
   return (
-    <form onSubmit={buscar} id="rastrear" className="scroll-mt-24 space-y-3 rounded-2xl border bg-card p-5 shadow-sm sm:p-6">
+    <form onSubmit={buscar} id="rastrear" className={cn('scroll-mt-24 space-y-3 rounded-2xl border bg-card p-5 shadow-lg sm:p-6', className)}>
       <div className="space-y-1">
         <p className="font-medium">Rastrea tu encomienda</p>
         <p className="text-sm text-muted-foreground">Ingresa el código que recibiste al enviar.</p>
@@ -97,6 +108,32 @@ function Rastreador() {
         </Button>
       </div>
     </form>
+  )
+}
+
+/** Avisos flotantes sobre la ilustración: muestran cómo se ve el seguimiento (ejemplo ilustrativo). */
+function AvisosHero() {
+  return (
+    <div aria-hidden="true">
+      <div className="absolute top-[8%] left-[4%] flex items-center gap-2.5 rounded-xl border bg-card/95 px-3 py-2 shadow-md backdrop-blur sm:left-[-4%]">
+        <span className="flex size-8 items-center justify-center rounded-lg bg-accent text-accent-foreground">
+          <Truck className="size-4" />
+        </span>
+        <div className="leading-tight">
+          <p className="font-mono text-[11px] text-muted-foreground">PC-7K2M9QXA</p>
+          <p className="text-xs font-medium">En reparto · Otavalo</p>
+        </div>
+      </div>
+      <div className="absolute right-[4%] bottom-[30%] flex items-center gap-2.5 rounded-xl border bg-card/95 px-3 py-2 shadow-md backdrop-blur sm:right-[-3%]">
+        <span className="flex size-8 items-center justify-center rounded-full bg-brand-green text-brand-green-foreground">
+          <Check className="size-4" strokeWidth={3} />
+        </span>
+        <div className="leading-tight">
+          <p className="text-xs font-medium">Entregado</p>
+          <p className="text-[11px] text-muted-foreground">en la puerta del destinatario</p>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -121,19 +158,19 @@ export function LandingPage() {
           </nav>
           <div className="flex items-center gap-1">
             <ThemeToggle />
-            <Button nativeButton={false} render={<Link to="/login" />}>
-              <LogIn /> <span className="hidden sm:inline">Acceso personal</span>
-              <span className="sm:hidden">Ingresar</span>
+            <Button className="hidden sm:inline-flex" nativeButton={false} render={<Link to="/login" />}>
+              <LogIn /> Acceso personal
             </Button>
+            <MenuMovil secciones={NAV} />
           </div>
         </div>
       </header>
 
       <main id="inicio">
-        {/* Hero */}
+        {/* Portada */}
         <section className="relative overflow-hidden">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,color-mix(in_oklch,var(--brand-blue)_14%,transparent),transparent_55%),radial-gradient(ellipse_at_bottom_right,color-mix(in_oklch,var(--brand-green)_18%,transparent),transparent_55%)]" />
-          <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-4 py-16 sm:px-6 sm:py-24 lg:grid-cols-[1.1fr_1fr]">
+          <div className="relative mx-auto grid max-w-6xl items-center gap-10 px-4 pt-10 pb-16 sm:px-6 sm:pt-16 lg:grid-cols-[1fr_1.05fr] lg:gap-14 lg:pb-24">
             <div className="space-y-6">
               <Badge variant="secondary" className="min-h-5 gap-1.5">
                 <MapPin className="size-3" /> {ciudadesTexto || 'Cobertura en el norte del Ecuador'}
@@ -145,8 +182,8 @@ export function LandingPage() {
                 </span>
               </h1>
               <p className="max-w-xl text-lg text-muted-foreground text-pretty">
-                En PCargo llevamos sobres, paquetes, cartones y valijas desde Ibarra hasta el domicilio de tu
-                destinatario en nuestras ciudades de cobertura, con precio claro y seguimiento en línea.
+                Somos una empresa de Ibarra. Llevamos sobres, paquetes, cartones y valijas hasta el domicilio de tu
+                destinatario, con precio claro y seguimiento en línea.
               </p>
               <div className="flex flex-wrap gap-3">
                 <Button size="lg" nativeButton={false} render={<a href="#cotizar" />}>
@@ -156,23 +193,42 @@ export function LandingPage() {
                   <MessageCircle /> Escríbenos
                 </Button>
               </div>
+              <ul className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
+                {['Oficina física en Ibarra', 'Pago al cobro disponible', 'Tarifas publicadas'].map((t) => (
+                  <li key={t} className="flex items-center gap-1.5">
+                    <BadgeCheck className="size-4 text-brand-blue-text" /> {t}
+                  </li>
+                ))}
+              </ul>
             </div>
-            <Rastreador />
+
+            <div className="relative">
+              <div className="relative">
+                <HeroPaisaje className="h-auto w-full drop-shadow-xl" />
+                <AvisosHero />
+              </div>
+              <Rastreador className="relative mx-auto -mt-6 w-[94%]" />
+            </div>
           </div>
         </section>
 
-        {/* Cifras */}
+        {/* Cifras reales del servicio */}
         <section className="border-y bg-muted/30">
-          <dl className="mx-auto grid max-w-6xl grid-cols-2 gap-6 px-4 py-8 sm:px-6 md:grid-cols-4">
+          <dl className="mx-auto grid max-w-6xl grid-cols-2 gap-x-6 gap-y-8 px-4 py-8 sm:px-6 md:grid-cols-4">
             {[
-              { k: 'Ciudades', v: catalogo ? String(catalogo.ciudades.length) : '—' },
-              { k: 'Rutas activas', v: catalogo ? String(catalogo.rutas.length) : '—' },
-              { k: 'Envíos desde', v: desde !== null ? formatCurrency(desde) : '—' },
-              { k: 'Seguimiento', v: 'En línea' },
+              { icon: MapPin, k: 'Ciudades de cobertura', v: catalogo ? String(catalogo.ciudades.length) : '—' },
+              { icon: Truck, k: 'Rutas directas', v: catalogo ? String(catalogo.rutas.length) : '—' },
+              { icon: HandCoins, k: 'Envíos desde', v: desde !== null ? formatCurrency(desde) : '—' },
+              { icon: PackageSearch, k: 'Seguimiento', v: 'En línea' },
             ].map((s) => (
-              <div key={s.k} className="space-y-1">
-                <dt className="text-sm text-muted-foreground">{s.k}</dt>
-                <dd className="text-2xl font-semibold tracking-tight">{s.v}</dd>
+              <div key={s.k} className="flex items-start gap-3">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground">
+                  <s.icon className="size-4" />
+                </span>
+                <div className="space-y-0.5">
+                  <dt className="text-sm text-muted-foreground">{s.k}</dt>
+                  <dd className="text-2xl font-semibold tracking-tight">{s.v}</dd>
+                </div>
               </div>
             ))}
           </dl>
@@ -180,19 +236,19 @@ export function LandingPage() {
 
         {/* Servicios */}
         <Seccion id="servicios" titulo="Lo que transportamos" subtitulo="Cuatro tipos de encomienda, cada una con su tarifa y peso máximo.">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             {(catalogo?.tiposCarga ?? []).map((t) => {
               const Icon = TIPO_CARGA_ICON[t.codigo]
               return (
-                <article key={t.codigo} className="group space-y-4 rounded-2xl border bg-card p-6 transition-colors hover:bg-muted/40">
-                  <span className="flex size-10 items-center justify-center rounded-xl bg-accent text-accent-foreground">
+                <article key={t.codigo} className="space-y-3 rounded-2xl border bg-card p-4 sm:space-y-4 sm:p-6">
+                  <span className="flex size-11 items-center justify-center rounded-xl bg-accent text-accent-foreground">
                     <Icon className="size-5" />
                   </span>
                   <div className="space-y-1.5">
                     <h3 className="font-semibold">{t.nombre}</h3>
-                    <p className="text-sm text-muted-foreground">{DESCRIPCION_CARGA[t.codigo]}</p>
+                    <p className="text-xs text-muted-foreground sm:text-sm">{DESCRIPCION_CARGA[t.codigo]}</p>
                   </div>
-                  <p className="text-xs text-muted-foreground">Hasta {t.pesoMaxKg} kg</p>
+                  <p className="text-xs font-medium text-brand-blue-text">Hasta {t.pesoMaxKg} kg</p>
                 </article>
               )
             })}
@@ -201,21 +257,26 @@ export function LandingPage() {
         </Seccion>
 
         {/* Cómo funciona */}
-        <Seccion titulo="Así de simple" className="bg-muted/30">
-          <ol className="grid gap-6 md:grid-cols-3">
-            {PASOS.map((p, i) => (
-              <li key={p.titulo} className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <span className="flex size-10 items-center justify-center rounded-full border-2 border-brand-green bg-background">
+        <Seccion id="como-funciona" titulo="Así de simple" subtitulo="De tu mano a la puerta de quien lo recibe, en tres pasos." className="bg-muted/30">
+          <div className="grid items-center gap-10 lg:grid-cols-2">
+            <ol className="relative space-y-8">
+              {/* línea que une los pasos (continuidad) */}
+              <span aria-hidden="true" className="absolute top-5 bottom-5 left-5 w-0.5 -translate-x-1/2 bg-brand-green/50" />
+              {PASOS.map((p, i) => (
+                <li key={p.titulo} className="relative flex gap-4">
+                  <span className="relative z-10 flex size-10 shrink-0 items-center justify-center rounded-full border-2 border-brand-green bg-background">
                     <p.icon className="size-4" />
                   </span>
-                  <span className="text-sm text-muted-foreground">Paso {i + 1}</span>
-                </div>
-                <h3 className="font-semibold">{p.titulo}</h3>
-                <p className="text-sm text-muted-foreground">{p.texto}</p>
-              </li>
-            ))}
-          </ol>
+                  <div className="space-y-1 pt-1.5">
+                    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Paso {i + 1}</p>
+                    <h3 className="font-semibold">{p.titulo}</h3>
+                    <p className="text-sm text-muted-foreground">{p.texto}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+            <EntregaDomicilio className="h-auto w-full drop-shadow-lg" />
+          </div>
         </Seccion>
 
         {/* Cobertura y tarifas */}
@@ -225,38 +286,41 @@ export function LandingPage() {
           subtitulo="Tarifa base por trayecto. Entregas urbanas dentro de cada ciudad e interurbanas en ambos sentidos."
         >
           {catalogo ? (
-            <div className="overflow-x-auto rounded-2xl border">
-              <table className="w-full min-w-[560px] text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/40">
-                    <th className="p-4 text-left font-medium text-muted-foreground">Desde \ Hasta</th>
-                    {catalogo.ciudades.map((c) => (
-                      <th key={c.id} className="p-4 text-left font-medium">{c.nombre}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {matrizTarifas(catalogo.ciudades, catalogo.rutas).map((fila) => (
-                    <tr key={fila[0]!.origen.id} className="border-b last:border-0">
-                      <th scope="row" className="p-4 text-left font-medium">{fila[0]!.origen.nombre}</th>
-                      {fila.map(({ destino, ruta }) => (
-                        <td key={destino.id} className="p-4">
-                          {ruta ? (
-                            <div className="space-y-0.5">
-                              <p className="font-medium">{formatCurrency(ruta.tarifaBase)}</p>
-                              <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                                <Clock className="size-3" /> {formatDuracion(ruta.tiempoEstimadoMin)}
-                              </p>
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
-                        </td>
+            <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+              <MapaCobertura ciudades={catalogo.ciudades} rutas={catalogo.rutas} />
+              <div className="overflow-x-auto rounded-2xl border">
+                <table className="w-full min-w-[520px] text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/40">
+                      <th className="p-4 text-left font-medium text-muted-foreground">Desde \ Hasta</th>
+                      {catalogo.ciudades.map((c) => (
+                        <th key={c.id} className="p-4 text-left font-medium">{c.nombre}</th>
                       ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {matrizTarifas(catalogo.ciudades, catalogo.rutas).map((fila) => (
+                      <tr key={fila[0]!.origen.id} className="border-b last:border-0">
+                        <th scope="row" className="p-4 text-left font-medium">{fila[0]!.origen.nombre}</th>
+                        {fila.map(({ destino, ruta }) => (
+                          <td key={destino.id} className="p-4">
+                            {ruta ? (
+                              <div className="space-y-0.5">
+                                <p className="font-medium">{formatCurrency(ruta.tarifaBase)}</p>
+                                <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                                  <Clock className="size-3" /> {formatDuracion(ruta.tiempoEstimadoMin)}
+                                </p>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           ) : (
             <Skeleton className="h-64 rounded-2xl" />
@@ -273,15 +337,17 @@ export function LandingPage() {
         </Seccion>
 
         {/* Confianza */}
-        <Seccion titulo="¿Por qué PCargo?">
+        <Seccion titulo="¿Por qué PCargo?" subtitulo="Somos tus vecinos: una empresa de Ibarra que conoce cada calle de la zona.">
           <div className="grid gap-4 md:grid-cols-3">
             {[
-              { icon: ShieldCheck, t: 'Precio transparente', d: 'La tarifa se calcula por sistema: pagas exactamente lo cotizado.' },
-              { icon: PackageSearch, t: 'Trazabilidad total', d: 'Cada cambio de estado queda registrado y lo ves con tu código.' },
-              { icon: MapPin, t: 'Gente de la zona', d: 'Conocemos Imbabura: entregamos en la puerta, no en una agencia.' },
+              { icon: ShieldCheck, t: 'Precio transparente', d: 'La tarifa se calcula por sistema: pagas exactamente lo cotizado, y puedes pagar al cobro.' },
+              { icon: PackageSearch, t: 'Trazabilidad total', d: 'Cada cambio de estado queda registrado y lo ves con tu código, a cualquier hora.' },
+              { icon: MapPin, t: 'Gente de la zona', d: 'Entregamos en la puerta, no en una agencia. Y si algo pasa, te avisamos el motivo.' },
             ].map((x) => (
-              <div key={x.t} className="space-y-3 rounded-2xl border p-6">
-                <x.icon className="size-5" />
+              <div key={x.t} className="space-y-3 rounded-2xl border bg-card p-6">
+                <span className="flex size-10 items-center justify-center rounded-xl bg-accent text-accent-foreground">
+                  <x.icon className="size-5" />
+                </span>
                 <h3 className="font-semibold">{x.t}</h3>
                 <p className="text-sm text-muted-foreground">{x.d}</p>
               </div>
@@ -290,12 +356,20 @@ export function LandingPage() {
         </Seccion>
 
         {/* Contacto */}
-        <Seccion id="contacto" titulo="Contáctanos" subtitulo={`Oficina principal en ${MARCA.oficina.ciudad}.`} className="bg-muted/30">
+        <Seccion id="contacto" titulo="Contáctanos" subtitulo={`Visítanos en nuestra oficina principal en ${MARCA.oficina.ciudad}.`} className="bg-muted/30">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-2 rounded-2xl border bg-card p-6">
               <MapPin className="size-4 text-brand-blue-text" />
               <p className="text-sm font-medium">Oficina</p>
               <address className="text-sm text-muted-foreground not-italic">{MARCA.oficina.direccion}</address>
+              <a
+                href={mapsUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-blue-text hover:underline"
+              >
+                <Navigation className="size-3.5" /> Cómo llegar
+              </a>
             </div>
             <div className="space-y-2 rounded-2xl border bg-card p-6">
               <Phone className="size-4 text-brand-blue-text" />
@@ -331,7 +405,7 @@ export function LandingPage() {
             <div className="space-y-2 rounded-2xl border bg-card p-6">
               <Mail className="size-4 text-brand-blue-text" />
               <p className="text-sm font-medium">Correo</p>
-              <a href={`mailto:${MARCA.email}`} className="text-sm text-muted-foreground hover:text-foreground">
+              <a href={`mailto:${MARCA.email}`} className="text-sm break-all text-muted-foreground hover:text-foreground">
                 {MARCA.email}
               </a>
             </div>
@@ -339,13 +413,14 @@ export function LandingPage() {
         </Seccion>
 
         {/* Acceso personal */}
-        <section className="py-16">
-          <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 rounded-2xl bg-[image:var(--brand-gradient)] px-6 py-10 text-white sm:flex-row sm:items-center sm:px-10">
-            <div className="space-y-1">
+        <section className="px-4 py-16 sm:px-6">
+          <div className="relative mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 overflow-hidden rounded-2xl bg-[image:var(--brand-gradient)] px-6 py-10 text-white sm:flex-row sm:items-center sm:px-10">
+            <LogoMark className="pointer-events-none absolute -right-6 -bottom-8 size-40 opacity-15" />
+            <div className="relative space-y-1">
               <h2 className="text-2xl font-semibold tracking-tight">¿Eres parte del equipo PCargo?</h2>
               <p className="text-sm opacity-80">Ingresa al panel de operaciones para registrar y gestionar envíos.</p>
             </div>
-            <Button size="lg" className="bg-brand-green text-brand-green-foreground hover:bg-brand-green/90" nativeButton={false} render={<Link to="/login" />}>
+            <Button size="lg" className="relative bg-brand-green text-brand-green-foreground hover:bg-brand-green/90" nativeButton={false} render={<Link to="/login" />}>
               <LogIn /> Acceso personal
             </Button>
           </div>
@@ -353,14 +428,25 @@ export function LandingPage() {
       </main>
 
       <footer className="border-t">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-8 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <p>© {ANIO} {MARCA.nombre} · {MARCA.eslogan}</p>
+        <div className="mx-auto grid max-w-6xl gap-6 px-4 py-10 pb-24 text-sm text-muted-foreground sm:grid-cols-[1fr_auto] sm:items-end sm:px-6 sm:pb-10">
+          <div className="space-y-3">
+            <Logo markClassName="size-8" />
+            <p>{MARCA.oficina.direccion}</p>
+            <p>
+              <a href={`tel:${MARCA.telefonos.fijo.tel}`} className="hover:text-foreground">{MARCA.telefonos.fijo.texto}</a>
+              {' · '}
+              <a href={`tel:${MARCA.telefonos.celular.tel}`} className="hover:text-foreground">{MARCA.telefonos.celular.texto}</a>
+            </p>
+            <p>© {ANIO} {MARCA.nombre} · {MARCA.eslogan}</p>
+          </div>
           <div className="flex gap-4">
             <Link to="/seguimiento" className="hover:text-foreground">Rastrear envío</Link>
             <Link to="/login" className="hover:text-foreground">Acceso personal</Link>
           </div>
         </div>
       </footer>
+
+      <WhatsAppFlotante />
     </div>
   )
 }
