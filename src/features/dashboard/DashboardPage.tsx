@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
+import { CampoFiltro, FiltrosMovil, OpcionesFiltro } from '@/components/FiltrosMovil'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { SectionLabel } from '@/components/layout/SectionLabel'
 import { Segmented } from '@/components/Segmented'
@@ -26,6 +27,7 @@ import { EnvioDetailSheet } from '@/features/envios/components/EnvioDetailSheet'
 import { NuevoEnvioDialog } from '@/features/envios/components/NuevoEnvioDialog'
 import { ESTADO_LABEL, FORMA_PAGO_LABEL, TIPO_CARGA_LABEL } from '@/features/envios/domain'
 import { useEnvios } from '@/features/envios/hooks'
+import { useEsMovil } from '@/hooks/useMediaQuery'
 import { ATENCION_TONO, ESTADO_DOT, TIPO_CARGA_ICON } from '@/features/envios/ui'
 import { errorMessage } from '@/lib/api'
 import { INTERACTIVA, SUPERFICIE } from '@/lib/estilos'
@@ -108,6 +110,8 @@ function useFiltrosResumen() {
     setDia: (fecha: string) => actualizar({ dia: fecha === dia ? null : fecha }, { historial: true }),
     quitarDia: () => actualizar({ dia: null }, { historial: true }),
     quitarRango: () => actualizar({ desde: null, hasta: null, dia: null }),
+    /** Vuelve a la vista por defecto: últimos 30 días, todos los clientes. */
+    limpiarTodo: () => actualizar({ periodo: null, desde: null, hasta: null, dia: null, cliente: null }),
     setCliente: (id: string | null) => actualizar({ cliente: id }),
   }
 }
@@ -159,6 +163,68 @@ function Kpi({
 function FiltrosBar({ f }: { f: ReturnType<typeof useFiltrosResumen> }) {
   const { data: clientes = [] } = useClientes()
   const cliente = f.clienteId ? clientes.find((c) => c.id === f.clienteId) : undefined
+  const esMovil = useEsMovil()
+
+  const chipRango = !f.periodo && f.filtroSerie.desde && (
+    <span className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-2.5 py-1 text-xs font-medium text-accent-foreground">
+      <CalendarDays className="size-3.5" />
+      {formatRango(f.filtroSerie.desde, f.filtroSerie.hasta ?? f.filtroSerie.desde)}
+      <button type="button" aria-label="Quitar filtro de fecha" onClick={f.quitarRango} className="-m-1 rounded p-1 hover:text-foreground">
+        <X className="size-3.5" />
+      </button>
+    </span>
+  )
+  const chipDia = f.dia && (
+    <span className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-2.5 py-1 text-xs font-medium text-accent-foreground ring-1 ring-primary/30">
+      <CalendarDays className="size-3.5 text-primary" />
+      <span className="first-letter:uppercase">{formatDia(f.dia, true)}</span>
+      <button type="button" aria-label="Quitar filtro de día" onClick={f.quitarDia} className="-m-1 rounded p-1 hover:text-foreground">
+        <X className="size-3.5" />
+      </button>
+    </span>
+  )
+  const controlCliente = f.clienteId ? (
+    <span className="flex h-8 items-center gap-2 rounded-lg bg-accent px-2.5 text-sm text-accent-foreground ring-1 ring-primary/30">
+      <UserRound className="size-4 shrink-0 text-primary" />
+      <span className="min-w-0 flex-1 truncate">
+        <span className="text-xs text-muted-foreground">Cliente: </span>
+        {cliente?.nombre ?? 'Cliente'}
+      </span>
+      <button type="button" aria-label="Quitar filtro de cliente" onClick={() => f.setCliente(null)} className="rounded hover:text-foreground">
+        <X className="size-4" />
+      </button>
+    </span>
+  ) : (
+    <ClienteBuscador clientes={clientes} onSelect={(c) => f.setCliente(c.id)} label="Filtrar por cliente" placeholder="Filtrar por cliente" />
+  )
+
+  // Móvil: un botón «Filtros» (periodo y cliente en una hoja inferior) y, a su lado, lo que está aplicado.
+  if (esMovil) {
+    const activos = (f.periodo === PERIODO_INICIAL ? 0 : 1) + (f.clienteId ? 1 : 0)
+    const periodo = PERIODOS.find((p) => p.value === f.periodo)
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        <FiltrosMovil activos={activos} onLimpiar={f.limpiarTodo} descripcion="Periodo y cliente del resumen">
+          <CampoFiltro label="Periodo">
+            <OpcionesFiltro label="Periodo" value={f.periodo} onChange={f.setPeriodo} options={PERIODOS} />
+          </CampoFiltro>
+          <CampoFiltro label="Cliente">{controlCliente}</CampoFiltro>
+        </FiltrosMovil>
+        {periodo && <span className="text-xs text-muted-foreground">{periodo.label}</span>}
+        {chipRango}
+        {chipDia}
+        {f.clienteId && (
+          <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-lg bg-accent px-2.5 py-1 text-xs font-medium text-accent-foreground ring-1 ring-primary/30">
+            <UserRound className="size-3.5 shrink-0 text-primary" />
+            <span className="truncate">{cliente?.nombre ?? 'Cliente'}</span>
+            <button type="button" aria-label="Quitar filtro de cliente" onClick={() => f.setCliente(null)} className="-m-1 rounded p-1 hover:text-foreground">
+              <X className="size-3.5" />
+            </button>
+          </span>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
@@ -170,46 +236,10 @@ function FiltrosBar({ f }: { f: ReturnType<typeof useFiltrosResumen> }) {
           options={PERIODOS}
           className="overflow-x-auto"
         />
-        {!f.periodo && f.filtroSerie.desde && (
-          <span className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-2.5 py-1 text-xs font-medium text-accent-foreground">
-            <CalendarDays className="size-3.5" />
-            {formatRango(f.filtroSerie.desde, f.filtroSerie.hasta ?? f.filtroSerie.desde)}
-            <button type="button" aria-label="Quitar filtro de fecha" onClick={f.quitarRango} className="-m-1 rounded p-1 hover:text-foreground">
-              <X className="size-3.5" />
-            </button>
-          </span>
-        )}
-        {f.dia && (
-          <span className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-2.5 py-1 text-xs font-medium text-accent-foreground ring-1 ring-primary/30">
-            <CalendarDays className="size-3.5 text-primary" />
-            <span className="first-letter:uppercase">{formatDia(f.dia, true)}</span>
-            <button type="button" aria-label="Quitar filtro de día" onClick={f.quitarDia} className="-m-1 rounded p-1 hover:text-foreground">
-              <X className="size-3.5" />
-            </button>
-          </span>
-        )}
+        {chipRango}
+        {chipDia}
       </div>
-      <div className="lg:ml-auto lg:w-80">
-        {f.clienteId ? (
-          <span className="flex h-8 items-center gap-2 rounded-lg bg-accent px-2.5 text-sm text-accent-foreground ring-1 ring-primary/30">
-            <UserRound className="size-4 shrink-0 text-primary" />
-            <span className="min-w-0 flex-1 truncate">
-              <span className="text-xs text-muted-foreground">Cliente: </span>
-              {cliente?.nombre ?? 'Cliente'}
-            </span>
-            <button type="button" aria-label="Quitar filtro de cliente" onClick={() => f.setCliente(null)} className="rounded hover:text-foreground">
-              <X className="size-4" />
-            </button>
-          </span>
-        ) : (
-          <ClienteBuscador
-            clientes={clientes}
-            onSelect={(c) => f.setCliente(c.id)}
-            label="Filtrar por cliente"
-            placeholder="Filtrar por cliente"
-          />
-        )}
-      </div>
+      <div className="lg:ml-auto lg:w-80">{controlCliente}</div>
     </div>
   )
 }

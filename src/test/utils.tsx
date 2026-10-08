@@ -39,3 +39,17 @@ export function renderWithProviders(
     </QueryClientProvider>,
   )
 }
+
+/** Simula un teléfono: las media queries `max-width` se cumplen (se deshace con `vi.unstubAllGlobals`). */
+export function simularMovil() {
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: query.includes('max-width'),
+    media: query,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  }))
+}

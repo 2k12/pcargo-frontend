@@ -1,7 +1,7 @@
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { jsonResponse, mockFetch, renderWithProviders } from '@/test/utils'
+import { jsonResponse, mockFetch, renderWithProviders, simularMovil } from '@/test/utils'
 import type { Envio, Pagina } from '@/types/api'
 import { EnviosPage } from './EnviosPage'
 
@@ -92,5 +92,27 @@ describe('EnviosPage', () => {
     servidorPaginado()
     renderWithProviders(<EnviosPage />, { route: '/envios?pagina=9', path: '/envios' })
     expect(await screen.findByText('41–45 de 45')).toBeInTheDocument()
+  })
+
+  describe('en móvil', () => {
+    it('muestra solo el buscador y un botón «Filtros»; los filtros van en una hoja inferior', async () => {
+      simularMovil()
+      const fetch = servidorPaginado()
+      renderWithProviders(<EnviosPage />, { route: '/envios?estado=ENTREGADO', path: '/envios' })
+
+      expect(await screen.findByRole('textbox', { name: 'Buscar envíos' })).toBeInTheDocument()
+      expect(screen.queryByRole('combobox', { name: 'Filtrar por estado' })).not.toBeInTheDocument()
+
+      await userEvent.click(screen.getByRole('button', { name: 'Filtros (1 activo)' }))
+      const hoja = await screen.findByRole('dialog', { name: 'Filtros' })
+      expect(within(hoja).getByRole('combobox', { name: 'Filtrar por estado' })).toBeInTheDocument()
+      expect(within(hoja).getByRole('combobox', { name: 'Filtrar por forma de pago' })).toBeInTheDocument()
+      expect(within(hoja).getByRole('combobox', { name: 'Filtrar por ruta' })).toBeInTheDocument()
+
+      await userEvent.click(within(hoja).getByRole('button', { name: 'Limpiar' }))
+      await vi.waitFor(() => expect(urlsEnvios(fetch).at(-1)).not.toContain('estado='))
+      await userEvent.click(within(hoja).getByRole('button', { name: 'Ver resultados' }))
+      expect(await screen.findByRole('button', { name: 'Filtros' })).toBeInTheDocument()
+    })
   })
 })

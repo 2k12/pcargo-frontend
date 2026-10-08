@@ -2,7 +2,7 @@ import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useLocation, useNavigate } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { jsonResponse, mockFetch, renderWithProviders } from '@/test/utils'
+import { jsonResponse, mockFetch, renderWithProviders, simularMovil } from '@/test/utils'
 import type { Cliente, Envio, Resumen, Ruta } from '@/types/api'
 import { DashboardPage } from './DashboardPage'
 
@@ -280,5 +280,25 @@ describe('DashboardPage', () => {
     const fetch = setup('/panel?cliente=c1&periodo=7d')
     expect(await screen.findByText(/Desde que es cliente/)).toBeInTheDocument()
     expect(ultimoResumen(fetch).get('clienteId')).toBe('c1')
+  })
+
+  describe('en móvil', () => {
+    it('periodo y cliente van en una hoja inferior; fuera solo queda lo aplicado', async () => {
+      simularMovil()
+      const fetch = setup('/panel?cliente=c1')
+      await screen.findByText('+$36,00')
+      expect(screen.queryByRole('tab', { name: 'Todo' })).not.toBeInTheDocument()
+      expect(screen.getByText('30 días')).toBeInTheDocument()
+      expect(screen.getAllByRole('button', { name: 'Quitar filtro de cliente' }).length).toBeGreaterThan(0)
+
+      await userEvent.click(screen.getByRole('button', { name: 'Filtros (1 activo)' }))
+      const hoja = await screen.findByRole('dialog', { name: 'Filtros' })
+      await userEvent.click(within(hoja).getByRole('radio', { name: 'Todo' }))
+      expect(screen.getByTestId('ubicacion')).toHaveTextContent('periodo=todo')
+      expect(ultimoResumen(fetch).get('desde')).toBeNull()
+
+      await userEvent.click(within(hoja).getByRole('button', { name: 'Limpiar' }))
+      expect(screen.getByTestId('ubicacion')).toHaveTextContent(/^\/panel$/)
+    })
   })
 })
