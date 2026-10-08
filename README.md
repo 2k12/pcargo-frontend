@@ -28,8 +28,9 @@ Credenciales de demostración (sembradas por el backend):
 
 | Ruta | Acceso | Descripción |
 |---|---|---|
+| `/` | pública | Landing de la marca: servicios, cobertura y tarifas, cotizador, rastreo, contacto y acceso al login |
 | `/login` | pública | Inicio de sesión (JWT en `localStorage`) |
-| `/` | autenticado | Resumen: KPIs, distribución por estado, ruta y tipo de carga |
+| `/panel` | autenticado | Resumen: KPIs, distribución por estado, ruta y tipo de carga |
 | `/envios` | autenticado | Tabla con filtros (estado, ruta, búsqueda), alta con cotización en vivo, detalle con historial y cambio de estado |
 | `/rutas` | autenticado (edición: ADMIN) | Rutas y tarifas; ADMIN crea rutas, edita tarifa/tiempo y activa/desactiva |
 | `/seguimiento[/:codigo]` | pública | Rastreo por código `PC-XXXXXXXX` |
@@ -48,6 +49,7 @@ src/
     envios/       dominio (estados/transiciones), schema zod, hooks, componentes
     rutas/        tabla de rutas, diálogos de alta/edición
     seguimiento/  rastreo público
+    landing/      sitio público de la marca (datos de contacto en marca.ts)
   hooks/          hooks genéricos (useDebounced)
   lib/            cliente HTTP (api.ts), formatos es-EC (format.ts), utils
   types/api.ts    tipos espejo del contrato

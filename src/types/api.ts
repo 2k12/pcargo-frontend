@@ -84,6 +84,12 @@ export interface CotizacionRequest {
   pesoKg: number
 }
 
+export interface CatalogoPublico {
+  ciudades: Ciudad[]
+  tiposCarga: TipoCarga[]
+  rutas: Ruta[]
+}
+
 export interface Cotizacion {
   costo: number
   tarifaBase: number

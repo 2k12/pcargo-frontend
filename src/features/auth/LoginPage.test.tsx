@@ -44,7 +44,7 @@ describe('LoginPage', () => {
     renderWithProviders(<LoginPage />, {
       route: '/login',
       path: '/login',
-      extraRoutes: [{ path: '/', element: <p>Panel principal</p> }],
+      extraRoutes: [{ path: '/panel', element: <p>Panel principal</p> }],
     })
 
     await user.type(screen.getByLabelText('Correo'), 'admin@pcargo.ec')

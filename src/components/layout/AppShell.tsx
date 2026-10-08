@@ -19,7 +19,7 @@ import { cn } from '@/lib/utils'
 import { ThemeToggle } from './ThemeToggle'
 
 const NAV = [
-  { to: '/', label: 'Resumen', icon: LayoutDashboard, end: true },
+  { to: '/panel', label: 'Resumen', icon: LayoutDashboard, end: true },
   { to: '/envios', label: 'Envíos', icon: Package, end: false },
   { to: '/rutas', label: 'Rutas y tarifas', icon: Route, end: false },
   { to: '/seguimiento', label: 'Seguimiento', icon: PackageSearch, end: false },

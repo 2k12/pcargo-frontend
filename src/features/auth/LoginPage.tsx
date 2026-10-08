@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Loader2, PackageSearch, Truck } from 'lucide-react'
+import { ArrowLeft, Loader2, PackageSearch, Truck } from 'lucide-react'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router'
@@ -30,13 +30,13 @@ export function LoginPage() {
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { email: '', password: '' } })
 
-  if (status === 'authenticated') return <Navigate to="/" replace />
+  if (status === 'authenticated') return <Navigate to="/panel" replace />
 
   const onSubmit = async (values: FormValues) => {
     setError(null)
     try {
       await login(values.email, values.password)
-      const from = (location.state as { from?: string } | null)?.from ?? '/'
+      const from = (location.state as { from?: string } | null)?.from ?? '/panel'
       navigate(from, { replace: true })
     } catch (e) {
       setError(errorMessage(e))
@@ -45,14 +45,18 @@ export function LoginPage() {
 
   return (
     <div className="relative flex min-h-svh flex-col items-center justify-center bg-muted/30 px-4">
-      <div className="absolute top-4 right-4">
+      <div className="absolute top-4 right-4 left-4 flex items-center justify-between">
+        <Button variant="ghost" size="sm" nativeButton={false} render={<Link to="/" />}>
+          <ArrowLeft />
+          Volver al inicio
+        </Button>
         <ThemeToggle />
       </div>
       <div className="w-full max-w-sm space-y-6">
         <div className="flex flex-col items-center gap-2 text-center">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+          <Link to="/" aria-label="Ir al inicio" className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
             <Truck className="size-5" />
-          </div>
+          </Link>
           <h1 className="text-xl font-semibold tracking-tight">PCargo</h1>
           <p className="text-sm text-muted-foreground">Encomiendas Ibarra · Atuntaqui · Otavalo · Quito</p>
         </div>

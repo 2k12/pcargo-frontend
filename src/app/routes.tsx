@@ -5,6 +5,7 @@ import { AppShell } from '@/components/layout/AppShell'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { ProtectedRoute } from '@/features/auth/ProtectedRoute'
 
+const LandingPage = lazy(() => import('@/features/landing/LandingPage').then((m) => ({ default: m.LandingPage })))
 const DashboardPage = lazy(() => import('@/features/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage })))
 const EnviosPage = lazy(() => import('@/features/envios/EnviosPage').then((m) => ({ default: m.EnviosPage })))
 const RutasPage = lazy(() => import('@/features/rutas/RutasPage').then((m) => ({ default: m.RutasPage })))
@@ -24,12 +25,13 @@ export function AppRoutes() {
   return (
     <Suspense fallback={<Cargando />}>
       <Routes>
+        <Route index element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/seguimiento" element={<SeguimientoPage />} />
         <Route path="/seguimiento/:codigo" element={<SeguimientoPage />} />
         <Route element={<ProtectedRoute />}>
           <Route element={<AppShell />}>
-            <Route index element={<DashboardPage />} />
+            <Route path="/panel" element={<DashboardPage />} />
             <Route path="/envios" element={<EnviosPage />} />
             <Route path="/rutas" element={<RutasPage />} />
           </Route>
