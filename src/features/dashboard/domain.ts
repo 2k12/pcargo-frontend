@@ -101,6 +101,12 @@ const diaLargo = new Intl.DateTimeFormat('es-EC', { weekday: 'long', day: 'numer
 export const formatDia = (fecha: string, largo = false): string =>
   (largo ? diaLargo : diaCorto).format(new Date(`${fecha}T00:00:00Z`))
 
+const FECHA = /^\d{4}-\d{2}-\d{2}$/
+
+/** `YYYY-MM-DD` válido (para leer fechas de la URL sin confiar en ellas). */
+export const esFecha = (v: string | null | undefined): v is string =>
+  !!v && FECHA.test(v) && !Number.isNaN(new Date(`${v}T00:00:00Z`).getTime())
+
 /** Texto del rango elegido: "3 oct" o "1 oct – 7 oct". */
 export const formatRango = (desde: string, hasta: string): string =>
   desde === hasta ? formatDia(desde) : `${formatDia(desde)} – ${formatDia(hasta)}`

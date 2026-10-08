@@ -37,7 +37,9 @@ import { ClienteFiltradoCard, ClientesCard } from './components/ClientesCard'
 import { TendenciaCard } from './components/TendenciaCard'
 import {
   enCamino,
+  esFecha,
   esPeriodo,
+  formatDia,
   formatRango,
   GRUPOS_ESTADO,
   PERIODOS,
@@ -62,8 +64,12 @@ function useAhora(ms = 30_000) {
 }
 
 /**
- * Filtros del resumen en la URL (?periodo=, ?desde=&hasta=, ?cliente=): se pueden compartir
+ * Filtros del resumen en la URL (?periodo=, ?desde=&hasta=, ?dia=, ?cliente=): se pueden compartir
  * y la página de clientes enlaza directo al resumen de uno.
+ *
+ * El día elegido en la tendencia (`?dia=`) es un filtro aparte que NO sustituye al periodo: el panel
+ * muestra las cifras de ese día, pero el gráfico sigue mostrando todo el periodo para poder volver
+ * o elegir otro día. Elegir o quitar el día crea una entrada en el historial, así que "Atrás" lo deshace.
  */
 function useFiltrosResumen() {
   const [params, setParams] = useSearchParams()
@@ -72,9 +78,11 @@ function useFiltrosResumen() {
   const personalizado = !!desdeUrl
   const periodo: Periodo | null = personalizado ? null : esPeriodo(params.get('periodo')) ? (params.get('periodo') as Periodo) : PERIODO_INICIAL
   const rango = personalizado ? { desde: desdeUrl, hasta: hastaUrl ?? desdeUrl } : rangoPeriodo(periodo!)
+  const diaUrl = params.get('dia')
+  const dia = esFecha(diaUrl) ? diaUrl : undefined
   const clienteId = params.get('cliente') ?? undefined
 
-  const actualizar = (cambios: Record<string, string | null>) =>
+  const actualizar = (cambios: Record<string, string | null>, { historial = false } = {}) =>
     setParams(
       (p) => {
         for (const [k, v] of Object.entries(cambios)) {
@@ -83,16 +91,23 @@ function useFiltrosResumen() {
         }
         return p
       },
-      { replace: true },
+      { replace: !historial },
     )
 
   return {
-    filtro: { ...rango, clienteId } satisfies FiltroResumen,
+    /** Lo que muestra el panel: el día elegido o, si no hay, todo el periodo. */
+    filtro: (dia ? { desde: dia, hasta: dia, clienteId } : { ...rango, clienteId }) satisfies FiltroResumen,
+    /** Lo que muestra la tendencia diaria: siempre el periodo completo. */
+    filtroSerie: { ...rango, clienteId } satisfies FiltroResumen,
     periodo,
+    dia,
     clienteId,
-    setPeriodo: (v: Periodo) => actualizar({ periodo: v === PERIODO_INICIAL ? null : v, desde: null, hasta: null }),
-    setDia: (fecha: string) => actualizar({ desde: fecha, hasta: fecha, periodo: null }),
-    quitarRango: () => actualizar({ desde: null, hasta: null }),
+    setPeriodo: (v: Periodo) =>
+      actualizar({ periodo: v === PERIODO_INICIAL ? null : v, desde: null, hasta: null, dia: null }),
+    /** Tocar el día ya elegido lo quita (alternar). */
+    setDia: (fecha: string) => actualizar({ dia: fecha === dia ? null : fecha }, { historial: true }),
+    quitarDia: () => actualizar({ dia: null }, { historial: true }),
+    quitarRango: () => actualizar({ desde: null, hasta: null, dia: null }),
     setCliente: (id: string | null) => actualizar({ cliente: id }),
   }
 }
@@ -155,11 +170,20 @@ function FiltrosBar({ f }: { f: ReturnType<typeof useFiltrosResumen> }) {
           options={PERIODOS}
           className="overflow-x-auto"
         />
-        {!f.periodo && f.filtro.desde && (
+        {!f.periodo && f.filtroSerie.desde && (
           <span className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-2.5 py-1 text-xs font-medium text-accent-foreground">
             <CalendarDays className="size-3.5" />
-            {formatRango(f.filtro.desde, f.filtro.hasta ?? f.filtro.desde)}
-            <button type="button" aria-label="Quitar filtro de fecha" onClick={f.quitarRango} className="rounded hover:text-foreground">
+            {formatRango(f.filtroSerie.desde, f.filtroSerie.hasta ?? f.filtroSerie.desde)}
+            <button type="button" aria-label="Quitar filtro de fecha" onClick={f.quitarRango} className="-m-1 rounded p-1 hover:text-foreground">
+              <X className="size-3.5" />
+            </button>
+          </span>
+        )}
+        {f.dia && (
+          <span className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-2.5 py-1 text-xs font-medium text-accent-foreground ring-1 ring-primary/30">
+            <CalendarDays className="size-3.5 text-primary" />
+            <span className="first-letter:uppercase">{formatDia(f.dia, true)}</span>
+            <button type="button" aria-label="Quitar filtro de día" onClick={f.quitarDia} className="-m-1 rounded p-1 hover:text-foreground">
               <X className="size-3.5" />
             </button>
           </span>
@@ -441,13 +465,14 @@ function RecientesCard({ clienteId }: { clienteId?: string }) {
 export function DashboardPage() {
   const f = useFiltrosResumen()
   const { data, isLoading, error, isFetching, refetch, dataUpdatedAt } = useResumen(f.filtro)
+  // Sin día elegido es la misma consulta que la del panel (misma clave de caché, sin petición extra).
+  const { data: datosSerie } = useResumen(f.filtroSerie)
   const { data: clientes = [] } = useClientes()
   const ahora = useAhora()
   const tasa = data ? tasaEntrega(data) : null
   const cliente = f.clienteId ? clientes.find((c) => c.id === f.clienteId) : undefined
   // Los enlaces al listado de envíos conservan el filtro de cliente.
   const sufijo = f.clienteId ? `&clienteId=${f.clienteId}` : ''
-  const diaUnico = !f.periodo && f.filtro.desde === f.filtro.hasta ? f.filtro.desde : undefined
 
   return (
     <>
@@ -519,7 +544,12 @@ export function DashboardPage() {
 
           <div className="grid items-start gap-4 lg:grid-cols-3">
             <div className="space-y-4 lg:col-span-2">
-              <TendenciaCard serie={data.porDia} diaSeleccionado={diaUnico} onSelectDia={f.setDia} />
+              <TendenciaCard
+                serie={(datosSerie ?? data).porDia}
+                diaSeleccionado={f.dia}
+                onSelectDia={f.setDia}
+                onVerPeriodo={f.quitarDia}
+              />
               <EstadoCard data={data} sufijo={sufijo} />
               <DistribucionCard data={data} sufijo={sufijo} />
             </div>
