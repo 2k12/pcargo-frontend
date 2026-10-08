@@ -34,7 +34,6 @@ import { useCatalogoPublico } from './api'
 import { matrizTarifas, tarifaDesde } from './cobertura'
 import { CotizadorPublico } from './components/CotizadorPublico'
 import { MenuMovil, WhatsAppFlotante } from './components/MenuMovil'
-import { EntregaDomicilio } from './ilustraciones/EntregaDomicilio'
 import { HeroPaisaje } from './ilustraciones/HeroPaisaje'
 import { MapaCobertura } from './ilustraciones/MapaCobertura'
 import { MARCA, whatsappUrl } from './marca'
@@ -275,7 +274,17 @@ export function LandingPage() {
                 </li>
               ))}
             </ol>
-            <EntregaDomicilio className="h-auto w-full drop-shadow-lg" />
+            <img
+              src="/landing/entrega-1600.webp"
+              srcSet="/landing/entrega-800.webp 800w, /landing/entrega-1600.webp 1600w"
+              sizes="(min-width: 1024px) 560px, 100vw"
+              width={1600}
+              height={1065}
+              loading="lazy"
+              decoding="async"
+              alt="Repartidor de PCargo entregando una caja a una clienta en la puerta de su casa"
+              className="h-auto w-full rounded-3xl shadow-xl ring-1 ring-foreground/10"
+            />
           </div>
         </Seccion>
 

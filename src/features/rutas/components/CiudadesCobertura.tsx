@@ -190,7 +190,7 @@ export function CiudadesCobertura({ rutas, esAdmin }: { rutas: Ruta[]; esAdmin: 
               return (
                 <li
                   key={c.id}
-                  className={cn('flex items-center gap-3 rounded-xl border px-3 py-2.5', !c.activa && 'bg-muted/40')}
+                  className={cn('flex items-center gap-3 rounded-xl px-3 py-2.5 ring-1 ring-foreground/10', !c.activa && 'bg-muted/40')}
                 >
                   <MapPin className={cn('size-4 shrink-0', c.activa ? 'text-brand-blue-text' : 'text-muted-foreground')} />
                   <div className="min-w-0 flex-1">

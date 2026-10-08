@@ -1,4 +1,4 @@
-import { LayoutDashboard, LogOut, PackageSearch, Route, Package } from 'lucide-react'
+import { ArrowUpRight, LayoutDashboard, LogOut, PackageSearch, Route, Package, type LucideIcon } from 'lucide-react'
 import { Suspense } from 'react'
 import { Link, NavLink, Outlet } from 'react-router'
 import { Logo, LogoMark } from '@/components/brand/PCargoLogo'
@@ -19,12 +19,41 @@ import { iniciales } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { ThemeToggle } from './ThemeToggle'
 
-const NAV = [
-  { to: '/panel', label: 'Resumen', corto: 'Resumen', icon: LayoutDashboard, end: true },
-  { to: '/envios', label: 'Envíos', corto: 'Envíos', icon: Package, end: false },
-  { to: '/rutas', label: 'Cobertura y tarifas', corto: 'Tarifas', icon: Route, end: false },
-  { to: '/seguimiento', label: 'Seguimiento', corto: 'Rastreo', icon: PackageSearch, end: false },
+/**
+ * Navegación agrupada por propósito (proximidad): la operación diaria, la configuración
+ * y la página pública de rastreo, que sale del panel (se indica con ↗).
+ */
+interface ItemNav {
+  to: string
+  label: string
+  corto: string
+  icon: LucideIcon
+  end: boolean
+  externo?: boolean
+}
+
+const GRUPOS: { titulo: string; items: ItemNav[] }[] = [
+  {
+    titulo: 'Operación',
+    items: [
+      { to: '/panel', label: 'Resumen', corto: 'Resumen', icon: LayoutDashboard, end: true },
+      { to: '/envios', label: 'Envíos', corto: 'Envíos', icon: Package, end: false },
+    ],
+  },
+  {
+    titulo: 'Configuración',
+    items: [{ to: '/rutas', label: 'Cobertura y tarifas', corto: 'Tarifas', icon: Route, end: false }],
+  },
+  {
+    titulo: 'Público',
+    items: [{ to: '/seguimiento', label: 'Rastreo de envíos', corto: 'Rastreo', icon: PackageSearch, end: false, externo: true }],
+  },
 ]
+
+const NAV = GRUPOS.flatMap((g) => g.items)
+
+/** Estado activo idéntico en barra lateral y pestañas (similitud). */
+const ACTIVO = 'bg-accent font-medium text-accent-foreground'
 
 /** Barra de pestañas inferior para móvil. */
 function BottomNav() {
@@ -47,7 +76,7 @@ function BottomNav() {
         >
           {({ isActive }) => (
             <>
-              <span className={cn('rounded-full px-4 py-1 transition-colors', isActive && 'bg-muted')}>
+              <span className={cn('rounded-full px-4 py-1 transition-colors', isActive && ACTIVO)}>
                 <Icon className="size-4" />
               </span>
               {corto}
@@ -65,25 +94,32 @@ function Brand() {
   )
 }
 
-function NavItems({ onNavigate }: { onNavigate?: () => void }) {
+function NavItems() {
   return (
-    <nav className="flex flex-col gap-1">
-      {NAV.map(({ to, label, icon: Icon, end }) => (
-        <NavLink
-          key={to}
-          to={to}
-          end={end}
-          onClick={onNavigate}
-          className={({ isActive }) =>
-            cn(
-              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
-              isActive && 'bg-muted font-medium text-foreground',
+    <nav className="flex flex-col gap-5" aria-label="Navegación principal">
+      {GRUPOS.map((g) => (
+        <div key={g.titulo} className="space-y-1">
+          <p className="px-3 text-[11px] font-medium tracking-wide text-muted-foreground/80 uppercase">{g.titulo}</p>
+          {g.items.map(({ to, label, icon: Icon, end, externo }) => {
+            return (
+              <NavLink
+                key={to}
+                to={to}
+                end={end}
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
+                    isActive && ACTIVO,
+                  )
+                }
+              >
+                <Icon className="size-4" />
+                <span className="flex-1">{label}</span>
+                {externo && <ArrowUpRight className="size-3.5 opacity-60" />}
+              </NavLink>
             )
-          }
-        >
-          <Icon className="size-4" />
-          {label}
-        </NavLink>
+          })}
+        </div>
       ))}
     </nav>
   )
@@ -130,8 +166,8 @@ function CiudadesActivas() {
 
 export function AppShell() {
   return (
-    <div className="flex min-h-svh bg-background">
-      <aside className="sticky top-0 hidden h-svh w-60 shrink-0 flex-col gap-6 border-r bg-muted/20 p-4 md:flex">
+    <div className="flex min-h-svh bg-muted/40">
+      <aside className="sticky top-0 hidden h-svh w-60 shrink-0 flex-col gap-6 border-r bg-background p-4 md:flex">
         <Brand />
         <NavItems />
         <CiudadesActivas />

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatCurrency, formatDateTime, formatDuracion, formatPeso, iniciales } from './format'
+import { formatCurrency, formatDateTime, formatDuracion, formatPeso, formatRelativo, iniciales } from './format'
 
 describe('formatCurrency', () => {
   it('formatea en USD con coma decimal (es-EC)', () => {
@@ -41,5 +41,15 @@ describe('otros formatos', () => {
   it('iniciales toma hasta dos palabras', () => {
     expect(iniciales('María José Pérez')).toBe('MJ')
     expect(iniciales('admin')).toBe('A')
+  })
+})
+
+describe('formatRelativo', () => {
+  const ahora = Date.parse('2026-10-07T12:00:00Z')
+  it('expresa diferencias recientes en español', () => {
+    expect(formatRelativo(ahora - 10_000, ahora)).toBe('hace un momento')
+    expect(formatRelativo(ahora - 5 * 60_000, ahora)).toBe('hace 5 minutos')
+    expect(formatRelativo(ahora - 2 * 3_600_000, ahora)).toBe('hace 2 horas')
+    expect(formatRelativo('no-es-fecha', ahora)).toBe('—')
   })
 })

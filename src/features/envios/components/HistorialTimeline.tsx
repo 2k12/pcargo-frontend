@@ -14,7 +14,7 @@ export function HistorialTimeline({ eventos }: { eventos: EventoHistorial[] }) {
         <li key={`${ev.estado}-${ev.fecha}-${i}`} className="relative">
           <span
             className={cn(
-              'absolute top-1 -left-[25px] size-2.5 rounded-full ring-4 ring-background',
+              'absolute top-1 -left-[25px] size-2.5 rounded-full ring-4 ring-card',
               ESTADO_DOT[ev.estado],
             )}
           />

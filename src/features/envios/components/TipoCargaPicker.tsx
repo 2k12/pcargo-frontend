@@ -1,3 +1,4 @@
+import { INTERACTIVA, SELECCIONADA } from '@/lib/estilos'
 import { cn } from '@/lib/utils'
 import type { TipoCarga, TipoCargaCodigo } from '@/types/api'
 import { TIPO_CARGA_ICON } from '../ui'
@@ -22,8 +23,9 @@ export function TipoCargaPicker({ tipos, value, onChange }: Props) {
             aria-checked={activo}
             onClick={() => onChange(t.codigo)}
             className={cn(
-              'flex flex-col items-center gap-1 rounded-xl border p-3 text-sm transition-colors outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50',
-              activo && 'border-primary bg-muted',
+              'flex flex-col items-center gap-1 rounded-xl p-3 text-sm ring-1 ring-foreground/10',
+              INTERACTIVA,
+              activo && SELECCIONADA,
             )}
           >
             <Icon className="size-5" />

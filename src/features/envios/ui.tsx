@@ -34,3 +34,6 @@ export const FORMA_PAGO_TONO: Record<FormaPago, string> = {
   CONTRATO: 'border-sky-500/30 text-sky-700 dark:text-sky-300',
   SEGURO: 'border-violet-500/30 text-violet-700 dark:text-violet-300',
 }
+
+/** Aviso de envíos que requieren gestión (no entregados / con novedad). */
+export const ATENCION_TONO = 'bg-amber-500/10 text-amber-800 dark:text-amber-200'

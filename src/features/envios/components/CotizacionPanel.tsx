@@ -10,7 +10,7 @@ export function CotizacionPanel({ request }: { request: CotizacionRequest | null
   const { data, isFetching, error } = useCotizacion(request)
 
   return (
-    <div className="rounded-xl border bg-muted/30 p-4" aria-live="polite">
+    <div className="rounded-xl bg-muted/50 p-4" aria-live="polite">
       <div className="flex items-center justify-between">
         <span className="text-sm text-muted-foreground">Costo estimado</span>
         {isFetching && <Loader2 className="size-3.5 animate-spin text-muted-foreground" />}

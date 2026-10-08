@@ -1,5 +1,6 @@
 import { Loader2 } from 'lucide-react'
 import { useState } from 'react'
+import { SectionLabel } from '@/components/layout/SectionLabel'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -13,10 +14,13 @@ interface Props {
   onTransicion: (estado: Estado, nota: string) => Promise<unknown> | void
 }
 
-const VARIANTE: Partial<Record<Estado, 'default' | 'destructive' | 'outline'>> = {
-  CANCELADO: 'destructive',
-  NO_ENTREGADO: 'outline',
-  NOVEDAD: 'outline',
+/**
+ * Jerarquía de acciones (punto focal): la primera transición permitida es el siguiente paso natural
+ * y es la única principal; las excepciones van en contorno y cancelar queda separado al final.
+ */
+function variante(destino: Estado, indice: number): 'default' | 'outline' | 'destructive' {
+  if (destino === 'CANCELADO') return 'destructive'
+  return indice === 0 ? 'default' : 'outline'
 }
 
 /**
@@ -46,8 +50,8 @@ export function CambioEstadoForm({ estado, pendiente, onTransicion }: Props) {
   const motivoFaltante = !!conMotivo && nota.trim() === ''
 
   return (
-    <div className="space-y-3">
-      <p className="text-sm font-medium">Actualizar estado</p>
+    <section className="space-y-3" aria-label="Actualizar estado">
+      <SectionLabel>Actualizar estado</SectionLabel>
       <div className="space-y-1.5">
         <Label htmlFor="nota-estado" className={cn(!conMotivo && 'text-muted-foreground')}>
           {conMotivo ? 'Motivo (obligatorio)' : 'Nota (opcional)'}
@@ -69,12 +73,13 @@ export function CambioEstadoForm({ estado, pendiente, onTransicion }: Props) {
         {motivoFaltante && <p className="text-xs text-destructive">Indica el motivo para continuar.</p>}
       </div>
       <div className="flex flex-wrap gap-2">
-        {acciones.map((destino) => {
+        {acciones.map((destino, i) => {
           const seleccionado = conMotivo === destino
           return (
             <Button
               key={destino}
-              variant={seleccionado ? 'default' : (VARIANTE[destino] ?? 'default')}
+              className={cn(destino === 'CANCELADO' && 'ml-auto')}
+              variant={seleccionado ? 'default' : variante(destino, i)}
               disabled={!!pendiente || (seleccionado && motivoFaltante)}
               onClick={() => ejecutar(destino)}
             >
@@ -89,6 +94,6 @@ export function CambioEstadoForm({ estado, pendiente, onTransicion }: Props) {
           </Button>
         )}
       </div>
-    </div>
+    </section>
   )
 }

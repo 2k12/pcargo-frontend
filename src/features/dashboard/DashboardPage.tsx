@@ -1,153 +1,371 @@
-import { Boxes, CircleCheck, DollarSign, Package, type LucideIcon } from 'lucide-react'
+import { ArrowUpRight, CircleCheck, DollarSign, Package, RefreshCw, Truck, type LucideIcon } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router'
 import { PageHeader } from '@/components/layout/PageHeader'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { SectionLabel } from '@/components/layout/SectionLabel'
+import { Segmented } from '@/components/Segmented'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ESTADO_LABEL, ESTADOS, FORMA_PAGO_LABEL, TIPO_CARGA_LABEL } from '@/features/envios/domain'
-import { ESTADO_DOT, TIPO_CARGA_ICON } from '@/features/envios/ui'
+import { EnvioCard } from '@/features/envios/components/EnvioCard'
+import { EnvioDetailSheet } from '@/features/envios/components/EnvioDetailSheet'
+import { NuevoEnvioDialog } from '@/features/envios/components/NuevoEnvioDialog'
+import { ESTADO_LABEL, FORMA_PAGO_LABEL, TIPO_CARGA_LABEL } from '@/features/envios/domain'
+import { useEnvios } from '@/features/envios/hooks'
+import { ATENCION_TONO, ESTADO_DOT, TIPO_CARGA_ICON } from '@/features/envios/ui'
+import { rutaLabel, useRutas } from '@/features/rutas/hooks'
 import { errorMessage } from '@/lib/api'
-import { formatCurrency } from '@/lib/format'
+import { INTERACTIVA, SUPERFICIE } from '@/lib/estilos'
+import { formatCurrency, formatRelativo } from '@/lib/format'
+import { cn } from '@/lib/utils'
+import type { Estado, Resumen } from '@/types/api'
 import { useResumen } from './api'
+import { enCamino, GRUPOS_ESTADO, segmentosEstado, tasaEntrega, ticketPromedio, totalGrupo } from './domain'
 
-function Kpi({ label, value, icon: Icon, hint }: { label: string; value: string; icon: LucideIcon; hint?: string }) {
+/** Re-renderiza cada `ms` para mantener vigentes los textos relativos ("hace 2 minutos"). */
+function useAhora(ms = 30_000) {
+  const [ahora, setAhora] = useState(() => Date.now())
+  useEffect(() => {
+    const t = setInterval(() => setAhora(Date.now()), ms)
+    return () => clearInterval(t)
+  }, [ms])
+  return ahora
+}
+
+/** Indicador clave. Todos comparten forma y jerarquía (similitud); solo los enlazables reaccionan al cursor. */
+function Kpi({
+  label,
+  value,
+  hint,
+  icon: Icon,
+  to,
+  tono,
+}: {
+  label: string
+  value: string
+  hint?: string
+  icon: LucideIcon
+  to?: string
+  tono?: string
+}) {
+  const contenido = (
+    <>
+      <span className="flex items-center justify-between text-xs text-muted-foreground">
+        {label}
+        <Icon className={cn('size-4', tono)} />
+      </span>
+      <span className="text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl">{value}</span>
+      <span className="flex items-center justify-between gap-1 text-xs text-muted-foreground">
+        <span className="truncate">{hint}</span>
+        {to && <ArrowUpRight className="size-3.5 shrink-0 opacity-0 transition group-hover:opacity-100" />}
+      </span>
+    </>
+  )
+  const base = cn('group flex flex-col gap-1.5 p-4', SUPERFICIE)
+  return to ? (
+    <Link to={to} className={cn(base, INTERACTIVA)}>
+      {contenido}
+    </Link>
+  ) : (
+    <div className={base}>{contenido}</div>
+  )
+}
+
+/**
+ * Estados en tres grupos con significado propio (proximidad + región común).
+ * Al señalar un estado o un grupo se resaltan sus segmentos en la barra (destino común).
+ */
+function EstadoCard({ data }: { data: Resumen }) {
+  const [activos, setActivos] = useState<Estado[] | null>(null)
+  const segmentos = segmentosEstado(data)
+  const resaltar = (estados: Estado[] | null) => () => setActivos(estados)
+  const sel = activos ? totalGrupo(data, activos) : null
+  const selLabel =
+    activos?.length === 1 ? ESTADO_LABEL[activos[0]!] : GRUPOS_ESTADO.find((g) => g.estados === activos)?.titulo
+
   return (
     <Card>
-      <CardContent className="flex items-start justify-between gap-4">
-        <div className="space-y-1">
-          <p className="text-sm text-muted-foreground">{label}</p>
-          <p className="text-2xl font-semibold tracking-tight tabular-nums">{value}</p>
-          {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+      <CardHeader className="flex flex-row items-baseline justify-between gap-2">
+        <CardTitle>Estados</CardTitle>
+        <p className="text-xs text-muted-foreground tabular-nums" aria-live="polite">
+          {activos && sel !== null
+            ? `${selLabel} · ${sel} · ${data.totalEnvios ? Math.round((sel / data.totalEnvios) * 100) : 0}%`
+            : `${data.totalEnvios} envíos`}
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <div className="flex h-2.5 gap-0.5 overflow-hidden rounded-full bg-muted" aria-hidden>
+          {segmentos
+            .filter((s) => s.total > 0)
+            .map((s) => (
+              <div
+                key={s.estado}
+                onMouseEnter={resaltar([s.estado])}
+                onMouseLeave={resaltar(null)}
+                className={cn(
+                  'h-full transition-opacity duration-200',
+                  ESTADO_DOT[s.estado],
+                  activos && !activos.includes(s.estado) && 'opacity-20',
+                )}
+                style={{ width: `${s.pct}%` }}
+              />
+            ))}
         </div>
-        <div className="rounded-lg bg-muted p-2 text-muted-foreground">
-          <Icon className="size-4" />
+
+        <div className="grid gap-4 sm:grid-cols-[3fr_2fr_2fr]">
+          {GRUPOS_ESTADO.map((g) => {
+            const total = totalGrupo(data, g.estados)
+            const alerta = g.clave === 'gestion' && total > 0
+            return (
+              <section
+                key={g.clave}
+                className="space-y-2"
+                aria-label={g.titulo}
+                onMouseEnter={resaltar(g.estados)}
+                onMouseLeave={resaltar(null)}
+              >
+                <SectionLabel
+                  aside={
+                    <span className={cn('rounded-full px-1.5 tabular-nums', alerta && ATENCION_TONO)}>{total}</span>
+                  }
+                >
+                  {g.titulo}
+                </SectionLabel>
+                <ul className={cn('grid gap-2', g.estados.length === 3 ? 'grid-cols-3' : 'grid-cols-2')}>
+                  {g.estados.map((e) => {
+                    const n = data.porEstado[e] ?? 0
+                    return (
+                      <li key={e}>
+                        <Link
+                          to={`/envios?estado=${e}`}
+                          onMouseEnter={resaltar([e])}
+                          onFocus={resaltar([e])}
+                          onBlur={resaltar(null)}
+                          className={cn(
+                            'flex h-full flex-col gap-0.5 rounded-lg px-3 py-2 ring-1 ring-foreground/10',
+                            INTERACTIVA,
+                            activos?.length === 1 && activos[0] === e && 'bg-muted/40',
+                            n === 0 && 'opacity-50',
+                          )}
+                        >
+                          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <span className={cn('size-1.5 shrink-0 rounded-full', ESTADO_DOT[e])} />
+                            <span className="truncate">{ESTADO_LABEL[e]}</span>
+                          </span>
+                          <span className="text-lg font-semibold tabular-nums">{n}</span>
+                        </Link>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </section>
+            )
+          })}
         </div>
       </CardContent>
     </Card>
   )
 }
 
-function BarList({ items, tono = 'bg-primary' }: { items: { label: string; value: number; icon?: LucideIcon }[]; tono?: string }) {
-  const max = Math.max(1, ...items.map((i) => i.value))
-  if (items.length === 0) return <p className="text-sm text-muted-foreground">Sin datos todavía.</p>
+type Vista = 'ruta' | 'carga' | 'pago'
+type Fila = { key: string; label: string; value: number; display: string; to?: string; icon?: LucideIcon }
+
+function DistribucionCard({ data }: { data: Resumen }) {
+  const [vista, setVista] = useState<Vista>('ruta')
+  const [enMonto, setEnMonto] = useState(false)
+  const { data: rutas = [] } = useRutas()
+  const idPorRuta = new Map(rutas.map((r) => [rutaLabel({ origen: r.origen.nombre, destino: r.destino.nombre }), r.id]))
+
+  const filas: Fila[] =
+    vista === 'ruta'
+      ? data.porRuta.map((r) => {
+          const id = idPorRuta.get(r.ruta)
+          return { key: r.ruta, label: r.ruta, value: r.total, display: String(r.total), to: id ? `/envios?rutaId=${id}` : undefined }
+        })
+      : vista === 'carga'
+        ? [...data.porTipo]
+            .sort((a, b) => b.piezas - a.piezas)
+            .map((t) => ({
+              key: t.tipoCarga,
+              label: TIPO_CARGA_LABEL[t.tipoCarga] ?? t.tipoCarga,
+              value: t.piezas,
+              display: `${t.piezas} pzs`,
+              icon: TIPO_CARGA_ICON[t.tipoCarga],
+            }))
+        : [...data.porFormaPago]
+            .sort((a, b) => (enMonto ? b.monto - a.monto : b.envios - a.envios))
+            .map((p) => ({
+              key: p.formaPago,
+              label: FORMA_PAGO_LABEL[p.formaPago] ?? p.formaPago,
+              value: enMonto ? p.monto : p.envios,
+              display: enMonto ? formatCurrency(p.monto) : String(p.envios),
+              to: `/envios?formaPago=${p.formaPago}`,
+            }))
+
+  const max = Math.max(1, ...filas.map((f) => f.value))
+
   return (
-    <ul className="space-y-3">
-      {items.map(({ label, value, icon: Icon }) => (
-        <li key={label} className="space-y-1.5">
-          <div className="flex items-center justify-between text-sm">
-            <span className="flex items-center gap-2">
-              {Icon && <Icon className="size-3.5 text-muted-foreground" />}
-              {label}
-            </span>
-            <span className="tabular-nums text-muted-foreground">{value}</span>
-          </div>
-          <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-            <div className={`h-full rounded-full transition-all ${tono}`} style={{ width: `${(value / max) * 100}%` }} />
-          </div>
-        </li>
-      ))}
-    </ul>
+    <Card>
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
+        <CardTitle>Distribución</CardTitle>
+        <div className="flex items-center gap-2">
+          {vista === 'pago' && (
+            <Segmented
+              label="Métrica"
+              value={enMonto ? 'monto' : 'envios'}
+              onChange={(v) => setEnMonto(v === 'monto')}
+              options={[
+                { value: 'envios', label: '#' },
+                { value: 'monto', label: '$' },
+              ]}
+            />
+          )}
+          <Segmented
+            label="Agrupar por"
+            value={vista}
+            onChange={setVista}
+            options={[
+              { value: 'ruta', label: 'Ruta' },
+              { value: 'carga', label: 'Carga' },
+              { value: 'pago', label: 'Pago' },
+            ]}
+          />
+        </div>
+      </CardHeader>
+      <CardContent>
+        {filas.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">Sin datos todavía.</p>
+        ) : (
+          <ul className="-mx-2 space-y-0.5">
+            {filas.map(({ key, label, value, display, to, icon: Icon }) => {
+              const fila = (
+                <>
+                  <span className="flex items-center justify-between gap-3 text-sm">
+                    <span className="flex min-w-0 items-center gap-2">
+                      {Icon && <Icon className="size-3.5 shrink-0 text-muted-foreground" />}
+                      <span className="truncate">{label}</span>
+                    </span>
+                    <span className="shrink-0 tabular-nums text-muted-foreground group-hover:text-foreground">{display}</span>
+                  </span>
+                  <span className="block h-1.5 overflow-hidden rounded-full bg-muted">
+                    <span
+                      className={cn(
+                        'block h-full rounded-full transition-all duration-500',
+                        vista === 'carga' ? 'bg-brand-green' : 'bg-primary',
+                      )}
+                      style={{ width: `${(value / max) * 100}%` }}
+                    />
+                  </span>
+                </>
+              )
+              const cls = 'group block space-y-1.5 rounded-lg px-2 py-2'
+              return (
+                <li key={key}>
+                  {to ? (
+                    <Link to={to} className={cn(cls, INTERACTIVA)}>
+                      {fila}
+                    </Link>
+                  ) : (
+                    <div className={cls}>{fila}</div>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function RecientesCard() {
+  const { data: envios, isLoading } = useEnvios({})
+  const [seleccionado, setSeleccionado] = useState<string | null>(null)
+  const recientes = (envios ?? []).slice(0, 5)
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle>Recientes</CardTitle>
+        <Link to="/envios" className="text-xs text-muted-foreground hover:text-foreground">
+          Ver todos
+        </Link>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {isLoading ? (
+          Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)
+        ) : recientes.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">Aún no hay envíos.</p>
+        ) : (
+          recientes.map((e) => <EnvioCard key={e.id} envio={e} onSelect={setSeleccionado} />)
+        )}
+      </CardContent>
+      <EnvioDetailSheet envioId={seleccionado} onClose={() => setSeleccionado(null)} />
+    </Card>
   )
 }
 
 export function DashboardPage() {
-  const { data, isLoading, error } = useResumen()
+  const { data, isLoading, error, isFetching, refetch, dataUpdatedAt } = useResumen()
+  const ahora = useAhora()
+  const tasa = data ? tasaEntrega(data) : null
 
   return (
     <>
-      <PageHeader title="Resumen" description="Estado general de las encomiendas" />
+      <PageHeader
+        title="Resumen"
+        description={dataUpdatedAt ? `Actualizado ${formatRelativo(dataUpdatedAt, ahora)}` : 'Estado general de las encomiendas'}
+        actions={
+          <>
+            <Button variant="ghost" size="icon" aria-label="Actualizar" onClick={() => refetch()} disabled={isFetching}>
+              <RefreshCw className={cn(isFetching && 'animate-spin')} />
+            </Button>
+            <NuevoEnvioDialog />
+          </>
+        }
+      />
 
       {error && <p className="text-sm text-destructive">{errorMessage(error)}</p>}
 
       {isLoading || !data ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {Array.from({ length: 4 }, (_, i) => (
             <Skeleton key={i} className="h-28 rounded-xl" />
           ))}
         </div>
       ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <Kpi label="Envíos" value={String(data.totalEnvios)} hint={`${data.totalPiezas} piezas`} icon={Package} to="/envios" />
             <Kpi
-              label="Total de envíos"
-              value={String(data.totalEnvios)}
-              icon={Package}
-              hint={`${(data.porEstado.EN_TRANSITO ?? 0) + (data.porEstado.EN_REPARTO ?? 0)} en camino`}
+              label="En camino"
+              value={String(enCamino(data))}
+              hint={`${data.porEstado.EN_REPARTO ?? 0} en reparto`}
+              icon={Truck}
+              to="/envios?estado=EN_TRANSITO"
             />
-            <Kpi label="Total de piezas" value={String(data.totalPiezas)} icon={Boxes} hint="Suma de cantidades transportadas" />
-            <Kpi label="Ingresos" value={formatCurrency(data.ingresos)} icon={DollarSign} hint="Excluye cancelados" />
             <Kpi
-              label="Entregados"
-              value={String(data.porEstado.ENTREGADO ?? 0)}
+              label="Entrega"
+              value={tasa === null ? '—' : `${tasa}%`}
+              hint={`${data.porEstado.ENTREGADO ?? 0} entregados`}
               icon={CircleCheck}
-              hint={`${data.porEstado.NO_ENTREGADO ?? 0} no entregados · ${data.porEstado.NOVEDAD ?? 0} con novedad`}
+              to="/envios?estado=ENTREGADO"
+              tono="text-brand-green"
+            />
+            <Kpi
+              label="Ingresos"
+              value={formatCurrency(data.ingresos)}
+              hint={`${formatCurrency(ticketPromedio(data))} por envío`}
+              icon={DollarSign}
             />
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Por estado</CardTitle>
-                <CardDescription>Distribución actual</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2.5">
-                  {ESTADOS.map((e) => (
-                    <li key={e} className="flex items-center justify-between text-sm">
-                      <span className="flex items-center gap-2">
-                        <span className={`size-2 rounded-full ${ESTADO_DOT[e]}`} />
-                        {ESTADO_LABEL[e]}
-                      </span>
-                      <span className="tabular-nums text-muted-foreground">{data.porEstado[e] ?? 0}</span>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Por ruta</CardTitle>
-                <CardDescription>Envíos registrados por trayecto</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <BarList items={data.porRuta.map((r) => ({ label: r.ruta, value: r.total }))} />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Por tipo de carga</CardTitle>
-                <CardDescription>Piezas transportadas por tipo</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <BarList
-                  tono="bg-brand-green"
-                  items={data.porTipo.map((t) => ({
-                    label: TIPO_CARGA_LABEL[t.tipoCarga] ?? t.tipoCarga,
-                    value: t.piezas,
-                    icon: TIPO_CARGA_ICON[t.tipoCarga],
-                  }))}
-                />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Por forma de pago</CardTitle>
-                <CardDescription>Envíos y monto (excluye cancelados)</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2.5">
-                  {data.porFormaPago.map((p) => (
-                    <li key={p.formaPago} className="flex items-center justify-between gap-2 text-sm">
-                      <span>{FORMA_PAGO_LABEL[p.formaPago] ?? p.formaPago}</span>
-                      <span className="text-right tabular-nums">
-                        <span className="font-medium">{formatCurrency(p.monto)}</span>
-                        <span className="block text-xs text-muted-foreground">
-                          {p.envios} {p.envios === 1 ? 'envío' : 'envíos'}
-                        </span>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
+          <div className="grid items-start gap-4 lg:grid-cols-3">
+            <div className="space-y-4 lg:col-span-2">
+              <EstadoCard data={data} />
+              <DistribucionCard data={data} />
+            </div>
+            <RecientesCard />
           </div>
         </>
       )}

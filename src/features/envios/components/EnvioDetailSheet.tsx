@@ -1,28 +1,61 @@
 import { Copy } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
+import { SectionLabel } from '@/components/layout/SectionLabel'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Skeleton } from '@/components/ui/skeleton'
-import { rutaLabel } from '@/features/rutas/hooks'
 import { errorMessage } from '@/lib/api'
 import { formatCurrency, formatDateTime, formatPeso } from '@/lib/format'
-import { cn } from '@/lib/utils'
 import type { Envio, Estado } from '@/types/api'
-import { ESTADO_LABEL, TIPO_CARGA_LABEL } from '../domain'
+import { ESTADO_LABEL, piezasLabel, TIPO_CARGA_LABEL } from '../domain'
 import { useCambiarEstado, useEnvio } from '../hooks'
-import { ESTADO_TONO, TIPO_CARGA_ICON } from '../ui'
+import { TIPO_CARGA_ICON } from '../ui'
 import { CambioEstadoForm } from './CambioEstadoForm'
 import { EstadoBadge } from './EstadoBadge'
 import { FormaPagoBadge } from './FormaPagoBadge'
 import { HistorialTimeline } from './HistorialTimeline'
 
-function Dato({ label, children }: { label: string; children: React.ReactNode }) {
+/**
+ * Un extremo del trayecto. Las dos paradas se unen con una línea vertical (continuidad):
+ * se leen como un solo recorrido de origen a destino.
+ */
+function Parada({
+  ciudad,
+  rol,
+  nombre,
+  telefono,
+  direccion,
+  destino,
+}: {
+  ciudad: string
+  rol: string
+  nombre: string
+  telefono: string
+  direccion?: string
+  destino?: boolean
+}) {
   return (
-    <div className="space-y-0.5">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="text-sm">{children}</dd>
-    </div>
+    <li className="relative pl-6">
+      {!destino && <span aria-hidden className="absolute top-4 -bottom-4 left-[5.5px] w-px bg-primary/40" />}
+      <span
+        aria-hidden
+        className={
+          destino
+            ? 'absolute top-1 left-0 size-3 rounded-full bg-primary'
+            : 'absolute top-1 left-0 size-3 rounded-full border-2 border-primary bg-card'
+        }
+      />
+      <p className="text-xs text-muted-foreground">
+        {rol} · <span className="font-medium text-foreground">{ciudad}</span>
+      </p>
+      <p className="text-sm font-medium">{nombre}</p>
+      <p className="text-xs text-muted-foreground">
+        <a href={`tel:${telefono}`} className="hover:text-foreground">
+          {telefono}
+        </a>
+        {direccion && ` · ${direccion}`}
+      </p>
+    </li>
   )
 }
 
@@ -114,61 +147,66 @@ export function EnvioDetailSheet({ envioId, onClose }: { envioId: string | null;
           </div>
         ) : (
           <div className="space-y-6 p-4">
+            {/* Figura principal: estado, pago y monto juntos */}
             <div className="flex items-center justify-between gap-2">
               <div className="flex flex-wrap items-center gap-2">
                 <EstadoBadge estado={envio.estado} />
                 <FormaPagoBadge formaPago={envio.formaPago} />
               </div>
-              <span className="text-lg font-semibold tabular-nums">{formatCurrency(envio.costo)}</span>
+              <span className="text-xl font-semibold tabular-nums">{formatCurrency(envio.costo)}</span>
             </div>
 
-            <ItemsTabla envio={envio} />
+            <section className="space-y-2" aria-label="Trayecto">
+              <SectionLabel>Trayecto</SectionLabel>
+              <ol className="space-y-4 rounded-xl bg-muted/40 p-3">
+                <Parada
+                  ciudad={envio.ruta.origen}
+                  rol="Remitente"
+                  nombre={envio.remitente.nombre}
+                  telefono={envio.remitente.telefono}
+                />
+                <Parada
+                  destino
+                  ciudad={envio.ruta.destino}
+                  rol="Destinatario"
+                  nombre={envio.destinatario.nombre}
+                  telefono={envio.destinatario.telefono}
+                  direccion={envio.destinatario.direccion}
+                />
+              </ol>
+            </section>
 
-            <dl className="grid grid-cols-2 gap-4">
-              <Dato label="Ruta">{rutaLabel(envio.ruta)}</Dato>
-              <Dato label="Remitente">
-                {envio.remitente.nombre}
-                <span className="block text-xs text-muted-foreground">{envio.remitente.telefono}</span>
-              </Dato>
-              <Dato label="Destinatario">
-                {envio.destinatario.nombre}
-                <span className="block text-xs text-muted-foreground">{envio.destinatario.telefono}</span>
-              </Dato>
-              <Dato label="Dirección de entrega">{envio.destinatario.direccion}</Dato>
-              {envio.descripcion && (
-                <div className="col-span-2">
-                  <Dato label="Descripción">{envio.descripcion}</Dato>
+            <section className="space-y-2" aria-label="Carga">
+              <SectionLabel aside={`${piezasLabel(envio.totalPiezas)} · ${formatPeso(envio.pesoTotalKg)}`}>Carga</SectionLabel>
+              <ItemsTabla envio={envio} />
+              {envio.descripcion && <p className="text-sm text-muted-foreground">{envio.descripcion}</p>}
+            </section>
+
+            <section className="space-y-2" aria-label="Gestión">
+              <SectionLabel>Gestión</SectionLabel>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div className="space-y-0.5 rounded-xl bg-muted/40 p-3" data-testid="registro">
+                  <p className="text-xs text-muted-foreground">Registrado</p>
+                  <p className="text-sm">{formatDateTime(envio.registro.fecha)}</p>
+                  <p className="text-xs text-muted-foreground">{envio.registro.operador ?? 'Operador no disponible'}</p>
                 </div>
-              )}
-            </dl>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-lg border p-3" data-testid="registro">
-                <p className="text-xs text-muted-foreground">Registrado</p>
-                <p className="text-sm">{formatDateTime(envio.registro.fecha)}</p>
-                <p className="text-xs text-muted-foreground">{envio.registro.operador ?? 'Operador no disponible'}</p>
+                <div className="space-y-0.5 rounded-xl bg-muted/40 p-3" data-testid="gestion-entrega">
+                  <p className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                    Última entrega
+                    {envio.entrega && <EstadoBadge estado={envio.entrega.resultado} />}
+                  </p>
+                  {envio.entrega ? (
+                    <>
+                      <p className="text-sm">{formatDateTime(envio.entrega.fecha)}</p>
+                      <p className="text-xs text-muted-foreground">{envio.entrega.operador ?? 'Operador no disponible'}</p>
+                      {envio.entrega.nota && <p className="pt-1 text-xs">{envio.entrega.nota}</p>}
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Sin intentos de entrega</p>
+                  )}
+                </div>
               </div>
-              <div className="rounded-lg border p-3" data-testid="gestion-entrega">
-                <p className="text-xs text-muted-foreground">Última gestión de entrega</p>
-                {envio.entrega ? (
-                  <>
-                    <span
-                      className={cn(
-                        'my-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-medium whitespace-nowrap',
-                        ESTADO_TONO[envio.entrega.resultado],
-                      )}
-                    >
-                      {ESTADO_LABEL[envio.entrega.resultado]}
-                    </span>
-                    <p className="text-sm">{formatDateTime(envio.entrega.fecha)}</p>
-                    <p className="text-xs text-muted-foreground">{envio.entrega.operador ?? 'Operador no disponible'}</p>
-                    {envio.entrega.nota && <p className="mt-1 text-xs">{envio.entrega.nota}</p>}
-                  </>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Sin intentos de entrega</p>
-                )}
-              </div>
-            </div>
+            </section>
 
             {/* key: reinicia el formulario (nota/motivo) al cambiar de envío o de estado */}
             <CambioEstadoForm
@@ -178,11 +216,10 @@ export function EnvioDetailSheet({ envioId, onClose }: { envioId: string | null;
               onTransicion={transicionar}
             />
 
-            <Separator />
-            <div className="space-y-3">
-              <p className="text-sm font-medium">Historial</p>
+            <section className="space-y-3" aria-label="Historial">
+              <SectionLabel>Historial</SectionLabel>
               <HistorialTimeline eventos={envio.historial ?? []} />
-            </div>
+            </section>
           </div>
         )}
       </SheetContent>

@@ -7,5 +7,10 @@ export const dashboardApi = {
 }
 
 export function useResumen() {
-  return useQuery({ queryKey: ['dashboard', 'resumen'], queryFn: dashboardApi.resumen })
+  return useQuery({
+    queryKey: ['dashboard', 'resumen'],
+    queryFn: dashboardApi.resumen,
+    // El panel queda abierto en la oficina: se refresca solo cada minuto.
+    refetchInterval: 60_000,
+  })
 }

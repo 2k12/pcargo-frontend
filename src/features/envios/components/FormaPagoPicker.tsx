@@ -1,3 +1,4 @@
+import { INTERACTIVA, SELECCIONADA } from '@/lib/estilos'
 import { cn } from '@/lib/utils'
 import type { FormaPago } from '@/types/api'
 import { FORMA_PAGO_DESCRIPCION, FORMA_PAGO_LABEL, FORMAS_PAGO } from '../domain'
@@ -27,9 +28,10 @@ export function FormaPagoPicker({ value, onChange, invalid }: Props) {
             aria-checked={activo}
             onClick={() => onChange(f)}
             className={cn(
-              'rounded-lg border px-3 py-2 text-left transition-colors outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50',
-              activo && 'border-primary bg-muted',
-              invalid && !value && 'border-destructive/50',
+              'rounded-xl px-3 py-2 text-left ring-1 ring-foreground/10',
+              INTERACTIVA,
+              activo && SELECCIONADA,
+              invalid && !value && 'ring-destructive/50',
             )}
           >
             <span className="block text-sm font-medium">{FORMA_PAGO_LABEL[f]}</span>

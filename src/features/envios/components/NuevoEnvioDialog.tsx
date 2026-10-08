@@ -34,6 +34,24 @@ const DEFAULTS = {
   items: [itemVacio()],
 } as unknown as Partial<EnvioFormValues>
 
+/**
+ * Paso del formulario: región delimitada y numerada (región común + continuidad 1 → 4),
+ * para leer el alta como un recorrido y no como una lista larga de campos.
+ */
+function Paso({ n, titulo, children }: { n: number; titulo: string; children: ReactNode }) {
+  return (
+    <section aria-label={titulo} className="space-y-4 rounded-xl p-4 ring-1 ring-foreground/10">
+      <p className="flex items-center gap-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+        <span className="flex size-5 items-center justify-center rounded-full bg-primary text-[11px] text-primary-foreground">
+          {n}
+        </span>
+        {titulo}
+      </p>
+      {children}
+    </section>
+  )
+}
+
 function Campo({ label, htmlFor, error, children }: { label: string; htmlFor?: string; error?: string; children: ReactNode }) {
   return (
     <div className="space-y-1.5">
@@ -96,34 +114,35 @@ export function NuevoEnvioDialog() {
           <DialogDescription>Registra una encomienda y obtén su código de seguimiento.</DialogDescription>
         </DialogHeader>
 
-        <form id="nuevo-envio" onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
-          <section className="grid gap-4 sm:grid-cols-2">
-            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase sm:col-span-2">Remitente</p>
-            <Campo label="Nombre" htmlFor="remitenteNombre" error={errors.remitenteNombre?.message}>
-              <Input id="remitenteNombre" {...register('remitenteNombre')} />
-            </Campo>
-            <Campo label="Teléfono" htmlFor="remitenteTelefono" error={errors.remitenteTelefono?.message}>
-              <Input id="remitenteTelefono" inputMode="tel" placeholder="0991234567" {...register('remitenteTelefono')} />
-            </Campo>
-          </section>
-
-          <section className="grid gap-4 sm:grid-cols-2">
-            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase sm:col-span-2">Destinatario</p>
-            <Campo label="Nombre" htmlFor="destinatarioNombre" error={errors.destinatarioNombre?.message}>
-              <Input id="destinatarioNombre" {...register('destinatarioNombre')} />
-            </Campo>
-            <Campo label="Teléfono" htmlFor="destinatarioTelefono" error={errors.destinatarioTelefono?.message}>
-              <Input id="destinatarioTelefono" inputMode="tel" {...register('destinatarioTelefono')} />
-            </Campo>
-            <div className="sm:col-span-2">
-              <Campo label="Dirección de entrega" htmlFor="destinatarioDireccion" error={errors.destinatarioDireccion?.message}>
-                <Input id="destinatarioDireccion" placeholder="Calle, número, referencia" {...register('destinatarioDireccion')} />
+        <form id="nuevo-envio" onSubmit={handleSubmit(onSubmit)} className="space-y-3" noValidate>
+          <Paso n={1} titulo="Remitente">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Campo label="Nombre" htmlFor="remitenteNombre" error={errors.remitenteNombre?.message}>
+                <Input id="remitenteNombre" {...register('remitenteNombre')} />
+              </Campo>
+              <Campo label="Teléfono" htmlFor="remitenteTelefono" error={errors.remitenteTelefono?.message}>
+                <Input id="remitenteTelefono" inputMode="tel" placeholder="0991234567" {...register('remitenteTelefono')} />
               </Campo>
             </div>
-          </section>
+          </Paso>
 
-          <section className="space-y-4">
-            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Carga</p>
+          <Paso n={2} titulo="Destinatario">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Campo label="Nombre" htmlFor="destinatarioNombre" error={errors.destinatarioNombre?.message}>
+                <Input id="destinatarioNombre" {...register('destinatarioNombre')} />
+              </Campo>
+              <Campo label="Teléfono" htmlFor="destinatarioTelefono" error={errors.destinatarioTelefono?.message}>
+                <Input id="destinatarioTelefono" inputMode="tel" {...register('destinatarioTelefono')} />
+              </Campo>
+              <div className="sm:col-span-2">
+                <Campo label="Dirección de entrega" htmlFor="destinatarioDireccion" error={errors.destinatarioDireccion?.message}>
+                  <Input id="destinatarioDireccion" placeholder="Calle, número, referencia" {...register('destinatarioDireccion')} />
+                </Campo>
+              </div>
+            </div>
+          </Paso>
+
+          <Paso n={3} titulo="Carga">
             <Campo label="Ruta" error={errors.rutaId?.message}>
               <Controller
                 control={control}
@@ -134,11 +153,13 @@ export function NuevoEnvioDialog() {
                       <SelectValue placeholder="Selecciona origen → destino" />
                     </SelectTrigger>
                     <SelectContent>
-                      {rutas.map((r) => (
-                        <SelectItem key={r.id} value={String(r.id)}>
-                          {rutaItems[String(r.id)]}
-                        </SelectItem>
-                      ))}
+                      {[...rutas]
+                        .sort((x, y) => rutaItems[String(x.id)]!.localeCompare(rutaItems[String(y.id)]!, 'es'))
+                        .map((r) => (
+                          <SelectItem key={r.id} value={String(r.id)}>
+                            {rutaItems[String(r.id)]}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 )}
@@ -148,6 +169,12 @@ export function NuevoEnvioDialog() {
               <Label>Ítems</Label>
               <ItemsEditor control={control} register={register} errors={errors} tipos={tipos} />
             </div>
+            <Campo label="Descripción (opcional)" htmlFor="descripcion" error={errors.descripcion?.message}>
+              <Textarea id="descripcion" rows={1} placeholder="Documentos, ropa, repuestos…" {...register('descripcion')} />
+            </Campo>
+          </Paso>
+
+          <Paso n={4} titulo="Pago">
             <Campo label="Forma de pago" error={errors.formaPago?.message}>
               <Controller
                 control={control}
@@ -157,16 +184,13 @@ export function NuevoEnvioDialog() {
                 )}
               />
             </Campo>
-            <Campo label="Descripción (opcional)" htmlFor="descripcion" error={errors.descripcion?.message}>
-              <Textarea id="descripcion" rows={1} placeholder="Documentos, ropa, repuestos…" {...register('descripcion')} />
-            </Campo>
-          </section>
-
-          <CotizacionPanel request={cotizacionReq} />
+            <CotizacionPanel request={cotizacionReq} />
+          </Paso>
         </form>
 
-        <DialogFooter>
-          <Button variant="outline" type="button" onClick={() => setOpen(false)}>
+        {/* Acción principal siempre visible al desplazarse (punto focal) */}
+        <DialogFooter className="sticky bottom-0 z-10 bg-popover/95 backdrop-blur">
+          <Button variant="ghost" type="button" onClick={() => setOpen(false)}>
             Cancelar
           </Button>
           <Button type="submit" form="nuevo-envio" disabled={crear.isPending}>

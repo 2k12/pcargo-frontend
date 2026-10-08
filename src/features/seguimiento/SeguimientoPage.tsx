@@ -2,6 +2,7 @@ import { AlertTriangle, ArrowRight, Check, Loader2, PackageSearch, PackageX, Sea
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { Logo } from '@/components/brand/PCargoLogo'
+import { SectionLabel } from '@/components/layout/SectionLabel'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -13,6 +14,7 @@ import { ApiError, errorMessage } from '@/lib/api'
 import { formatDateTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { Estado, EventoHistorial } from '@/types/api'
+import { ESTADO_TONO } from '@/features/envios/ui'
 import { useSeguimiento } from './api'
 
 /** Aviso para estados fuera del camino feliz, con el motivo registrado. */
@@ -25,8 +27,8 @@ function AvisoEntrega({ estado, historial }: { estado: Estado; historial: Evento
     <div
       role="status"
       className={cn(
-        'flex items-start gap-2 rounded-lg p-3 text-sm',
-        noEntregado ? 'bg-rose-500/10 text-rose-700 dark:text-rose-300' : 'bg-violet-500/10 text-violet-700 dark:text-violet-300',
+        'flex items-start gap-2 rounded-xl p-3 text-sm',
+        ESTADO_TONO[estado],
       )}
     >
       <Icon className="mt-0.5 size-4 shrink-0" />
@@ -46,7 +48,7 @@ function AvisoEntrega({ estado, historial }: { estado: Estado; historial: Evento
 function Stepper({ estado }: { estado: Estado }) {
   if (estado === 'CANCELADO') {
     return (
-      <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+      <div className={cn('flex items-center gap-2 rounded-xl p-3 text-sm', ESTADO_TONO.CANCELADO)}>
         <XCircle className="size-4" />
         Este envío fue cancelado.
       </div>
@@ -54,15 +56,34 @@ function Stepper({ estado }: { estado: Estado }) {
   }
   // NO_ENTREGADO / NOVEDAD ocurren durante el reparto: se muestra el avance hasta EN_REPARTO.
   const actual = FLUJO_ESTADOS.indexOf(estado === 'NO_ENTREGADO' || estado === 'NOVEDAD' ? 'EN_REPARTO' : estado)
+  // Una sola línea que une los hitos (continuidad): el tramo recorrido se pinta con el color de marca.
   return (
-    <ol className="grid grid-cols-4 gap-2" aria-label="Progreso del envío">
+    <ol className="flex items-start" aria-label="Progreso del envío">
       {FLUJO_ESTADOS.map((e, i) => {
         const hecho = i <= actual
         return (
-          <li key={e} className="space-y-2" aria-current={i === actual ? 'step' : undefined}>
-            <div className={cn('h-1 rounded-full bg-muted', hecho && 'bg-primary')} />
-            <p className={cn('flex items-center gap-1 text-xs text-muted-foreground', hecho && 'text-foreground')}>
-              {hecho && <Check className="size-3" />}
+          <li
+            key={e}
+            className="relative flex flex-1 flex-col items-center gap-2 text-center"
+            aria-current={i === actual ? 'step' : undefined}
+          >
+            {i > 0 && (
+              <span
+                aria-hidden
+                className={cn('absolute top-[7px] right-1/2 h-0.5 w-full', hecho ? 'bg-primary' : 'bg-muted')}
+              />
+            )}
+            <span
+              aria-hidden
+              className={cn(
+                'relative flex size-4 items-center justify-center rounded-full border-2 border-muted bg-card',
+                hecho && 'border-primary bg-primary text-primary-foreground',
+                i === actual && 'ring-4 ring-primary/20',
+              )}
+            >
+              {hecho && <Check className="size-2.5" strokeWidth={3} />}
+            </span>
+            <p className={cn('text-[11px] leading-tight text-muted-foreground sm:text-xs', hecho && 'font-medium text-foreground')}>
               {ESTADO_LABEL[e]}
             </p>
           </li>
@@ -95,7 +116,7 @@ export function SeguimientoPage() {
         <ThemeToggle />
       </header>
 
-      <main className="mx-auto max-w-2xl space-y-6 px-4 py-10">
+      <main className="mx-auto max-w-2xl space-y-6 px-4 py-8 sm:py-12">
         <div className="space-y-2 text-center">
           <h1 className="text-2xl font-semibold tracking-tight">Rastrea tu encomienda</h1>
           <p className="text-sm text-muted-foreground">Ingresa el código que recibiste al enviar (ej. PC-7K2M9QXA).</p>
@@ -159,7 +180,10 @@ export function SeguimientoPage() {
             <CardContent className="space-y-6">
               <AvisoEntrega estado={data.estado} historial={data.historial} />
               <Stepper estado={data.estado} />
-              <HistorialTimeline eventos={data.historial} />
+              <section className="space-y-3 border-t pt-5" aria-label="Historial">
+                <SectionLabel>Historial</SectionLabel>
+                <HistorialTimeline eventos={data.historial} />
+              </section>
             </CardContent>
           </Card>
         )}

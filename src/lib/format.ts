@@ -35,3 +35,18 @@ export function iniciales(nombre: string): string {
     .map((p) => p[0]!.toUpperCase())
     .join('')
 }
+
+const relativo = new Intl.RelativeTimeFormat('es-EC', { numeric: 'auto' })
+
+/** "hace un momento", "hace 5 minutos", "hace 2 horas"… respecto de `ahora`. */
+export function formatRelativo(fecha: number | string, ahora: number = Date.now()): string {
+  const t = typeof fecha === 'number' ? fecha : new Date(fecha).getTime()
+  if (Number.isNaN(t)) return '—'
+  const seg = Math.round((t - ahora) / 1000)
+  if (Math.abs(seg) < 45) return 'hace un momento'
+  const min = Math.round(seg / 60)
+  if (Math.abs(min) < 60) return relativo.format(min, 'minute')
+  const h = Math.round(min / 60)
+  if (Math.abs(h) < 24) return relativo.format(h, 'hour')
+  return relativo.format(Math.round(h / 24), 'day')
+}
