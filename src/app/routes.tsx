@@ -1,11 +1,15 @@
 import { Loader2 } from 'lucide-react'
 import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router'
-import { AppShell } from '@/components/layout/AppShell'
-import { LoginPage } from '@/features/auth/LoginPage'
 import { ProtectedRoute } from '@/features/auth/ProtectedRoute'
+// La landing es la entrada más visitada: se carga en el bundle inicial para pintarla sin un viaje extra.
+import { LandingPage } from '@/features/landing/LandingPage'
 
-const LandingPage = lazy(() => import('@/features/landing/LandingPage').then((m) => ({ default: m.LandingPage })))
+// Todo diferido: la landing (ruta pública más visitada) no descarga el login ni el panel
+// (react-hook-form, zod, menús…), lo que acorta su carga inicial.
+const LoginPage = lazy(() => import('@/features/auth/LoginPage').then((m) => ({ default: m.LoginPage })))
+const AppShell = lazy(() => import('@/components/layout/AppShell').then((m) => ({ default: m.AppShell })))
+
 const DashboardPage = lazy(() => import('@/features/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage })))
 const EnviosPage = lazy(() => import('@/features/envios/EnviosPage').then((m) => ({ default: m.EnviosPage })))
 const RutasPage = lazy(() => import('@/features/rutas/RutasPage').then((m) => ({ default: m.RutasPage })))

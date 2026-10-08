@@ -4,6 +4,7 @@ import { Link, NavLink, Outlet } from 'react-router'
 import { Logo, LogoMark } from '@/components/brand/PCargoLogo'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
+import { Toaster } from '@/components/ui/sonner'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -190,6 +191,7 @@ export function AppShell() {
         </main>
       </div>
       <BottomNav />
+      <Toaster position="top-right" />
     </div>
   )
 }

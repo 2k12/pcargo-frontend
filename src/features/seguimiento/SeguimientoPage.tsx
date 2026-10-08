@@ -13,9 +13,11 @@ import { ESTADO_LABEL, FLUJO_ESTADOS, piezasLabel, resumenItems } from '@/featur
 import { ApiError, errorMessage } from '@/lib/api'
 import { formatDateTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { responderAgente, useHerramientasAgente } from '@/lib/webmcp'
 import type { Estado, EventoHistorial } from '@/types/api'
 import { ESTADO_TONO } from '@/features/envios/ui'
 import { MENSAJE_GUIA_INVALIDA, normalizarGuia } from '@/features/envios/guia'
+import { consultarGuiaParaAgente, HERRAMIENTAS_PUBLICAS } from '@/features/landing/agente'
 import { useSeguimiento } from './api'
 
 /** Aviso para estados fuera del camino feliz, con el motivo registrado. */
@@ -97,6 +99,7 @@ function Stepper({ estado }: { estado: Estado }) {
 /** `embebido`: se muestra dentro del panel (AppShell) para el personal logueado, sin la cabecera pública. */
 export function SeguimientoPage({ embebido = false }: { embebido?: boolean }) {
   const { numeroGuia } = useParams<{ numeroGuia: string }>()
+  useHerramientasAgente(HERRAMIENTAS_PUBLICAS)
   const navigate = useNavigate()
   const base = embebido ? '/panel/seguimiento' : '/seguimiento'
   const [valor, setValor] = useState(numeroGuia ?? '')
@@ -108,6 +111,7 @@ export function SeguimientoPage({ embebido = false }: { embebido?: boolean }) {
     if (!valor.trim()) return
     const n = normalizarGuia(valor)
     setInvalido(n === null)
+    responderAgente(e, () => (n ? consultarGuiaParaAgente(n) : MENSAJE_GUIA_INVALIDA))
     if (n) navigate(`${base}/${n}`)
   }
 
@@ -130,10 +134,18 @@ export function SeguimientoPage({ embebido = false }: { embebido?: boolean }) {
           <p className="text-sm text-muted-foreground">Ingresa el número de tu guía, con o sin los ceros de adelante (ej. 0040425).</p>
         </div>
 
-        <form onSubmit={buscar} className="flex gap-2">
+        <form
+          onSubmit={buscar}
+          toolname="ver_seguimiento"
+          tooldescription="Muestra el estado, la ruta y el historial de una encomienda de PCargo a partir de su número de guía."
+          toolautosubmit=""
+          className="flex gap-2"
+        >
           <div className="relative flex-1">
             <PackageSearch className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
+              name="numeroGuia"
+              toolparamdescription="Número de guía: solo dígitos; los ceros a la izquierda no cuentan."
               aria-label="Número de guía"
               aria-invalid={invalido}
               inputMode="numeric"

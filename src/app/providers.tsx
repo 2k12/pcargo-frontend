@@ -1,8 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from 'next-themes'
 import { useState, type ReactNode } from 'react'
-import { Toaster } from '@/components/ui/sonner'
-import { TooltipProvider } from '@/components/ui/tooltip'
 import { AuthProvider } from '@/features/auth/AuthProvider'
 import { ApiError } from '@/lib/api'
 
@@ -25,10 +23,8 @@ export function AppProviders({ children }: { children: ReactNode }) {
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <TooltipProvider>
-            {children}
-            <Toaster position="top-right" />
-          </TooltipProvider>
+          {/* Toaster vive en AppShell: todos los avisos son del panel y así la landing no descarga sonner. */}
+          {children}
         </AuthProvider>
       </QueryClientProvider>
     </ThemeProvider>

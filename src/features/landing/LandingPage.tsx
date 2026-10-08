@@ -17,7 +17,7 @@ import {
   Store,
   Truck,
 } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
+import { lazy, Suspense, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { Logo, LogoMark } from '@/components/brand/PCargoLogo'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
@@ -29,15 +29,19 @@ import { TIPO_CARGA_ICON } from '@/features/envios/ui'
 import { listaCiudades } from '@/features/rutas/hooks'
 import { formatCurrency, formatDuracion } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { responderAgente, useHerramientasAgente } from '@/lib/webmcp'
 import type { TipoCargaCodigo } from '@/types/api'
 import { MENSAJE_GUIA_INVALIDA, normalizarGuia } from '@/features/envios/guia'
+import { consultarGuiaParaAgente, HERRAMIENTAS_PUBLICAS } from './agente'
 import { useCatalogoPublico } from './api'
 import { matrizTarifas, tarifaDesde } from './cobertura'
-import { CotizadorPublico } from './components/CotizadorPublico'
 import { MenuMovil, WhatsAppFlotante } from './components/MenuMovil'
 import { HeroPaisaje } from './ilustraciones/HeroPaisaje'
 import { MapaCobertura } from './ilustraciones/MapaCobertura'
 import { MARCA, whatsappUrl } from './marca'
+
+// Bajo el pliegue y con Select (Base UI + floating-ui): se descarga aparte para no retrasar el primer pintado.
+const CotizadorPublico = lazy(() => import('./components/CotizadorPublico').then((m) => ({ default: m.CotizadorPublico })))
 
 const ANIO = new Date().getFullYear()
 
@@ -87,10 +91,17 @@ function Rastreador({ className }: { className?: string }) {
     if (!guia.trim()) return
     const n = normalizarGuia(guia)
     setInvalido(n === null)
+    responderAgente(e, () => (n ? consultarGuiaParaAgente(n) : MENSAJE_GUIA_INVALIDA))
     if (n) navigate(`/seguimiento/${n}`)
   }
   return (
-    <form onSubmit={buscar} id="rastrear" className={cn('scroll-mt-24 space-y-3 rounded-2xl border bg-card p-5 shadow-lg sm:p-6', className)}>
+    <form
+      onSubmit={buscar}
+      id="rastrear"
+      toolname="ver_seguimiento"
+      tooldescription="Abre la página de seguimiento de una encomienda de PCargo a partir de su número de guía."
+      toolautosubmit=""
+      className={cn('scroll-mt-24 space-y-3 rounded-2xl border bg-card p-5 shadow-lg sm:p-6', className)}>
       <div className="space-y-1">
         <p className="font-medium">Rastrea tu encomienda</p>
         <p className="text-sm text-muted-foreground">Ingresa el número de tu guía (con o sin ceros adelante).</p>
@@ -99,6 +110,8 @@ function Rastreador({ className }: { className?: string }) {
         <div className="relative flex-1">
           <PackageSearch className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
+            name="numeroGuia"
+            toolparamdescription="Número de guía: solo dígitos; los ceros a la izquierda no cuentan."
             aria-label="Número de guía"
             aria-invalid={invalido}
             inputMode="numeric"
@@ -153,6 +166,7 @@ function AvisosHero() {
 
 export function LandingPage() {
   const { data: catalogo, isLoading } = useCatalogoPublico()
+  useHerramientasAgente(HERRAMIENTAS_PUBLICAS)
   const desde = catalogo ? tarifaDesde(catalogo.rutas) : null
   const ciudadesTexto = listaCiudades(catalogo?.ciudades)
 
@@ -235,14 +249,18 @@ export function LandingPage() {
               { icon: HandCoins, k: 'Envíos desde', v: desde !== null ? formatCurrency(desde) : '—' },
               { icon: PackageSearch, k: 'Seguimiento', v: 'En línea' },
             ].map((s) => (
-              <div key={s.k} className="flex items-start gap-3">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground">
-                  <s.icon className="size-4" />
-                </span>
-                <div className="space-y-0.5">
-                  <dt className="text-sm text-muted-foreground">{s.k}</dt>
-                  <dd className="text-2xl font-semibold tracking-tight">{s.v}</dd>
-                </div>
+              // <dl> solo admite <div> con <dt>/<dd> dentro: el icono va dentro del <dt> (árbol accesible válido).
+              <div key={s.k} className="relative space-y-0.5 pl-12">
+                <dt className="text-sm text-muted-foreground">
+                  <span
+                    aria-hidden="true"
+                    className="absolute top-0 left-0 flex size-9 items-center justify-center rounded-lg bg-accent text-accent-foreground"
+                  >
+                    <s.icon className="size-4" />
+                  </span>
+                  {s.k}
+                </dt>
+                <dd className="text-2xl font-semibold tracking-tight">{s.v}</dd>
               </div>
             ))}
           </dl>
@@ -291,7 +309,7 @@ export function LandingPage() {
             </ol>
             <img
               src="/landing/entrega-1600.webp"
-              srcSet="/landing/entrega-800.webp 800w, /landing/entrega-1600.webp 1600w"
+              srcSet="/landing/entrega-640.webp 640w, /landing/entrega-800.webp 800w, /landing/entrega-1600.webp 1600w"
               sizes="(min-width: 1024px) 560px, 100vw"
               width={1600}
               height={1065}
@@ -357,7 +375,13 @@ export function LandingPage() {
 
         {/* Cotizador */}
         <Seccion id="cotizar" titulo="Cotiza en segundos" subtitulo="Calcula el precio exacto de tu envío antes de venir." className="bg-muted/30">
-          {catalogo ? <CotizadorPublico catalogo={catalogo} /> : <Skeleton className="h-80 rounded-2xl" />}
+          {catalogo ? (
+            <Suspense fallback={<Skeleton className="h-80 rounded-2xl" />}>
+              <CotizadorPublico catalogo={catalogo} />
+            </Suspense>
+          ) : (
+            <Skeleton className="h-80 rounded-2xl" />
+          )}
         </Seccion>
 
         {/* Confianza */}
