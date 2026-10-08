@@ -36,14 +36,18 @@ import { cn } from '@/lib/utils'
 import type { Estado, FiltroResumen, Resumen } from '@/types/api'
 import { useResumen } from './api'
 import { ClienteFiltradoCard, ClientesCard } from './components/ClientesCard'
+import { RangoFechas } from './components/RangoFechas'
 import { TendenciaCard } from './components/TendenciaCard'
 import {
+  diasEntre,
   enCamino,
   esFecha,
   esPeriodo,
+  fechaEC,
   formatDia,
   formatRango,
   GRUPOS_ESTADO,
+  MAX_DIAS_SERIE,
   PERIODOS,
   rangoPeriodo,
   segmentosEstado,
@@ -54,6 +58,10 @@ import {
 } from './domain'
 
 const PERIODO_INICIAL: Periodo = '30d'
+/** Opción extra del selector de periodo: rango personalizado (desde / hasta). */
+const RANGO = 'rango'
+type OpcionPeriodo = Periodo | typeof RANGO
+const OPCIONES_PERIODO: { value: OpcionPeriodo; label: string }[] = [...PERIODOS, { value: RANGO, label: 'Rango' }]
 
 /** Re-renderiza cada `ms` para mantener vigentes los textos relativos ("hace 2 minutos"). */
 function useAhora(ms = 30_000) {
@@ -77,9 +85,12 @@ function useFiltrosResumen() {
   const [params, setParams] = useSearchParams()
   const desdeUrl = params.get('desde') ?? undefined
   const hastaUrl = params.get('hasta') ?? undefined
-  const personalizado = !!desdeUrl
+  // Rango personalizado (?desde=&hasta=): fechas de la URL inválidas se ignoran y se vuelve al periodo.
+  const personalizado = esFecha(desdeUrl)
   const periodo: Periodo | null = personalizado ? null : esPeriodo(params.get('periodo')) ? (params.get('periodo') as Periodo) : PERIODO_INICIAL
-  const rango = personalizado ? { desde: desdeUrl, hasta: hastaUrl ?? desdeUrl } : rangoPeriodo(periodo!)
+  const rango = personalizado
+    ? { desde: desdeUrl, hasta: esFecha(hastaUrl) && hastaUrl >= desdeUrl ? hastaUrl : desdeUrl }
+    : rangoPeriodo(periodo!)
   const diaUrl = params.get('dia')
   const dia = esFecha(diaUrl) ? diaUrl : undefined
   const clienteId = params.get('cliente') ?? undefined
@@ -110,6 +121,9 @@ function useFiltrosResumen() {
     setDia: (fecha: string) => actualizar({ dia: fecha === dia ? null : fecha }, { historial: true }),
     quitarDia: () => actualizar({ dia: null }, { historial: true }),
     quitarRango: () => actualizar({ desde: null, hasta: null, dia: null }),
+    /** Rango elegido a mano: sustituye al periodo y queda en el historial ("Atrás" lo deshace). */
+    setRango: (desde: string, hasta: string) =>
+      actualizar({ periodo: null, desde, hasta, dia: null }, { historial: true }),
     /** Vuelve a la vista por defecto: últimos 30 días, todos los clientes. */
     limpiarTodo: () => actualizar({ periodo: null, desde: null, hasta: null, dia: null, cliente: null }),
     setCliente: (id: string | null) => actualizar({ cliente: id }),
@@ -198,6 +212,27 @@ function FiltrosBar({ f }: { f: ReturnType<typeof useFiltrosResumen> }) {
     <ClienteBuscador clientes={clientes} onSelect={(c) => f.setCliente(c.id)} label="Filtrar por cliente" placeholder="Filtrar por cliente" />
   )
 
+  // «Rango» abre los campos Desde/Hasta; el rango solo se aplica al pulsar Aplicar.
+  const [editandoRango, setEditandoRango] = useState(false)
+  const seleccion: OpcionPeriodo = editandoRango || !f.periodo ? RANGO : f.periodo
+  const elegir = (v: OpcionPeriodo) => {
+    if (v === RANGO) return setEditandoRango(true)
+    setEditandoRango(false)
+    f.setPeriodo(v)
+  }
+  const [hoy] = useState(() => fechaEC(Date.now()))
+  const editorRango = editandoRango && (
+    <RangoFechas
+      desde={f.filtroSerie.desde ?? rangoPeriodo(PERIODO_INICIAL).desde!}
+      hasta={f.filtroSerie.hasta ?? hoy}
+      onAplicar={(desde, hasta) => {
+        setEditandoRango(false)
+        f.setRango(desde, hasta)
+      }}
+      onCancelar={() => setEditandoRango(false)}
+    />
+  )
+
   // Móvil: un botón «Filtros» (periodo y cliente en una hoja inferior) y, a su lado, lo que está aplicado.
   if (esMovil) {
     const activos = (f.periodo === PERIODO_INICIAL ? 0 : 1) + (f.clienteId ? 1 : 0)
@@ -206,7 +241,8 @@ function FiltrosBar({ f }: { f: ReturnType<typeof useFiltrosResumen> }) {
       <div className="flex flex-wrap items-center gap-2">
         <FiltrosMovil activos={activos} onLimpiar={f.limpiarTodo} descripcion="Periodo y cliente del resumen">
           <CampoFiltro label="Periodo">
-            <OpcionesFiltro label="Periodo" value={f.periodo} onChange={f.setPeriodo} options={PERIODOS} />
+            <OpcionesFiltro label="Periodo" value={seleccion} onChange={elegir} options={OPCIONES_PERIODO} />
+            {editorRango && <div className="pt-3">{editorRango}</div>}
           </CampoFiltro>
           <CampoFiltro label="Cliente">{controlCliente}</CampoFiltro>
         </FiltrosMovil>
@@ -227,19 +263,20 @@ function FiltrosBar({ f }: { f: ReturnType<typeof useFiltrosResumen> }) {
   }
 
   return (
-    <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+    <div className="flex flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-center">
       <div className="flex flex-wrap items-center gap-2">
         <Segmented
           label="Periodo"
-          value={f.periodo ?? ('' as Periodo)}
-          onChange={f.setPeriodo}
-          options={PERIODOS}
+          value={seleccion}
+          onChange={elegir}
+          options={OPCIONES_PERIODO}
           className="overflow-x-auto"
         />
         {chipRango}
         {chipDia}
       </div>
       <div className="lg:ml-auto lg:w-80">{controlCliente}</div>
+      {editorRango && <div className="w-full lg:order-last lg:basis-full">{editorRango}</div>}
     </div>
   )
 }
@@ -579,6 +616,11 @@ export function DashboardPage() {
                 diaSeleccionado={f.dia}
                 onSelectDia={f.setDia}
                 onVerPeriodo={f.quitarDia}
+                nota={
+                  !f.periodo && f.filtroSerie.desde && f.filtroSerie.hasta && diasEntre(f.filtroSerie.desde, f.filtroSerie.hasta) > MAX_DIAS_SERIE
+                    ? `Se muestran los últimos ${MAX_DIAS_SERIE} días del rango; las cifras cubren el rango completo.`
+                    : undefined
+                }
               />
               <EstadoCard data={data} sufijo={sufijo} />
               <DistribucionCard data={data} sufijo={sufijo} />

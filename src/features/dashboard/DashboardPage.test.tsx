@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useLocation, useNavigate } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -299,6 +299,89 @@ describe('DashboardPage', () => {
 
       await userEvent.click(within(hoja).getByRole('button', { name: 'Limpiar' }))
       expect(screen.getByTestId('ubicacion')).toHaveTextContent(/^\/panel$/)
+    })
+  })
+
+  // Issue #5: elegir un rango de fechas personalizado (desde / hasta).
+  describe('rango de fechas personalizado (issue #5)', () => {
+    const elegirFechas = (contenedor: HTMLElement, desde: string, hasta: string) => {
+      fireEvent.change(within(contenedor).getByLabelText('Desde'), { target: { value: desde } })
+      fireEvent.change(within(contenedor).getByLabelText('Hasta'), { target: { value: hasta } })
+    }
+
+    it('«Rango» abre Desde/Hasta y Aplicar filtra todo el resumen por esas fechas', async () => {
+      const fetch = setup()
+      await screen.findByText('+$36,00')
+      await userEvent.click(screen.getByRole('tab', { name: 'Rango' }))
+      const form = screen.getByRole('form', { name: 'Rango de fechas' })
+      elegirFechas(form, '2026-09-01', '2026-09-15')
+      await userEvent.click(within(form).getByRole('button', { name: 'Aplicar' }))
+
+      expect(screen.getByTestId('ubicacion')).toHaveTextContent('/panel?desde=2026-09-01&hasta=2026-09-15')
+      expect(ultimoResumen(fetch).get('desde')).toBe('2026-09-01')
+      expect(ultimoResumen(fetch).get('hasta')).toBe('2026-09-15')
+      expect(screen.getByRole('tab', { name: 'Rango' })).toHaveAttribute('aria-selected', 'true')
+      expect(screen.queryByRole('form', { name: 'Rango de fechas' })).not.toBeInTheDocument()
+      expect(screen.getByText('1 sept – 15 sept')).toBeInTheDocument()
+    })
+
+    it('valida el rango: desde posterior a hasta y fechas futuras no se aplican', async () => {
+      setup()
+      await screen.findByText('+$36,00')
+      await userEvent.click(screen.getByRole('tab', { name: 'Rango' }))
+      const form = screen.getByRole('form', { name: 'Rango de fechas' })
+
+      elegirFechas(form, '2026-09-15', '2026-09-01')
+      await userEvent.click(within(form).getByRole('button', { name: 'Aplicar' }))
+      expect(within(form).getByRole('alert')).toHaveTextContent('«Desde» no puede ser posterior a «Hasta»')
+
+      elegirFechas(form, '2026-09-01', '2999-01-01')
+      await userEvent.click(within(form).getByRole('button', { name: 'Aplicar' }))
+      expect(within(form).getByRole('alert')).toHaveTextContent('No puedes elegir fechas futuras')
+      expect(screen.getByTestId('ubicacion')).toHaveTextContent(/^\/panel$/)
+    })
+
+    it('Cancelar cierra el editor y se puede volver a un periodo fijo o quitar el rango', async () => {
+      setup('/panel?desde=2026-09-01&hasta=2026-09-15')
+      await screen.findByText('+$36,00')
+      await userEvent.click(screen.getByRole('tab', { name: 'Rango' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+      expect(screen.queryByRole('form', { name: 'Rango de fechas' })).not.toBeInTheDocument()
+
+      await userEvent.click(screen.getByRole('tab', { name: '7 días' }))
+      expect(screen.getByTestId('ubicacion')).toHaveTextContent(/^\/panel\?periodo=7d$/)
+    })
+
+    it('el editor viene precargado con el rango aplicado y avisa si el gráfico no cubre todo el rango', async () => {
+      setup('/panel?desde=2026-01-01&hasta=2026-09-30')
+      await screen.findByText('+$36,00')
+      expect(screen.getByText(/Se muestran los últimos 92 días del rango/)).toBeInTheDocument()
+      await userEvent.click(screen.getByRole('tab', { name: 'Rango' }))
+      const form = screen.getByRole('form', { name: 'Rango de fechas' })
+      expect(within(form).getByLabelText('Desde')).toHaveValue('2026-01-01')
+      expect(within(form).getByLabelText('Hasta')).toHaveValue('2026-09-30')
+      expect(within(form).getByText(/Rango de 273 días/)).toBeInTheDocument()
+    })
+
+    it('ignora fechas inválidas escritas en la URL', async () => {
+      const fetch = setup('/panel?desde=abc&hasta=2026-09-15')
+      await screen.findByText('+$36,00')
+      expect(ultimoResumen(fetch).get('desde')).not.toBe('abc')
+      expect(screen.getByRole('tab', { name: '30 días' })).toHaveAttribute('aria-selected', 'true')
+    })
+
+    it('en móvil el rango se elige dentro de la hoja de filtros', async () => {
+      simularMovil()
+      const fetch = setup()
+      await screen.findByText('+$36,00')
+      await userEvent.click(screen.getByRole('button', { name: 'Filtros' }))
+      const hoja = await screen.findByRole('dialog', { name: 'Filtros' })
+      await userEvent.click(within(hoja).getByRole('radio', { name: 'Rango' }))
+      const form = within(hoja).getByRole('form', { name: 'Rango de fechas' })
+      elegirFechas(form, '2026-09-01', '2026-09-15')
+      await userEvent.click(within(form).getByRole('button', { name: 'Aplicar' }))
+      expect(ultimoResumen(fetch).get('hasta')).toBe('2026-09-15')
+      expect(within(hoja).getByRole('radio', { name: 'Rango' })).toHaveAttribute('aria-checked', 'true')
     })
   })
 })

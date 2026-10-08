@@ -24,8 +24,11 @@ export function TendenciaCard({
   diaSeleccionado,
   onSelectDia,
   onVerPeriodo,
+  nota,
 }: {
   serie: Dia[]
+  /** Aviso bajo el título (p. ej. cuando el rango supera lo que el gráfico puede mostrar). */
+  nota?: string
   diaSeleccionado?: string
   onSelectDia: (fecha: string) => void
   onVerPeriodo: () => void
@@ -51,6 +54,7 @@ export function TendenciaCard({
             {metrica === 'envios' && ' envíos'} · {metrica === 'ingresos' ? formatIngreso(promedio) : promedio.toFixed(1)} por día
             {pico && pico[metrica] > 0 && ` · pico el ${formatDia(pico.fecha)}`}
           </p>
+          {nota && <p className="text-xs text-muted-foreground">{nota}</p>}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {diaSeleccionado && (
