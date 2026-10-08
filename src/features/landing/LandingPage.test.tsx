@@ -4,7 +4,7 @@ import { useParams } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { jsonResponse, mockFetch, renderWithProviders } from '@/test/utils'
 import type { CatalogoPublico, Ruta } from '@/types/api'
-import { buscarRuta, matrizTarifas, tarifaDesde } from './cobertura'
+import { buscarRuta, matrizTarifas, resumenCobertura, tarifaDesde } from './cobertura'
 import { LandingPage } from './LandingPage'
 
 vi.mock('next-themes', () => ({ useTheme: () => ({ resolvedTheme: 'light', setTheme: vi.fn() }) }))
@@ -36,6 +36,14 @@ describe('cobertura', () => {
     expect(tarifaDesde([])).toBeNull()
     const m = matrizTarifas(catalogo.ciudades, catalogo.rutas)
     expect(m.map((fila) => fila.map((c) => c.ruta?.id ?? null))).toEqual([[1, 11], [12, null]])
+  })
+
+  it('resume la cobertura con los extremos de la red y la base primero', () => {
+    expect(resumenCobertura(catalogo.ciudades, catalogo.rutas, 'Ibarra')).toBe('Ibarra ⇄ Quito · 2 ciudades')
+    expect(resumenCobertura(catalogo.ciudades, [ruta(12, quito, ibarra)], 'Ibarra')).toBe('Ibarra ⇄ Quito · 2 ciudades')
+    expect(resumenCobertura(catalogo.ciudades, [ruta(1, ibarra, ibarra)])).toBe('2 ciudades')
+    expect(resumenCobertura([ibarra], [])).toBe('Ibarra')
+    expect(resumenCobertura([], [])).toBe('')
   })
 })
 
@@ -69,11 +77,20 @@ describe('LandingPage (pública)', () => {
     expect((init!.headers as Record<string, string>).Authorization).toBeUndefined()
   })
 
-  it('muestra las ciudades de cobertura desde la API (sin listas fijas)', async () => {
-    mockFetch(() => jsonResponse({ ...catalogo, ciudades: [ibarra, { id: 9, nombre: 'Cayambe', activa: true }] }))
+  it('la cápsula de la portada resume la cobertura desde la API y lleva a la sección', async () => {
+    const cayambe = { id: 9, nombre: 'Cayambe', activa: true }
+    const atuntaqui = { id: 2, nombre: 'Atuntaqui', activa: false }
+    mockFetch(() =>
+      jsonResponse({
+        ...catalogo,
+        ciudades: [atuntaqui, cayambe, ibarra, quito],
+        rutas: [...catalogo.rutas, { ...ruta(13, ibarra, cayambe, 4), tiempoEstimadoMin: 60 }],
+      }),
+    )
     renderWithProviders(<LandingPage />)
-    expect(await screen.findByText('Ibarra · Cayambe')).toBeInTheDocument()
-    expect(screen.queryByText(/Atuntaqui/)).not.toBeInTheDocument()
+    const capsula = await screen.findByRole('link', { name: 'Ibarra ⇄ Quito · 3 ciudades' })
+    expect(capsula).toHaveAttribute('href', '#cobertura')
+    expect(screen.queryByText(/Ibarra · Cayambe/)).not.toBeInTheDocument()
   })
 
   it('muestra la dirección, ambos teléfonos y el enlace de WhatsApp', async () => {

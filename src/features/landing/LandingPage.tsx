@@ -27,7 +27,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TIPO_CARGA_ICON } from '@/features/envios/ui'
-import { listaCiudades } from '@/features/rutas/hooks'
 import { formatCurrency, formatDuracion } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { responderAgente, useHerramientasAgente } from '@/lib/webmcp'
@@ -38,7 +37,7 @@ import { datoLegal } from '@/features/legal/datos'
 import { consultarGuiaParaAgente, HERRAMIENTAS_PUBLICAS } from './agente'
 import { useCatalogoPublico } from './api'
 import { CarruselCiudades } from './components/CarruselCiudades'
-import { matrizTarifas, tarifaDesde } from './cobertura'
+import { matrizTarifas, resumenCobertura, tarifaDesde } from './cobertura'
 import { MenuMovil, WhatsAppFlotante } from './components/MenuMovil'
 import { HeroPaisaje } from './ilustraciones/HeroPaisaje'
 import { MapaCobertura } from './ilustraciones/MapaCobertura'
@@ -172,7 +171,7 @@ export function LandingPage() {
   const { data: catalogo, isLoading } = useCatalogoPublico()
   useHerramientasAgente(HERRAMIENTAS_PUBLICAS)
   const desde = catalogo ? tarifaDesde(catalogo.rutas) : null
-  const ciudadesTexto = listaCiudades(catalogo?.ciudades)
+  const ciudadesTexto = catalogo ? resumenCobertura(catalogo.ciudades, catalogo.rutas, MARCA.oficina.ciudad) : ''
 
   return (
     <div className="min-h-svh bg-background">
@@ -204,7 +203,7 @@ export function LandingPage() {
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,color-mix(in_oklch,var(--brand-blue)_14%,transparent),transparent_55%),radial-gradient(ellipse_at_bottom_right,color-mix(in_oklch,var(--brand-green)_18%,transparent),transparent_55%)]" />
           <div className="relative mx-auto grid max-w-6xl items-center gap-10 px-4 pt-10 pb-16 sm:px-6 sm:pt-16 lg:grid-cols-[1fr_1.05fr] lg:gap-14 lg:pb-24">
             <div className="space-y-6">
-              <Badge variant="secondary" className="min-h-5 gap-1.5">
+              <Badge variant="secondary" className="min-h-5 gap-1.5" render={<a href="#cobertura" />}>
                 <MapPin className="size-3" /> {ciudadesTexto || 'Cobertura en el norte del Ecuador'}
               </Badge>
               <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl">
