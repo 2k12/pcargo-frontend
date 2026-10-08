@@ -1,5 +1,7 @@
+import { ArrowLeft } from 'lucide-react'
 import { useState } from 'react'
 import { Segmented } from '@/components/Segmented'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatIngreso } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -14,15 +16,19 @@ const valor = (m: Metrica, n: number) => (m === 'ingresos' ? formatIngreso(n) : 
 /**
  * Serie diaria del periodo. Una sola métrica a la vez (un solo eje): envíos o ingresos.
  * Cada columna es un botón: al pasar el cursor muestra el detalle y al tocarla filtra el resumen por ese día.
+ * La serie es siempre la del periodo completo: el día elegido solo se resalta, y tocarlo otra vez
+ * o pulsar "Ver todo el periodo" vuelve a la vista normal.
  */
 export function TendenciaCard({
   serie,
   diaSeleccionado,
   onSelectDia,
+  onVerPeriodo,
 }: {
   serie: Dia[]
   diaSeleccionado?: string
   onSelectDia: (fecha: string) => void
+  onVerPeriodo: () => void
 }) {
   const [metrica, setMetrica] = useState<Metrica>('envios')
   const [activo, setActivo] = useState<number | null>(null)
@@ -46,21 +52,35 @@ export function TendenciaCard({
             {pico && pico[metrica] > 0 && ` · pico el ${formatDia(pico.fecha)}`}
           </p>
         </div>
-        <Segmented
-          label="Métrica de la tendencia"
-          value={metrica}
-          onChange={setMetrica}
-          options={[
-            { value: 'envios', label: 'Envíos' },
-            { value: 'ingresos', label: 'Ingresos' },
-          ]}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          {diaSeleccionado && (
+            <Button variant="outline" size="sm" onClick={onVerPeriodo}>
+              <ArrowLeft />
+              Ver todo el periodo
+            </Button>
+          )}
+          <Segmented
+            label="Métrica de la tendencia"
+            value={metrica}
+            onChange={setMetrica}
+            options={[
+              { value: 'envios', label: 'Envíos' },
+              { value: 'ingresos', label: 'Ingresos' },
+            ]}
+          />
+        </div>
       </CardHeader>
       <CardContent>
         {serie.length === 0 ? (
           <p className="py-10 text-center text-sm text-muted-foreground">Sin datos en el periodo.</p>
         ) : (
           <div className="space-y-1.5">
+            {diaSeleccionado && (
+              <p className="text-xs text-muted-foreground" aria-live="polite">
+                Viendo solo el <span className="font-medium text-foreground">{formatDia(diaSeleccionado, true)}</span>.
+                Toca la barra de nuevo para ver todo el periodo.
+              </p>
+            )}
             <div className="relative h-40" onMouseLeave={() => setActivo(null)}>
               {/* Referencia recesiva: el máximo de la escala */}
               <span className="pointer-events-none absolute inset-x-0 top-0 border-t border-dashed border-foreground/10" />
@@ -90,6 +110,7 @@ export function TendenciaCard({
                           'block w-full rounded-t-[4px] transition-[height,opacity] duration-300',
                           color,
                           activo !== null && activo !== i && 'opacity-40',
+                          activo === null && diaSeleccionado && !seleccionado && 'opacity-40',
                           seleccionado && 'ring-2 ring-foreground/60',
                         )}
                         style={{ height: v > 0 ? `max(3px, ${(v / max) * 100}%)` : '0px' }}
@@ -108,7 +129,11 @@ export function TendenciaCard({
                   <p className="font-medium first-letter:uppercase">{formatDia(dia.fecha, true)}</p>
                   <p className="text-muted-foreground tabular-nums">{valor('envios', dia.envios)}</p>
                   <p className="font-medium text-brand-green-text tabular-nums">{formatIngreso(dia.ingresos)}</p>
-                  {dia.envios > 0 && <p className="mt-1 text-[10px] text-muted-foreground">Toca para ver solo este día</p>}
+                  {dia.fecha === diaSeleccionado ? (
+                    <p className="mt-1 text-[10px] text-muted-foreground">Toca para ver todo el periodo</p>
+                  ) : (
+                    dia.envios > 0 && <p className="mt-1 text-[10px] text-muted-foreground">Toca para ver solo este día</p>
+                  )}
                 </div>
               )}
             </div>

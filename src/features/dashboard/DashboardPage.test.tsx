@@ -1,6 +1,6 @@
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useLocation } from 'react-router'
+import { useLocation, useNavigate } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { jsonResponse, mockFetch, renderWithProviders } from '@/test/utils'
 import type { Cliente, Envio, Resumen, Ruta } from '@/types/api'
@@ -83,6 +83,18 @@ function Ubicacion() {
   return <p data-testid="ubicacion">{l.pathname + l.search}</p>
 }
 
+/** Simula el botón "Atrás" del navegador. */
+function Atras() {
+  const navegar = useNavigate()
+  return <button onClick={() => navegar(-1)}>Atrás del navegador</button>
+}
+
+/** Página previa: se llega al panel navegando, para que exista historial al que volver. */
+function IrA({ to }: { to: string }) {
+  const navegar = useNavigate()
+  return <button onClick={() => navegar(to)}>Ir al panel</button>
+}
+
 function setup(route = '/panel') {
   const fetch = mockFetch((url) => {
     if (url.includes('/dashboard/resumen')) return jsonResponse(resumen)
@@ -162,8 +174,86 @@ describe('DashboardPage', () => {
     await userEvent.click(await screen.findByRole('button', { name: /6 de octubre/i }))
     expect(ultimoResumen(fetch).get('desde')).toBe('2026-10-06')
     expect(ultimoResumen(fetch).get('hasta')).toBe('2026-10-06')
-    await userEvent.click(screen.getByRole('button', { name: 'Quitar filtro de fecha' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Quitar filtro de día' }))
     expect(ultimoResumen(fetch).get('desde')).not.toBe('2026-10-06')
+  })
+
+  // Regresión del issue #1: tras elegir un día no se podía volver a la vista completa del gráfico.
+  describe('volver de un día a todo el periodo (issue #1)', () => {
+    /** Como el servidor real: si se pide un solo día, la serie diaria trae solo ese día. */
+    function setupServidorReal(route: string) {
+      const fetch = mockFetch((url) => {
+        if (url.includes('/dashboard/resumen')) {
+          const p = new URL(url, 'http://x').searchParams
+          const unDia = p.get('desde') && p.get('desde') === p.get('hasta')
+          return jsonResponse(unDia ? { ...resumen, porDia: resumen.porDia.filter((d) => d.fecha === p.get('desde')) } : resumen)
+        }
+        if (url.includes('/clientes')) return jsonResponse([cliente])
+        if (url.includes('/rutas')) return jsonResponse([ruta])
+        if (url.includes('/envios')) return jsonResponse({ datos: [envio], pagina: 1, porPagina: 5, total: 1, totalPaginas: 1 })
+        return jsonResponse([])
+      })
+      renderWithProviders(
+        <>
+          <DashboardPage />
+          <Ubicacion />
+          <Atras />
+        </>,
+        { route: '/inicio', path: '/panel', extraRoutes: [{ path: '/inicio', element: <IrA to={route} /> }] },
+      )
+      return fetch
+    }
+
+    const barras = () => screen.getAllByRole('button', { name: /de octubre: \d+ envíos/ })
+    const elegir6deOctubre = async () => {
+      await userEvent.click(await screen.findByText('Ir al panel'))
+      await userEvent.click(await screen.findByRole('button', { name: /6 de octubre: 4 envíos/ }))
+      await screen.findByRole('button', { name: 'Ver todo el periodo' })
+    }
+
+    it('el gráfico sigue mostrando todo el periodo, con el día resaltado y el periodo conservado', async () => {
+      const fetch = setupServidorReal('/panel?periodo=7d')
+      await elegir6deOctubre()
+      expect(screen.getByTestId('ubicacion')).toHaveTextContent('/panel?periodo=7d&dia=2026-10-06')
+      expect(ultimoResumen(fetch).get('desde')).toBe('2026-10-06')
+      expect(barras()).toHaveLength(2)
+      expect(screen.getByRole('button', { name: /6 de octubre/, pressed: true })).toBeInTheDocument()
+      expect(screen.getByRole('tab', { name: '7 días' })).toHaveAttribute('aria-selected', 'true')
+    })
+
+    it('"Ver todo el periodo" vuelve a la vista normal sin perder el periodo', async () => {
+      setupServidorReal('/panel?periodo=7d')
+      await elegir6deOctubre()
+      await userEvent.click(screen.getByRole('button', { name: 'Ver todo el periodo' }))
+      expect(screen.getByTestId('ubicacion')).toHaveTextContent(/^\/panel\?periodo=7d$/)
+      expect(screen.queryByRole('button', { name: 'Ver todo el periodo' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /de octubre/, pressed: true })).not.toBeInTheDocument()
+    })
+
+    it('tocar otra vez la barra elegida quita la selección', async () => {
+      setupServidorReal('/panel')
+      await elegir6deOctubre()
+      await userEvent.click(screen.getByRole('button', { name: /6 de octubre/, pressed: true }))
+      expect(screen.getByTestId('ubicacion')).toHaveTextContent(/^\/panel$/)
+      expect(screen.queryByRole('button', { name: 'Ver todo el periodo' })).not.toBeInTheDocument()
+    })
+
+    it('"Atrás" del navegador vuelve a la vista completa en vez de salir del panel', async () => {
+      setupServidorReal('/panel')
+      await elegir6deOctubre()
+      await userEvent.click(screen.getByRole('button', { name: 'Atrás del navegador' }))
+      expect(await screen.findByTestId('ubicacion')).toHaveTextContent(/^\/panel$/)
+      expect(screen.queryByRole('button', { name: 'Ver todo el periodo' })).not.toBeInTheDocument()
+      expect(barras()).toHaveLength(2)
+    })
+
+    it('ignora un ?dia= inválido en la URL', async () => {
+      const fetch = setupServidorReal('/panel?dia=no-es-fecha')
+      await userEvent.click(await screen.findByText('Ir al panel'))
+      await screen.findByText('+$36,00')
+      expect(ultimoResumen(fetch).get('desde')).not.toBe('no-es-fecha')
+      expect(screen.queryByRole('button', { name: 'Ver todo el periodo' })).not.toBeInTheDocument()
+    })
   })
 
   it('filtra por cliente desde el buscador o desde el ranking, y los enlaces lo conservan', async () => {
