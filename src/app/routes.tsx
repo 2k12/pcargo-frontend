@@ -34,6 +34,9 @@ export function AppRoutes() {
             <Route path="/panel" element={<DashboardPage />} />
             <Route path="/envios" element={<EnviosPage />} />
             <Route path="/rutas" element={<RutasPage />} />
+            {/* Rastreo dentro del panel: misma consulta que la pública, sin salir del menú */}
+            <Route path="/panel/seguimiento" element={<SeguimientoPage embebido />} />
+            <Route path="/panel/seguimiento/:numeroGuia" element={<SeguimientoPage embebido />} />
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

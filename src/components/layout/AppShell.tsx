@@ -46,7 +46,7 @@ const GRUPOS: { titulo: string; items: ItemNav[] }[] = [
   },
   {
     titulo: 'Público',
-    items: [{ to: '/seguimiento', label: 'Rastreo de envíos', corto: 'Rastreo', icon: PackageSearch, end: false, externo: true }],
+    items: [{ to: '/panel/seguimiento', label: 'Rastreo de envíos', corto: 'Rastreo', icon: PackageSearch, end: false }],
   },
 ]
 

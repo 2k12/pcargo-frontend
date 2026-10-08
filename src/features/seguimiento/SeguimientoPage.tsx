@@ -94,9 +94,11 @@ function Stepper({ estado }: { estado: Estado }) {
   )
 }
 
-export function SeguimientoPage() {
+/** `embebido`: se muestra dentro del panel (AppShell) para el personal logueado, sin la cabecera pública. */
+export function SeguimientoPage({ embebido = false }: { embebido?: boolean }) {
   const { numeroGuia } = useParams<{ numeroGuia: string }>()
   const navigate = useNavigate()
+  const base = embebido ? '/panel/seguimiento' : '/seguimiento'
   const [valor, setValor] = useState(numeroGuia ?? '')
   const [invalido, setInvalido] = useState(false)
   const { data, isLoading, error } = useSeguimiento(numeroGuia)
@@ -106,23 +108,25 @@ export function SeguimientoPage() {
     if (!valor.trim()) return
     const n = normalizarGuia(valor)
     setInvalido(n === null)
-    if (n) navigate(`/seguimiento/${n}`)
+    if (n) navigate(`${base}/${n}`)
   }
 
   const noEncontrado = error instanceof ApiError && error.status === 404
 
   return (
-    <div className="min-h-svh bg-muted/30">
-      <header className="mx-auto flex h-14 max-w-2xl items-center justify-between px-4">
-        <Link to="/" aria-label="PCargo — inicio">
-          <Logo markClassName="size-8" />
-        </Link>
-        <ThemeToggle />
-      </header>
+    <div className={embebido ? undefined : 'min-h-svh bg-muted/30'}>
+      {!embebido && (
+        <header className="mx-auto flex h-14 max-w-2xl items-center justify-between px-4">
+          <Link to="/" aria-label="PCargo — inicio">
+            <Logo markClassName="size-8" />
+          </Link>
+          <ThemeToggle />
+        </header>
+      )}
 
-      <main className="mx-auto max-w-2xl space-y-6 px-4 py-8 sm:py-12">
-        <div className="space-y-2 text-center">
-          <h1 className="text-2xl font-semibold tracking-tight">Rastrea tu encomienda</h1>
+      <main className={cn('space-y-6', embebido ? 'max-w-2xl' : 'mx-auto max-w-2xl px-4 py-8 sm:py-12')}>
+        <div className={cn('space-y-2', !embebido && 'text-center')}>
+          <h1 className="text-2xl font-semibold tracking-tight">{embebido ? 'Rastreo de envíos' : 'Rastrea tu encomienda'}</h1>
           <p className="text-sm text-muted-foreground">Ingresa el número de tu guía, con o sin los ceros de adelante (ej. 0040425).</p>
         </div>
 
