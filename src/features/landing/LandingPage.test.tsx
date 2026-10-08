@@ -12,10 +12,10 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-const ibarra = { id: 1, nombre: 'Ibarra' }
-const quito = { id: 4, nombre: 'Quito' }
+const ibarra = { id: 1, nombre: 'Ibarra', activa: true }
+const quito = { id: 4, nombre: 'Quito', activa: true }
 const ruta = (id: number, origen = ibarra, destino = quito, tarifaBase = 6): Ruta => ({
-  id, origen, destino, tarifaBase, tiempoEstimadoMin: 180, activa: true,
+  id, origen, destino, tarifaBase, tiempoEstimadoMin: 180, activa: true, operativa: true,
 })
 
 const catalogo: CatalogoPublico = {
@@ -56,6 +56,27 @@ describe('LandingPage (pública)', () => {
 
     const [, init] = fetchMock.mock.calls[0]!
     expect((init!.headers as Record<string, string>).Authorization).toBeUndefined()
+  })
+
+  it('muestra las ciudades de cobertura desde la API (sin listas fijas)', async () => {
+    mockFetch(() => jsonResponse({ ...catalogo, ciudades: [ibarra, { id: 9, nombre: 'Cayambe', activa: true }] }))
+    renderWithProviders(<LandingPage />)
+    expect(await screen.findByText('Ibarra · Cayambe')).toBeInTheDocument()
+    expect(screen.queryByText(/Atuntaqui/)).not.toBeInTheDocument()
+  })
+
+  it('muestra la dirección, ambos teléfonos y el enlace de WhatsApp', async () => {
+    mockFetch(() => jsonResponse(catalogo))
+    renderWithProviders(<LandingPage />)
+    const contacto = await screen.findByRole('heading', { name: 'Contáctanos' })
+    const seccion = contacto.closest('section')!
+
+    expect(within(seccion).getByText(/Las Gardenias s\/n y El Rosal \(La Florida\), Ibarra, Ecuador/)).toBeInTheDocument()
+    expect(within(seccion).getByRole('link', { name: '06 263 2669' })).toHaveAttribute('href', 'tel:+59362632669')
+    expect(within(seccion).getByRole('link', { name: '+593 99 518 7551' })).toHaveAttribute('href', 'tel:+593995187551')
+    expect(within(seccion).getByRole('link', { name: /WhatsApp/ }).getAttribute('href')).toMatch(
+      /^https:\/\/wa\.me\/593995187551\?text=/,
+    )
   })
 
   it('el rastreador lleva al seguimiento con el código normalizado', async () => {

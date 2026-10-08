@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Loader2, Plus } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
@@ -28,8 +28,19 @@ const schema = z.object({
 })
 type Values = z.infer<typeof schema>
 
-export function NuevaRutaDialog() {
-  const [open, setOpen] = useState(false)
+interface Props {
+  /** Modo controlado (p. ej. abrir tras crear una ciudad); sin estas props usa su propio botón. */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  /** Ciudad a preseleccionar como origen. */
+  origenId?: number
+}
+
+export function NuevaRutaDialog({ open: openProp, onOpenChange, origenId }: Props = {}) {
+  const [openLocal, setOpenLocal] = useState(false)
+  const controlado = openProp !== undefined
+  const open = controlado ? openProp : openLocal
+  const setOpen = (o: boolean) => (controlado ? onOpenChange?.(o) : setOpenLocal(o))
   const { data: ciudades = [] } = useCiudades()
   const crear = useCrearRuta()
   const {
@@ -37,10 +48,17 @@ export function NuevaRutaDialog() {
     control,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<Values>({ resolver: zodResolver(schema), defaultValues: { origenId: '', destinoId: '' } })
 
-  const items = Object.fromEntries(ciudades.map((c) => [String(c.id), c.nombre]))
+  useEffect(() => {
+    if (open && origenId) setValue('origenId', String(origenId))
+  }, [open, origenId, setValue])
+
+  const items = Object.fromEntries(
+    ciudades.map((c) => [String(c.id), c.activa ? c.nombre : `${c.nombre} (inactiva)`]),
+  )
 
   const onSubmit = async (v: Values) => {
     try {
@@ -72,7 +90,7 @@ export function NuevaRutaDialog() {
             <SelectContent>
               {ciudades.map((c) => (
                 <SelectItem key={c.id} value={String(c.id)}>
-                  {c.nombre}
+                  {items[String(c.id)]}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -85,10 +103,12 @@ export function NuevaRutaDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button />}>
-        <Plus />
-        Nueva ruta
-      </DialogTrigger>
+      {!controlado && (
+        <DialogTrigger render={<Button />}>
+          <Plus />
+          Nueva ruta
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Nueva ruta</DialogTitle>

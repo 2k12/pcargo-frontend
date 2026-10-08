@@ -82,6 +82,7 @@ export const api = {
   get: <T>(path: string, query?: RequestOptions['query']) => apiFetch<T>(path, { query }),
   post: <T>(path: string, body?: unknown) => apiFetch<T>(path, { method: 'POST', body }),
   patch: <T>(path: string, body?: unknown) => apiFetch<T>(path, { method: 'PATCH', body }),
+  delete: <T = void>(path: string) => apiFetch<T>(path, { method: 'DELETE' }),
 }
 
 export function errorMessage(error: unknown): string {

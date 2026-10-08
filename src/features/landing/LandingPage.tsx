@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TIPO_CARGA_ICON } from '@/features/envios/ui'
+import { listaCiudades } from '@/features/rutas/hooks'
 import { formatCurrency, formatDuracion } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { TipoCargaCodigo } from '@/types/api'
@@ -102,6 +103,7 @@ function Rastreador() {
 export function LandingPage() {
   const { data: catalogo, isLoading } = useCatalogoPublico()
   const desde = catalogo ? tarifaDesde(catalogo.rutas) : null
+  const ciudadesTexto = listaCiudades(catalogo?.ciudades)
 
   return (
     <div className="min-h-svh bg-background">
@@ -133,8 +135,8 @@ export function LandingPage() {
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,color-mix(in_oklch,var(--brand-blue)_14%,transparent),transparent_55%),radial-gradient(ellipse_at_bottom_right,color-mix(in_oklch,var(--brand-green)_18%,transparent),transparent_55%)]" />
           <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-4 py-16 sm:px-6 sm:py-24 lg:grid-cols-[1.1fr_1fr]">
             <div className="space-y-6">
-              <Badge variant="secondary" className="gap-1.5">
-                <MapPin className="size-3" /> Ibarra · Atuntaqui · Otavalo · Quito
+              <Badge variant="secondary" className="min-h-5 gap-1.5">
+                <MapPin className="size-3" /> {ciudadesTexto || 'Cobertura en el norte del Ecuador'}
               </Badge>
               <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl">
                 Tus encomiendas,{' '}
@@ -144,7 +146,7 @@ export function LandingPage() {
               </h1>
               <p className="max-w-xl text-lg text-muted-foreground text-pretty">
                 En PCargo llevamos sobres, paquetes, cartones y valijas desde Ibarra hasta el domicilio de tu
-                destinatario en Imbabura y Quito, con precio claro y seguimiento en línea.
+                destinatario en nuestras ciudades de cobertura, con precio claro y seguimiento en línea.
               </p>
               <div className="flex flex-wrap gap-3">
                 <Button size="lg" nativeButton={false} render={<a href="#cotizar" />}>
@@ -290,22 +292,49 @@ export function LandingPage() {
         {/* Contacto */}
         <Seccion id="contacto" titulo="Contáctanos" subtitulo={`Oficina principal en ${MARCA.oficina.ciudad}.`} className="bg-muted/30">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              { icon: MapPin, t: 'Oficina', d: MARCA.oficina.direccion },
-              { icon: Clock, t: 'Horario', d: MARCA.oficina.horario },
-              { icon: Phone, t: 'Teléfono', d: MARCA.telefono, href: `tel:${MARCA.telefono.replace(/\s/g, '')}` },
-              { icon: Mail, t: 'Correo', d: MARCA.email, href: `mailto:${MARCA.email}` },
-            ].map((x) => (
-              <div key={x.t} className="space-y-2 rounded-2xl border bg-card p-6">
-                <x.icon className="size-4 text-muted-foreground" />
-                <p className="text-sm font-medium">{x.t}</p>
-                {x.href ? (
-                  <a href={x.href} className="text-sm text-muted-foreground hover:text-foreground">{x.d}</a>
-                ) : (
-                  <p className="text-sm text-muted-foreground">{x.d}</p>
-                )}
-              </div>
-            ))}
+            <div className="space-y-2 rounded-2xl border bg-card p-6">
+              <MapPin className="size-4 text-brand-blue-text" />
+              <p className="text-sm font-medium">Oficina</p>
+              <address className="text-sm text-muted-foreground not-italic">{MARCA.oficina.direccion}</address>
+            </div>
+            <div className="space-y-2 rounded-2xl border bg-card p-6">
+              <Phone className="size-4 text-brand-blue-text" />
+              <p className="text-sm font-medium">Teléfonos</p>
+              <ul className="space-y-1 text-sm text-muted-foreground">
+                <li>
+                  Fijo:{' '}
+                  <a href={`tel:${MARCA.telefonos.fijo.tel}`} className="hover:text-foreground">
+                    {MARCA.telefonos.fijo.texto}
+                  </a>
+                </li>
+                <li>
+                  Celular:{' '}
+                  <a href={`tel:${MARCA.telefonos.celular.tel}`} className="hover:text-foreground">
+                    {MARCA.telefonos.celular.texto}
+                  </a>
+                </li>
+              </ul>
+              <a
+                href={whatsappUrl()}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-blue-text hover:underline"
+              >
+                <MessageCircle className="size-3.5" /> Escríbenos por WhatsApp
+              </a>
+            </div>
+            <div className="space-y-2 rounded-2xl border bg-card p-6">
+              <Clock className="size-4 text-brand-blue-text" />
+              <p className="text-sm font-medium">Horario</p>
+              <p className="text-sm text-muted-foreground">{MARCA.oficina.horario}</p>
+            </div>
+            <div className="space-y-2 rounded-2xl border bg-card p-6">
+              <Mail className="size-4 text-brand-blue-text" />
+              <p className="text-sm font-medium">Correo</p>
+              <a href={`mailto:${MARCA.email}`} className="text-sm text-muted-foreground hover:text-foreground">
+                {MARCA.email}
+              </a>
+            </div>
           </div>
         </Seccion>
 

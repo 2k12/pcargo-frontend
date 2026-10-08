@@ -11,9 +11,26 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
+const catalogo = {
+  ciudades: [
+    { id: 1, nombre: 'Ibarra', activa: true },
+    { id: 5, nombre: 'Cotacachi', activa: true },
+  ],
+  tiposCarga: [],
+  rutas: [],
+}
+
+/** El login consulta el catálogo público (subtítulo con ciudades); el resto lo decide `login`. */
+function mockConCatalogo(login: (url: string, init?: RequestInit) => Response) {
+  return mockFetch((url, init) => (url.endsWith('/publico/catalogo') ? jsonResponse(catalogo) : login(url, init)))
+}
+
+const llamadasA = (fetchMock: ReturnType<typeof mockFetch>, ruta: string) =>
+  fetchMock.mock.calls.filter(([url]) => String(url).endsWith(ruta))
+
 describe('LoginPage', () => {
   it('muestra el error del backend con credenciales inválidas', async () => {
-    mockFetch(() => jsonResponse({ error: { code: 'CREDENCIALES_INVALIDAS', message: 'Correo o contraseña incorrectos' } }, 401))
+    mockConCatalogo(() => jsonResponse({ error: { code: 'CREDENCIALES_INVALIDAS', message: 'Correo o contraseña incorrectos' } }, 401))
     const user = userEvent.setup()
     renderWithProviders(<LoginPage />, { route: '/login', path: '/login' })
 
@@ -25,19 +42,25 @@ describe('LoginPage', () => {
     expect(tokenStorage.get()).toBeNull()
   })
 
+  it('muestra las ciudades de cobertura activas desde la API', async () => {
+    mockConCatalogo(() => jsonResponse({}))
+    renderWithProviders(<LoginPage />, { route: '/login', path: '/login' })
+    expect(await screen.findByText('Encomiendas Ibarra · Cotacachi')).toBeInTheDocument()
+  })
+
   it('valida el formulario antes de enviar', async () => {
-    const fetchMock = mockFetch(() => jsonResponse({}))
+    const fetchMock = mockConCatalogo(() => jsonResponse({}))
     const user = userEvent.setup()
     renderWithProviders(<LoginPage />, { route: '/login', path: '/login' })
 
     await user.click(screen.getByRole('button', { name: 'Ingresar' }))
 
     expect(await screen.findByText('Ingresa un correo válido')).toBeInTheDocument()
-    expect(fetchMock).not.toHaveBeenCalled()
+    expect(llamadasA(fetchMock, '/auth/login')).toHaveLength(0)
   })
 
   it('guarda el token y navega al panel al iniciar sesión', async () => {
-    const fetchMock = mockFetch(() =>
+    const fetchMock = mockConCatalogo(() =>
       jsonResponse({ token: 'jwt-ok', usuario: { id: 'u1', nombre: 'Admin', email: 'admin@pcargo.ec', rol: 'ADMIN' } }),
     )
     const user = userEvent.setup()
@@ -53,8 +76,8 @@ describe('LoginPage', () => {
 
     expect(await screen.findByText('Panel principal')).toBeInTheDocument()
     await waitFor(() => expect(tokenStorage.get()).toBe('jwt-ok'))
-    const [url, init] = fetchMock.mock.calls[0]!
+    const [[url, init]] = llamadasA(fetchMock, '/auth/login') as [[string, RequestInit]]
     expect(url).toBe('/api/auth/login')
-    expect(JSON.parse(init!.body as string)).toEqual({ email: 'admin@pcargo.ec', password: 'Admin123!' })
+    expect(JSON.parse(init.body as string)).toEqual({ email: 'admin@pcargo.ec', password: 'Admin123!' })
   })
 })

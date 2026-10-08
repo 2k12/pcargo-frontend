@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { jsonResponse, mockFetch } from '@/test/utils'
-import { ApiError, apiFetch, tokenStorage, UNAUTHORIZED_EVENT } from './api'
+import { api, ApiError, apiFetch, tokenStorage, UNAUTHORIZED_EVENT } from './api'
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -53,6 +53,21 @@ describe('apiFetch', () => {
     expect(tokenStorage.get()).toBeNull()
     expect(listener).toHaveBeenCalledOnce()
     window.removeEventListener(UNAUTHORIZED_EVENT, listener)
+  })
+
+  it('api.delete envía DELETE y resuelve sin cuerpo en 204', async () => {
+    tokenStorage.set('abc123')
+    const fetchMock = mockFetch(() => new Response(null, { status: 204 }))
+    await expect(api.delete('/ciudades/7')).resolves.toBeUndefined()
+    const [url, init] = fetchMock.mock.calls[0]!
+    expect(url).toBe('/api/ciudades/7')
+    expect(init!.method).toBe('DELETE')
+    expect((init!.headers as Record<string, string>).Authorization).toBe('Bearer abc123')
+  })
+
+  it('api.delete propaga el 409 como ApiError', async () => {
+    mockFetch(() => jsonResponse({ error: { code: 'CONFLICTO', message: 'Tiene rutas; desactívela' } }, 409))
+    await expect(api.delete('/ciudades/1')).rejects.toMatchObject({ status: 409, code: 'CONFLICTO' })
   })
 
   it('traduce fallos de red a ApiError status 0', async () => {

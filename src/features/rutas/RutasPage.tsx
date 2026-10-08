@@ -15,6 +15,7 @@ import { useTiposCarga } from '@/features/envios/hooks'
 import { errorMessage } from '@/lib/api'
 import { formatCurrency, formatDuracion } from '@/lib/format'
 import type { Ruta } from '@/types/api'
+import { CiudadesCobertura } from './components/CiudadesCobertura'
 import { EditarRutaDialog } from './components/EditarRutaDialog'
 import { NuevaRutaDialog } from './components/NuevaRutaDialog'
 import { useActualizarRuta, useRutas } from './hooks'
@@ -42,10 +43,12 @@ export function RutasPage() {
   return (
     <>
       <PageHeader
-        title="Rutas y tarifas"
-        description="Trayectos entre Ibarra, Atuntaqui, Otavalo y Quito"
+        title="Cobertura y tarifas"
+        description="Ciudades donde operamos, trayectos y tarifas base"
         actions={esAdmin ? <NuevaRutaDialog /> : undefined}
       />
+
+      <CiudadesCobertura rutas={rutas ?? []} esAdmin={esAdmin} />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {tipos.map((t) => {
@@ -91,9 +94,9 @@ export function RutasPage() {
             </TableHeader>
             <TableBody>
               {ordenadas.map((r) => (
-                <TableRow key={r.id} className={r.activa ? '' : 'opacity-60'}>
+                <TableRow key={r.id} className={r.operativa ? '' : 'opacity-60'}>
                   <TableCell className="pl-4">
-                    <span className="flex items-center gap-2 font-medium">
+                    <span className="flex flex-wrap items-center gap-2 font-medium">
                       {r.origen.nombre}
                       {r.origen.id === r.destino.id ? (
                         <Badge variant="secondary">urbano</Badge>
@@ -102,6 +105,15 @@ export function RutasPage() {
                           <ArrowRight className="size-3.5 text-muted-foreground" />
                           {r.destino.nombre}
                         </>
+                      )}
+                      {r.activa && !r.operativa && (
+                        <Badge
+                          variant="outline"
+                          className="font-normal text-muted-foreground"
+                          title="Una de sus ciudades está inactiva: no admite envíos nuevos"
+                        >
+                          No operativa · ciudad inactiva
+                        </Badge>
                       )}
                     </span>
                   </TableCell>

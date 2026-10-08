@@ -1,6 +1,7 @@
 # PCargo · Frontend
 
-Panel web de PCargo, servicio de encomiendas a domicilio entre **Ibarra, Atuntaqui, Otavalo y Quito**.
+Panel web de PCargo, servicio de encomiendas a domicilio con base en Ibarra. Las ciudades de cobertura son
+configurables desde el panel (semilla: Ibarra, Atuntaqui, Otavalo y Quito).
 
 - **Stack**: Vite 8 · React 19 · TypeScript · Tailwind CSS v4 · shadcn/ui (estilo `base-nova`, Base UI) · React Router · TanStack Query · react-hook-form + zod · sonner · lucide-react
 - **Contrato de API**: [`../docs/api-contract.md`](../docs/api-contract.md)
@@ -32,7 +33,7 @@ Credenciales de demostración (sembradas por el backend):
 | `/login` | pública | Inicio de sesión (JWT en `localStorage`) |
 | `/panel` | autenticado | Resumen: envíos, piezas, ingresos, entregados; distribución por estado, ruta, tipo de carga (piezas) y forma de pago |
 | `/envios` | autenticado | Tabla con filtros (estado, forma de pago, ruta, búsqueda). Alta con varios ítems (tipo, cantidad, peso por unidad), forma de pago (pagado, al cobro, contrato, seguro) y cotización en vivo con desglose. Detalle con ítems, registro y última gestión de entrega (fecha + operador), historial y cambio de estado (NO_ENTREGADO/NOVEDAD exigen motivo) |
-| `/rutas` | autenticado (edición: ADMIN) | Rutas y tarifas; ADMIN crea rutas, edita tarifa/tiempo y activa/desactiva |
+| `/rutas` | autenticado (edición: ADMIN) | Cobertura y tarifas. **Ciudades de cobertura**: ADMIN agrega, renombra, activa/desactiva o elimina ciudades (solo sin rutas; si tienen rutas se desactivan). **Rutas**: ADMIN crea rutas, edita tarifa/tiempo y activa/desactiva; una ruta con una ciudad inactiva aparece como "No operativa" |
 | `/seguimiento[/:codigo]` | pública | Rastreo por código `PC-XXXXXXXX` |
 
 ## Estructura

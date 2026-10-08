@@ -1,15 +1,17 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { ArrowLeft, Loader2, PackageSearch } from 'lucide-react'
-import { LogoMark } from '@/components/brand/PCargoLogo'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router'
 import { z } from 'zod'
+import { LogoMark } from '@/components/brand/PCargoLogo'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useCatalogoPublico } from '@/features/landing/api'
+import { listaCiudades } from '@/features/rutas/hooks'
 import { errorMessage } from '@/lib/api'
 import { useAuth } from './hooks'
 
@@ -25,6 +27,7 @@ export function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const [error, setError] = useState<string | null>(null)
+  const ciudades = listaCiudades(useCatalogoPublico().data?.ciudades)
   const {
     register,
     handleSubmit,
@@ -59,7 +62,9 @@ export function LoginPage() {
             <LogoMark className="size-14" />
           </Link>
           <h1 className="text-2xl font-semibold tracking-tight text-brand-blue-text">PCargo</h1>
-          <p className="text-sm text-muted-foreground">Encomiendas Ibarra · Atuntaqui · Otavalo · Quito</p>
+          <p className="min-h-5 text-sm text-muted-foreground">
+            {ciudades ? `Encomiendas ${ciudades}` : 'Encomiendas puerta a puerta'}
+          </p>
         </div>
 
         <Card>

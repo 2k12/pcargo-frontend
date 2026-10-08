@@ -27,6 +27,13 @@ export interface LoginResponse {
 export interface Ciudad {
   id: number
   nombre: string
+  /** Una ciudad inactiva deja de ofrecerse: sus rutas no son operativas. */
+  activa: boolean
+}
+
+export interface CambiosCiudad {
+  nombre?: string
+  activa?: boolean
 }
 
 export interface TipoCarga {
@@ -44,6 +51,8 @@ export interface Ruta {
   tarifaBase: number
   tiempoEstimadoMin: number
   activa: boolean
+  /** ruta.activa && origen.activa && destino.activa: solo así admite envíos nuevos. */
+  operativa: boolean
 }
 
 export interface NuevaRuta {
