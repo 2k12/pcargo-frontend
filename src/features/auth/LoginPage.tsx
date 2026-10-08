@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { ArrowLeft, Loader2, PackageSearch } from 'lucide-react'
+import { ArrowLeft, Eye, EyeOff, Loader2, PackageSearch } from 'lucide-react'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router'
@@ -7,11 +7,9 @@ import { z } from 'zod'
 import { LogoMark } from '@/components/brand/PCargoLogo'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useCatalogoPublico } from '@/features/landing/api'
-import { listaCiudades } from '@/features/rutas/hooks'
 import { errorMessage } from '@/lib/api'
 import { useAuth } from './hooks'
 
@@ -27,7 +25,7 @@ export function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const [error, setError] = useState<string | null>(null)
-  const ciudades = listaCiudades(useCatalogoPublico().data?.ciudades)
+  const [verPassword, setVerPassword] = useState(false)
   const {
     register,
     handleSubmit,
@@ -62,15 +60,11 @@ export function LoginPage() {
             <LogoMark className="size-14" />
           </Link>
           <h1 className="text-2xl font-semibold tracking-tight text-brand-blue-text">PCargo</h1>
-          <p className="min-h-5 text-sm text-muted-foreground">
-            {ciudades ? `Encomiendas ${ciudades}` : 'Encomiendas puerta a puerta'}
-          </p>
         </div>
 
         <Card>
           <CardHeader>
             <CardTitle>Iniciar sesión</CardTitle>
-            <CardDescription>Accede al panel de operaciones</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
@@ -81,7 +75,25 @@ export function LoginPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Contraseña</Label>
-                <Input id="password" type="password" autoComplete="current-password" {...register('password')} />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={verPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    className="pr-10"
+                    {...register('password')}
+                  />
+                  <button
+                    type="button"
+                    aria-label={verPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                    aria-pressed={verPassword}
+                    aria-controls="password"
+                    onClick={() => setVerPassword((v) => !v)}
+                    className="absolute inset-y-0 right-0 grid w-10 place-items-center rounded-r-lg text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                  >
+                    {verPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  </button>
+                </div>
                 {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
               </div>
               {error && (

@@ -20,7 +20,7 @@ const catalogo = {
   rutas: [],
 }
 
-/** El login consulta el catálogo público (subtítulo con ciudades); el resto lo decide `login`. */
+/** Responde el catálogo público por si alguien lo consulta; el resto lo decide `login`. */
 function mockConCatalogo(login: (url: string, init?: RequestInit) => Response) {
   return mockFetch((url, init) => (url.endsWith('/publico/catalogo') ? jsonResponse(catalogo) : login(url, init)))
 }
@@ -42,10 +42,32 @@ describe('LoginPage', () => {
     expect(tokenStorage.get()).toBeNull()
   })
 
-  it('muestra las ciudades de cobertura activas desde la API', async () => {
-    mockConCatalogo(() => jsonResponse({}))
+  it('muestra solo el título, sin textos de encomiendas ni descripción del panel', async () => {
+    const fetchMock = mockConCatalogo(() => jsonResponse({}))
     renderWithProviders(<LoginPage />, { route: '/login', path: '/login' })
-    expect(await screen.findByText('Encomiendas Ibarra · Cotacachi')).toBeInTheDocument()
+    expect(screen.getByText('Iniciar sesión')).toBeInTheDocument()
+    expect(screen.queryByText(/Encomiendas/)).not.toBeInTheDocument()
+    expect(screen.queryByText('Accede al panel de operaciones')).not.toBeInTheDocument()
+    // Ya no consulta el catálogo público solo para un subtítulo.
+    expect(llamadasA(fetchMock, '/publico/catalogo')).toHaveLength(0)
+  })
+
+  it('el ojo muestra y oculta la contraseña', async () => {
+    mockConCatalogo(() => jsonResponse({}))
+    const user = userEvent.setup()
+    renderWithProviders(<LoginPage />, { route: '/login', path: '/login' })
+
+    const password = screen.getByLabelText('Contraseña')
+    await user.type(password, 'Admin123!')
+    expect(password).toHaveAttribute('type', 'password')
+
+    await user.click(screen.getByRole('button', { name: 'Mostrar contraseña' }))
+    expect(password).toHaveAttribute('type', 'text')
+    expect(password).toHaveValue('Admin123!')
+    expect(screen.getByRole('button', { name: 'Ocultar contraseña' })).toHaveAttribute('aria-pressed', 'true')
+
+    await user.click(screen.getByRole('button', { name: 'Ocultar contraseña' }))
+    expect(password).toHaveAttribute('type', 'password')
   })
 
   it('valida el formulario antes de enviar', async () => {
