@@ -30,8 +30,8 @@ Credenciales de demostración (sembradas por el backend):
 |---|---|---|
 | `/` | pública | Landing de la marca: servicios, cobertura y tarifas, cotizador, rastreo, contacto y acceso al login |
 | `/login` | pública | Inicio de sesión (JWT en `localStorage`) |
-| `/panel` | autenticado | Resumen: KPIs, distribución por estado, ruta y tipo de carga |
-| `/envios` | autenticado | Tabla con filtros (estado, ruta, búsqueda), alta con cotización en vivo, detalle con historial y cambio de estado |
+| `/panel` | autenticado | Resumen: envíos, piezas, ingresos, entregados; distribución por estado, ruta, tipo de carga (piezas) y forma de pago |
+| `/envios` | autenticado | Tabla con filtros (estado, forma de pago, ruta, búsqueda). Alta con varios ítems (tipo, cantidad, peso por unidad), forma de pago (pagado, al cobro, contrato, seguro) y cotización en vivo con desglose. Detalle con ítems, registro y última gestión de entrega (fecha + operador), historial y cambio de estado (NO_ENTREGADO/NOVEDAD exigen motivo) |
 | `/rutas` | autenticado (edición: ADMIN) | Rutas y tarifas; ADMIN crea rutas, edita tarifa/tiempo y activa/desactiva |
 | `/seguimiento[/:codigo]` | pública | Rastreo por código `PC-XXXXXXXX` |
 

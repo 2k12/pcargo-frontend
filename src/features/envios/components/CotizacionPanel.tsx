@@ -1,10 +1,11 @@
 import { Loader2 } from 'lucide-react'
 import { errorMessage } from '@/lib/api'
-import { formatCurrency } from '@/lib/format'
+import { formatCurrency, formatPeso } from '@/lib/format'
 import type { CotizacionRequest } from '@/types/api'
+import { nombreTipo, piezasLabel } from '../domain'
 import { useCotizacion } from '../hooks'
 
-/** Muestra la cotización en vivo consultando POST /envios/cotizar. */
+/** Muestra la cotización en vivo consultando POST /envios/cotizar (con desglose por ítem). */
 export function CotizacionPanel({ request }: { request: CotizacionRequest | null }) {
   const { data, isFetching, error } = useCotizacion(request)
 
@@ -15,28 +16,29 @@ export function CotizacionPanel({ request }: { request: CotizacionRequest | null
         {isFetching && <Loader2 className="size-3.5 animate-spin text-muted-foreground" />}
       </div>
       {!request ? (
-        <p className="mt-1 text-sm text-muted-foreground">Completa ruta, tipo y peso para cotizar.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Completa la ruta y los ítems (tipo, cantidad y peso) para cotizar.</p>
       ) : error ? (
         <p className="mt-1 text-sm text-destructive">{errorMessage(error)}</p>
       ) : data ? (
         <>
-          <p data-testid="cotizacion-total" className="mt-1 text-3xl font-semibold tracking-tight tabular-nums">
-            {formatCurrency(data.costo)}
-          </p>
-          <dl className="mt-3 grid grid-cols-3 gap-2 text-xs text-muted-foreground">
-            <div>
-              <dt>Tarifa base</dt>
-              <dd className="text-foreground tabular-nums">{formatCurrency(data.tarifaBase)}</dd>
-            </div>
-            <div>
-              <dt>Factor</dt>
-              <dd className="text-foreground tabular-nums">×{data.factor}</dd>
-            </div>
-            <div>
-              <dt>Recargo peso</dt>
-              <dd className="text-foreground tabular-nums">{formatCurrency(data.recargoPeso)}</dd>
-            </div>
-          </dl>
+          <div className="mt-1 flex flex-wrap items-baseline justify-between gap-2">
+            <p data-testid="cotizacion-total" className="text-3xl font-semibold tracking-tight tabular-nums">
+              {formatCurrency(data.costo)}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {piezasLabel(data.totalPiezas)} · {formatPeso(data.pesoTotalKg)} · tarifa base {formatCurrency(data.tarifaBase)}
+            </p>
+          </div>
+          <ul className="mt-3 space-y-1 border-t pt-3 text-xs" aria-label="Desglose de la cotización">
+            {data.items.map((i, idx) => (
+              <li key={`${i.tipoCarga}-${idx}`} className="flex items-center justify-between gap-2 tabular-nums">
+                <span className="text-muted-foreground">
+                  {i.cantidad} {nombreTipo(i.tipoCarga, i.cantidad)} de {formatPeso(i.pesoKg)} × {formatCurrency(i.costoUnitario)}
+                </span>
+                <span className="font-medium">{formatCurrency(i.subtotal)}</span>
+              </li>
+            ))}
+          </ul>
         </>
       ) : null}
     </div>

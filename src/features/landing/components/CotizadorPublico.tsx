@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { TipoCargaPicker } from '@/features/envios/components/TipoCargaPicker'
 import { useDebounced } from '@/hooks/useDebounced'
 import { errorMessage } from '@/lib/api'
+import { nombreTipo, piezasLabel } from '@/features/envios/domain'
 import { formatCurrency, formatDuracion } from '@/lib/format'
 import type { CatalogoPublico, TipoCargaCodigo } from '@/types/api'
 import { useCotizacionPublica } from '../api'
@@ -19,20 +20,26 @@ export function CotizadorPublico({ catalogo }: { catalogo: CatalogoPublico }) {
   const [destino, setDestino] = useState<string | null>(null)
   const [tipo, setTipo] = useState<TipoCargaCodigo | undefined>()
   const [peso, setPeso] = useState('')
+  const [cantidadTxt, setCantidadTxt] = useState('1')
 
   const ciudadItems = Object.fromEntries(ciudades.map((c) => [String(c.id), c.nombre]))
   const ruta = origen && destino ? buscarRuta(rutas, Number(origen), Number(destino)) : undefined
   const tipoSel = tiposCarga.find((t) => t.codigo === tipo)
   const pesoKg = Number(peso.replace(',', '.'))
   const pesoValido = peso !== '' && pesoKg > 0 && (!tipoSel || pesoKg <= tipoSel.pesoMaxKg)
+  const cantidad = Number(cantidadTxt)
+  const cantidadValida = Number.isInteger(cantidad) && cantidad >= 1 && cantidad <= 999
 
-  const solicitud = useDebounced(ruta && tipo && pesoValido ? { rutaId: ruta.id, tipoCarga: tipo, pesoKg } : null, 300)
+  const solicitud = useDebounced(
+    ruta && tipo && pesoValido && cantidadValida ? { rutaId: ruta.id, items: [{ tipoCarga: tipo, cantidad, pesoKg }] } : null,
+    300,
+  )
   const { data, isFetching, error } = useCotizacionPublica(solicitud)
 
   const sinRuta = origen && destino && !ruta
   const resumen =
-    ruta && tipoSel && pesoValido
-      ? `Hola PCargo, quiero enviar un ${tipoSel.nombre.toLowerCase()} de ${pesoKg} kg de ${ruta.origen.nombre} a ${ruta.destino.nombre}.`
+    ruta && tipoSel && pesoValido && cantidadValida
+      ? `Hola PCargo, quiero enviar ${cantidad} ${nombreTipo(tipoSel.codigo, cantidad)} de ${pesoKg} kg c/u de ${ruta.origen.nombre} a ${ruta.destino.nombre}.`
       : undefined
 
   return (
@@ -76,23 +83,40 @@ export function CotizadorPublico({ catalogo }: { catalogo: CatalogoPublico }) {
           <TipoCargaPicker tipos={tiposCarga} value={tipo} onChange={setTipo} />
         </div>
 
-        <div className="space-y-2 sm:max-w-48">
-          <Label htmlFor="cotizador-peso">Peso aproximado (kg)</Label>
-          <Input
-            id="cotizador-peso"
-            inputMode="decimal"
-            placeholder="Ej. 2,5"
-            value={peso}
-            onChange={(e) => setPeso(e.target.value)}
-            aria-invalid={peso !== '' && !pesoValido}
-          />
-          {peso !== '' && !pesoValido && (
-            <p className="text-xs text-destructive">
-              {tipoSel && pesoKg > tipoSel.pesoMaxKg
-                ? `${tipoSel.nombre}: máximo ${tipoSel.pesoMaxKg} kg`
-                : 'Ingresa un peso mayor a 0'}
-            </p>
-          )}
+        <div className="grid gap-4 sm:max-w-sm sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="cotizador-cantidad">Cantidad</Label>
+            <Input
+              id="cotizador-cantidad"
+              type="number"
+              min={1}
+              max={999}
+              step={1}
+              inputMode="numeric"
+              value={cantidadTxt}
+              onChange={(e) => setCantidadTxt(e.target.value)}
+              aria-invalid={!cantidadValida}
+            />
+            {!cantidadValida && <p className="text-xs text-destructive">Entre 1 y 999 piezas</p>}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="cotizador-peso">Peso por unidad (kg)</Label>
+            <Input
+              id="cotizador-peso"
+              inputMode="decimal"
+              placeholder="Ej. 2,5"
+              value={peso}
+              onChange={(e) => setPeso(e.target.value)}
+              aria-invalid={peso !== '' && !pesoValido}
+            />
+            {peso !== '' && !pesoValido && (
+              <p className="text-xs text-destructive">
+                {tipoSel && pesoKg > tipoSel.pesoMaxKg
+                  ? `${tipoSel.nombre}: máximo ${tipoSel.pesoMaxKg} kg`
+                  : 'Ingresa un peso mayor a 0'}
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
@@ -109,6 +133,9 @@ export function CotizadorPublico({ catalogo }: { catalogo: CatalogoPublico }) {
                 {formatCurrency(data.costo)}
                 {isFetching && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
               </p>
+              <p className="text-sm text-muted-foreground" data-testid="cotizador-piezas">
+                × {piezasLabel(data.totalPiezas)} · {formatCurrency(data.items[0]?.costoUnitario ?? data.costo)} c/u
+              </p>
               {ruta && (
                 <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
                   <Clock className="size-3.5" /> Entrega estimada en {formatDuracion(ruta.tiempoEstimadoMin)}
@@ -117,7 +144,7 @@ export function CotizadorPublico({ catalogo }: { catalogo: CatalogoPublico }) {
             </>
           ) : (
             <p className="text-sm">
-              {isFetching ? 'Calculando…' : 'Elige origen, destino, tipo y peso para ver el precio.'}
+              {isFetching ? 'Calculando…' : 'Elige origen, destino, tipo, cantidad y peso para ver el precio.'}
             </p>
           )}
         </div>

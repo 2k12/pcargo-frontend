@@ -16,7 +16,11 @@ const seguimiento: Seguimiento = {
   estado: 'EN_TRANSITO',
   origen: 'Ibarra',
   destino: 'Quito',
-  tipoCarga: 'PAQUETE',
+  items: [
+    { tipoCarga: 'PAQUETE', cantidad: 5 },
+    { tipoCarga: 'CARTON', cantidad: 20 },
+  ],
+  totalPiezas: 25,
   creadoEn: '2026-10-07T13:00:00Z',
   historial: [
     { estado: 'REGISTRADO', nota: null, fecha: '2026-10-07T13:00:00Z', usuario: 'Operador' },
@@ -33,6 +37,7 @@ describe('SeguimientoPage (pública)', () => {
 
     expect(await screen.findByText('Salió en bus de las 10h')).toBeInTheDocument()
     expect(screen.getByText(/Ibarra/)).toBeInTheDocument()
+    expect(screen.getByTestId('seguimiento-items')).toHaveTextContent('5 paquetes · 20 cartones · 25 piezas')
     const progreso = screen.getByRole('list', { name: 'Progreso del envío' })
     expect(within(progreso).getByText('En tránsito').closest('li')).toHaveAttribute('aria-current', 'step')
 
@@ -60,5 +65,26 @@ describe('SeguimientoPage (pública)', () => {
 
     expect(await screen.findByText('PC-7K2M9QXA')).toBeInTheDocument()
     expect(fetchMock.mock.calls[0]![0]).toBe('/api/seguimiento/PC-7K2M9QXA')
+  })
+
+  it('muestra aviso con el motivo cuando el envío no pudo entregarse', async () => {
+    mockFetch(() =>
+      jsonResponse({
+        ...seguimiento,
+        estado: 'NO_ENTREGADO',
+        historial: [
+          ...seguimiento.historial,
+          { estado: 'EN_REPARTO', nota: null, fecha: '2026-10-07T17:00:00Z', usuario: null },
+          { estado: 'NO_ENTREGADO', nota: 'Destinatario ausente', fecha: '2026-10-07T18:00:00Z', usuario: null },
+        ],
+      } satisfies Seguimiento),
+    )
+    renderWithProviders(<SeguimientoPage />, { route: '/seguimiento/PC-7K2M9QXA', path: '/seguimiento/:codigo' })
+
+    const aviso = await screen.findByRole('status')
+    expect(aviso).toHaveTextContent('No pudimos entregar tu encomienda')
+    expect(aviso).toHaveTextContent('Motivo: Destinatario ausente')
+    const progreso = screen.getByRole('list', { name: 'Progreso del envío' })
+    expect(within(progreso).getByText('En reparto').closest('li')).toHaveAttribute('aria-current', 'step')
   })
 })

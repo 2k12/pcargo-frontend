@@ -1,6 +1,15 @@
-// Tipos espejo de docs/api-contract.md (v1)
+// Tipos espejo de docs/api-contract.md (v2)
 export type Rol = 'ADMIN' | 'OPERADOR'
-export type Estado = 'REGISTRADO' | 'EN_TRANSITO' | 'EN_REPARTO' | 'ENTREGADO' | 'CANCELADO'
+export type Estado =
+  | 'REGISTRADO'
+  | 'EN_TRANSITO'
+  | 'EN_REPARTO'
+  | 'ENTREGADO'
+  | 'NO_ENTREGADO'
+  | 'NOVEDAD'
+  | 'CANCELADO'
+export type ResultadoEntrega = 'ENTREGADO' | 'NO_ENTREGADO' | 'NOVEDAD'
+export type FormaPago = 'PAGADO' | 'AL_COBRO' | 'CONTRATO' | 'SEGURO'
 export type TipoCargaCodigo = 'SOBRE' | 'PAQUETE' | 'CARTON' | 'VALIJA'
 
 export interface Usuario {
@@ -53,17 +62,43 @@ export interface EventoHistorial {
   usuario: string | null
 }
 
+/** Línea de un envío: `pesoKg` es el peso POR UNIDAD. */
+export interface ItemSolicitud {
+  tipoCarga: TipoCargaCodigo
+  cantidad: number
+  pesoKg: number
+}
+
+export interface ItemEnvio extends ItemSolicitud {
+  costoUnitario: number
+  subtotal: number
+}
+
+export interface Gestion {
+  fecha: string
+  operador: string | null
+}
+
+export interface GestionEntrega extends Gestion {
+  resultado: ResultadoEntrega
+  nota: string | null
+}
+
 export interface Envio {
   id: string
   codigo: string
   remitente: { nombre: string; telefono: string }
   destinatario: { nombre: string; telefono: string; direccion: string }
   ruta: { id: number; origen: string; destino: string }
-  tipoCarga: TipoCargaCodigo
-  pesoKg: number
+  items: ItemEnvio[]
+  totalPiezas: number
+  pesoTotalKg: number
   descripcion: string | null
   costo: number
+  formaPago: FormaPago
   estado: Estado
+  registro: Gestion
+  entrega: GestionEntrega | null
   creadoEn: string
   actualizadoEn: string
   historial?: EventoHistorial[]
@@ -73,15 +108,14 @@ export interface NuevoEnvio {
   remitente: { nombre: string; telefono: string }
   destinatario: { nombre: string; telefono: string; direccion: string }
   rutaId: number
-  tipoCarga: TipoCargaCodigo
-  pesoKg: number
+  items: ItemSolicitud[]
+  formaPago: FormaPago
   descripcion?: string
 }
 
 export interface CotizacionRequest {
   rutaId: number
-  tipoCarga: TipoCargaCodigo
-  pesoKg: number
+  items: ItemSolicitud[]
 }
 
 export interface CatalogoPublico {
@@ -90,16 +124,25 @@ export interface CatalogoPublico {
   rutas: Ruta[]
 }
 
+export interface ItemCotizado extends ItemSolicitud {
+  factor: number
+  recargoPeso: number
+  costoUnitario: number
+  subtotal: number
+}
+
 export interface Cotizacion {
   costo: number
   tarifaBase: number
-  factor: number
-  recargoPeso: number
+  totalPiezas: number
+  pesoTotalKg: number
+  items: ItemCotizado[]
 }
 
 export interface FiltrosEnvios {
   estado?: Estado
   rutaId?: number
+  formaPago?: FormaPago
   q?: string
 }
 
@@ -108,15 +151,18 @@ export interface Seguimiento {
   estado: Estado
   origen: string
   destino: string
-  tipoCarga: TipoCargaCodigo
+  items: { tipoCarga: TipoCargaCodigo; cantidad: number }[]
+  totalPiezas: number
   creadoEn: string
   historial: EventoHistorial[]
 }
 
 export interface Resumen {
   totalEnvios: number
+  totalPiezas: number
   ingresos: number
   porEstado: Record<Estado, number>
-  porTipo: { tipoCarga: TipoCargaCodigo; total: number }[]
+  porTipo: { tipoCarga: TipoCargaCodigo; piezas: number }[]
   porRuta: { ruta: string; total: number }[]
+  porFormaPago: { formaPago: FormaPago; envios: number; monto: number }[]
 }

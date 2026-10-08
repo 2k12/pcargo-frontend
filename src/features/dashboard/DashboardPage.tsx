@@ -1,8 +1,8 @@
-import { CircleCheck, DollarSign, Package, Truck, type LucideIcon } from 'lucide-react'
+import { Boxes, CircleCheck, DollarSign, Package, type LucideIcon } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ESTADO_LABEL, ESTADOS, TIPO_CARGA_LABEL } from '@/features/envios/domain'
+import { ESTADO_LABEL, ESTADOS, FORMA_PAGO_LABEL, TIPO_CARGA_LABEL } from '@/features/envios/domain'
 import { ESTADO_DOT, TIPO_CARGA_ICON } from '@/features/envios/ui'
 import { errorMessage } from '@/lib/api'
 import { formatCurrency } from '@/lib/format'
@@ -66,18 +66,23 @@ export function DashboardPage() {
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Kpi label="Total de envíos" value={String(data.totalEnvios)} icon={Package} />
+            <Kpi
+              label="Total de envíos"
+              value={String(data.totalEnvios)}
+              icon={Package}
+              hint={`${(data.porEstado.EN_TRANSITO ?? 0) + (data.porEstado.EN_REPARTO ?? 0)} en camino`}
+            />
+            <Kpi label="Total de piezas" value={String(data.totalPiezas)} icon={Boxes} hint="Suma de cantidades transportadas" />
             <Kpi label="Ingresos" value={formatCurrency(data.ingresos)} icon={DollarSign} hint="Excluye cancelados" />
             <Kpi
-              label="En camino"
-              value={String((data.porEstado.EN_TRANSITO ?? 0) + (data.porEstado.EN_REPARTO ?? 0))}
-              icon={Truck}
-              hint="En tránsito + en reparto"
+              label="Entregados"
+              value={String(data.porEstado.ENTREGADO ?? 0)}
+              icon={CircleCheck}
+              hint={`${data.porEstado.NO_ENTREGADO ?? 0} no entregados · ${data.porEstado.NOVEDAD ?? 0} con novedad`}
             />
-            <Kpi label="Entregados" value={String(data.porEstado.ENTREGADO ?? 0)} icon={CircleCheck} />
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <Card>
               <CardHeader>
                 <CardTitle>Por estado</CardTitle>
@@ -109,16 +114,37 @@ export function DashboardPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Por tipo de carga</CardTitle>
-                <CardDescription>Sobres, paquetes, cartones y valijas</CardDescription>
+                <CardDescription>Piezas transportadas por tipo</CardDescription>
               </CardHeader>
               <CardContent>
                 <BarList
                   items={data.porTipo.map((t) => ({
                     label: TIPO_CARGA_LABEL[t.tipoCarga] ?? t.tipoCarga,
-                    value: t.total,
+                    value: t.piezas,
                     icon: TIPO_CARGA_ICON[t.tipoCarga],
                   }))}
                 />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Por forma de pago</CardTitle>
+                <CardDescription>Envíos y monto (excluye cancelados)</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-2.5">
+                  {data.porFormaPago.map((p) => (
+                    <li key={p.formaPago} className="flex items-center justify-between gap-2 text-sm">
+                      <span>{FORMA_PAGO_LABEL[p.formaPago] ?? p.formaPago}</span>
+                      <span className="text-right tabular-nums">
+                        <span className="font-medium">{formatCurrency(p.monto)}</span>
+                        <span className="block text-xs text-muted-foreground">
+                          {p.envios} {p.envios === 1 ? 'envío' : 'envíos'}
+                        </span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               </CardContent>
             </Card>
           </div>

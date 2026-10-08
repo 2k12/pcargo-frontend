@@ -23,9 +23,16 @@ import { errorMessage } from '@/lib/api'
 import type { CotizacionRequest } from '@/types/api'
 import { TIPOS_CARGA_DEFAULT } from '../domain'
 import { useCrearEnvio, useTiposCarga } from '../hooks'
-import { crearEnvioSchema, toNuevoEnvio, type EnvioFormValues } from '../schema'
+import { crearEnvioSchema, itemsCotizables, itemVacio, toNuevoEnvio, type EnvioFormValues } from '../schema'
 import { CotizacionPanel } from './CotizacionPanel'
-import { TipoCargaPicker } from './TipoCargaPicker'
+import { FormaPagoPicker } from './FormaPagoPicker'
+import { ItemsEditor } from './ItemsEditor'
+
+const DEFAULTS = {
+  rutaId: '',
+  descripcion: '',
+  items: [itemVacio()],
+} as unknown as Partial<EnvioFormValues>
 
 function Campo({ label, htmlFor, error, children }: { label: string; htmlFor?: string; error?: string; children: ReactNode }) {
   return (
@@ -52,16 +59,16 @@ export function NuevoEnvioDialog() {
     formState: { errors },
   } = useForm<EnvioFormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { rutaId: '', descripcion: '' },
+    defaultValues: DEFAULTS,
   })
 
-  const [rutaId, tipoCarga, pesoKg] = useWatch({ control, name: ['rutaId', 'tipoCarga', 'pesoKg'] })
-  const tipo = tipos.find((t) => t.codigo === tipoCarga)
-  const cotizable = !!rutaId && !!tipo && Number.isFinite(pesoKg) && pesoKg > 0 && pesoKg <= tipo.pesoMaxKg
-  const request = useMemo<CotizacionRequest | null>(
-    () => (cotizable ? { rutaId: Number(rutaId), tipoCarga, pesoKg } : null),
-    [cotizable, rutaId, tipoCarga, pesoKg],
-  )
+  const [rutaId, items] = useWatch({ control, name: ['rutaId', 'items'] })
+  // JSON estable: useWatch devuelve un array nuevo en cada render del field array.
+  const itemsKey = JSON.stringify(itemsCotizables(items, tipos))
+  const request = useMemo<CotizacionRequest | null>(() => {
+    const validos = JSON.parse(itemsKey) as CotizacionRequest['items'] | null
+    return rutaId && validos ? { rutaId: Number(rutaId), items: validos } : null
+  }, [rutaId, itemsKey])
   const cotizacionReq = useDebounced(request, 350)
 
   const rutaItems = Object.fromEntries(rutas.map((r) => [String(r.id), rutaLabel({ origen: r.origen.nombre, destino: r.destino.nombre })]))
@@ -70,7 +77,7 @@ export function NuevoEnvioDialog() {
     try {
       const envio = await crear.mutateAsync(toNuevoEnvio(values))
       toast.success(`Envío ${envio.codigo} registrado`)
-      reset()
+      reset(DEFAULTS)
       setOpen(false)
     } catch (e) {
       toast.error(errorMessage(e))
@@ -137,21 +144,22 @@ export function NuevoEnvioDialog() {
                 )}
               />
             </Campo>
-            <Campo label="Tipo de carga" error={errors.tipoCarga?.message}>
+            <div className="space-y-1.5">
+              <Label>Ítems</Label>
+              <ItemsEditor control={control} register={register} errors={errors} tipos={tipos} />
+            </div>
+            <Campo label="Forma de pago" error={errors.formaPago?.message}>
               <Controller
                 control={control}
-                name="tipoCarga"
-                render={({ field }) => <TipoCargaPicker tipos={tipos} value={field.value} onChange={field.onChange} />}
+                name="formaPago"
+                render={({ field }) => (
+                  <FormaPagoPicker value={field.value} onChange={field.onChange} invalid={!!errors.formaPago} />
+                )}
               />
             </Campo>
-            <div className="grid gap-4 sm:grid-cols-[160px_1fr]">
-              <Campo label="Peso (kg)" htmlFor="pesoKg" error={errors.pesoKg?.message}>
-                <Input id="pesoKg" type="number" step="0.1" min="0" {...register('pesoKg', { valueAsNumber: true })} />
-              </Campo>
-              <Campo label="Descripción (opcional)" htmlFor="descripcion" error={errors.descripcion?.message}>
-                <Textarea id="descripcion" rows={1} placeholder="Documentos, ropa, repuestos…" {...register('descripcion')} />
-              </Campo>
-            </div>
+            <Campo label="Descripción (opcional)" htmlFor="descripcion" error={errors.descripcion?.message}>
+              <Textarea id="descripcion" rows={1} placeholder="Documentos, ropa, repuestos…" {...register('descripcion')} />
+            </Campo>
           </section>
 
           <CotizacionPanel request={cotizacionReq} />
