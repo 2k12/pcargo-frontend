@@ -10,7 +10,7 @@ afterEach(() => {
 
 const envio: Envio = {
   id: '30f4b9af-89f6-45c0-aa6d-c505fdb4c0eb',
-  codigo: 'PC-BR6GSLF9',
+  numeroGuia: 7,
   remitente: { nombre: 'Textiles Atuntaqui S.A.', telefono: '0991112233' },
   destinatario: { nombre: 'Almacén El Sol', telefono: '0994445566', direccion: 'Av. 10 de Agosto N20-15, Quito' },
   ruta: { id: 13, origen: 'Atuntaqui', destino: 'Quito' },
@@ -41,7 +41,7 @@ describe('EnvioDetailSheet', () => {
     mockFetch((url) => (url.endsWith(`/envios/${envio.id}`) ? jsonResponse(envio) : jsonResponse({}, 404)))
     renderWithProviders(<EnvioDetailSheet envioId={envio.id} onClose={vi.fn()} />)
 
-    expect(await screen.findByText('PC-BR6GSLF9')).toBeInTheDocument()
+    expect(await screen.findByText('Guía 7')).toBeInTheDocument()
     expect(screen.getByText('Al cobro')).toBeInTheDocument()
     expect(screen.getAllByText('$274,50').length).toBeGreaterThan(0)
     expect(screen.getByText('170 kg')).toBeInTheDocument()

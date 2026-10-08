@@ -30,6 +30,7 @@ import { listaCiudades } from '@/features/rutas/hooks'
 import { formatCurrency, formatDuracion } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { TipoCargaCodigo } from '@/types/api'
+import { MENSAJE_GUIA_INVALIDA, normalizarGuia } from '@/features/envios/guia'
 import { useCatalogoPublico } from './api'
 import { matrizTarifas, tarifaDesde } from './cobertura'
 import { CotizadorPublico } from './components/CotizadorPublico'
@@ -57,7 +58,7 @@ const DESCRIPCION_CARGA: Record<TipoCargaCodigo, string> = {
 
 const PASOS = [
   { icon: Store, titulo: 'Deja o agenda tu envío', texto: 'Acércate a nuestra oficina en Ibarra o escríbenos por WhatsApp y coordinamos el retiro.' },
-  { icon: PackageCheck, titulo: 'Recibe tu código', texto: 'Te entregamos un código de seguimiento PC-XXXXXXXX con el costo exacto, sin sorpresas.' },
+  { icon: PackageCheck, titulo: 'Recibe tu guía', texto: 'Te entregamos tu guía con su número de seguimiento y el costo exacto, sin sorpresas.' },
   { icon: Truck, titulo: 'Entregamos a domicilio', texto: 'Llevamos tu encomienda hasta la puerta del destinatario y puedes seguirla en línea.' },
 ]
 
@@ -79,33 +80,47 @@ function Seccion({ id, titulo, subtitulo, children, className }: { id?: string; 
 
 function Rastreador({ className }: { className?: string }) {
   const navigate = useNavigate()
-  const [codigo, setCodigo] = useState('')
+  const [guia, setGuia] = useState('')
+  const [invalido, setInvalido] = useState(false)
   const buscar = (e: FormEvent) => {
     e.preventDefault()
-    const c = codigo.trim().toUpperCase()
-    if (c) navigate(`/seguimiento/${c}`)
+    if (!guia.trim()) return
+    const n = normalizarGuia(guia)
+    setInvalido(n === null)
+    if (n) navigate(`/seguimiento/${n}`)
   }
   return (
     <form onSubmit={buscar} id="rastrear" className={cn('scroll-mt-24 space-y-3 rounded-2xl border bg-card p-5 shadow-lg sm:p-6', className)}>
       <div className="space-y-1">
         <p className="font-medium">Rastrea tu encomienda</p>
-        <p className="text-sm text-muted-foreground">Ingresa el código que recibiste al enviar.</p>
+        <p className="text-sm text-muted-foreground">Ingresa el número de tu guía (con o sin ceros adelante).</p>
       </div>
       <div className="flex gap-2">
         <div className="relative flex-1">
           <PackageSearch className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            aria-label="Código de seguimiento"
-            className="h-10 pl-8 font-mono uppercase"
-            placeholder="PC-XXXXXXXX"
-            value={codigo}
-            onChange={(e) => setCodigo(e.target.value)}
+            aria-label="Número de guía"
+            aria-invalid={invalido}
+            inputMode="numeric"
+            autoComplete="off"
+            className="h-10 pl-8 font-mono"
+            placeholder="N.º de guía"
+            value={guia}
+            onChange={(e) => {
+              setGuia(e.target.value)
+              setInvalido(false)
+            }}
           />
         </div>
         <Button type="submit" size="lg" className="h-10">
           <Search /> Rastrear
         </Button>
       </div>
+      {invalido && (
+        <p role="alert" className="text-xs text-destructive">
+          {MENSAJE_GUIA_INVALIDA}
+        </p>
+      )}
     </form>
   )
 }
@@ -119,7 +134,7 @@ function AvisosHero() {
           <Truck className="size-4" />
         </span>
         <div className="leading-tight">
-          <p className="font-mono text-[11px] text-muted-foreground">PC-7K2M9QXA</p>
+          <p className="font-mono text-[11px] text-muted-foreground">Guía 0040425</p>
           <p className="text-xs font-medium">En reparto · Otavalo</p>
         </div>
       </div>
@@ -350,7 +365,7 @@ export function LandingPage() {
           <div className="grid gap-4 md:grid-cols-3">
             {[
               { icon: ShieldCheck, t: 'Precio transparente', d: 'La tarifa se calcula por sistema: pagas exactamente lo cotizado, y puedes pagar al cobro.' },
-              { icon: PackageSearch, t: 'Trazabilidad total', d: 'Cada cambio de estado queda registrado y lo ves con tu código, a cualquier hora.' },
+              { icon: PackageSearch, t: 'Trazabilidad total', d: 'Cada cambio de estado queda registrado y lo ves con tu número de guía, a cualquier hora.' },
               { icon: MapPin, t: 'Gente de la zona', d: 'Entregamos en la puerta, no en una agencia. Y si algo pasa, te avisamos el motivo.' },
             ].map((x) => (
               <div key={x.t} className="space-y-3 rounded-2xl border bg-card p-6">

@@ -3,14 +3,14 @@ import { api } from '@/lib/api'
 import type { Seguimiento } from '@/types/api'
 
 export const seguimientoApi = {
-  consultar: (codigo: string) => api.get<Seguimiento>(`/seguimiento/${encodeURIComponent(codigo)}`),
+  consultar: (numeroGuia: string) => api.get<Seguimiento>(`/seguimiento/${encodeURIComponent(numeroGuia)}`),
 }
 
-export function useSeguimiento(codigo: string | undefined) {
+export function useSeguimiento(numeroGuia: string | undefined) {
   return useQuery({
-    queryKey: ['seguimiento', codigo],
-    queryFn: () => seguimientoApi.consultar(codigo!),
-    enabled: !!codigo,
+    queryKey: ['seguimiento', numeroGuia],
+    queryFn: () => seguimientoApi.consultar(numeroGuia!),
+    enabled: !!numeroGuia,
     retry: false,
   })
 }

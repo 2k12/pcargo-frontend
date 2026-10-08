@@ -78,7 +78,7 @@ export function EnviosPage() {
           <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             className="pl-8"
-            placeholder="Buscar por código, remitente o destinatario"
+            placeholder="Buscar por N.º de guía, remitente o destinatario"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
             aria-label="Buscar envíos"
@@ -166,7 +166,7 @@ export function EnviosPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="pl-4">Código</TableHead>
+                  <TableHead className="pl-4">Guía</TableHead>
                   <TableHead>Destinatario</TableHead>
                   <TableHead className="hidden md:table-cell">Ruta</TableHead>
                   <TableHead className="hidden sm:table-cell">Carga</TableHead>
@@ -179,7 +179,7 @@ export function EnviosPage() {
               <TableBody>
                 {envios.map((e) => (
                   <TableRow key={e.id} className="cursor-pointer" onClick={() => setSeleccionado(e.id)}>
-                    <TableCell className="pl-4 font-mono text-xs">{e.codigo}</TableCell>
+                    <TableCell className="pl-4 font-mono text-xs">{e.numeroGuia}</TableCell>
                     <TableCell>
                       <span className="block font-medium">{e.destinatario.nombre}</span>
                       <span className="block text-xs text-muted-foreground">de {e.remitente.nombre}</span>

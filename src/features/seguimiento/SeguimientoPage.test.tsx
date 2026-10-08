@@ -12,7 +12,7 @@ afterEach(() => {
 })
 
 const seguimiento: Seguimiento = {
-  codigo: 'PC-7K2M9QXA',
+  numeroGuia: 40425,
   estado: 'EN_TRANSITO',
   origen: 'Ibarra',
   destino: 'Quito',
@@ -29,11 +29,11 @@ const seguimiento: Seguimiento = {
 }
 
 describe('SeguimientoPage (pública)', () => {
-  it('consulta el código sin token y muestra estado, ruta e historial', async () => {
+  it('consulta la guía sin token y muestra estado, ruta e historial', async () => {
     const fetchMock = mockFetch((url) =>
-      url.endsWith('/seguimiento/PC-7K2M9QXA') ? jsonResponse(seguimiento) : jsonResponse({}, 404),
+      url.endsWith('/seguimiento/40425') ? jsonResponse(seguimiento) : jsonResponse({}, 404),
     )
-    renderWithProviders(<SeguimientoPage />, { route: '/seguimiento/PC-7K2M9QXA', path: '/seguimiento/:codigo' })
+    renderWithProviders(<SeguimientoPage />, { route: '/seguimiento/40425', path: '/seguimiento/:numeroGuia' })
 
     expect(await screen.findByText('Salió en bus de las 10h')).toBeInTheDocument()
     expect(screen.getByText(/Ibarra/)).toBeInTheDocument()
@@ -45,26 +45,38 @@ describe('SeguimientoPage (pública)', () => {
     expect((init!.headers as Record<string, string>).Authorization).toBeUndefined()
   })
 
-  it('muestra mensaje amigable cuando el código no existe', async () => {
+  it('muestra mensaje amigable cuando la guía no existe', async () => {
     mockFetch(() => jsonResponse({ error: { code: 'NO_ENCONTRADO', message: 'Envío no encontrado' } }, 404))
-    renderWithProviders(<SeguimientoPage />, { route: '/seguimiento/PC-NOEXISTE', path: '/seguimiento/:codigo' })
+    renderWithProviders(<SeguimientoPage />, { route: '/seguimiento/999999', path: '/seguimiento/:numeroGuia' })
     expect(await screen.findByText('No encontramos ese envío')).toBeInTheDocument()
   })
 
-  it('normaliza el código a mayúsculas al buscar', async () => {
+  it('busca la guía ignorando los ceros a la izquierda', async () => {
     const fetchMock = mockFetch(() => jsonResponse(seguimiento))
     const user = userEvent.setup()
     renderWithProviders(<SeguimientoPage />, {
       route: '/seguimiento',
       path: '/seguimiento',
-      extraRoutes: [{ path: '/seguimiento/:codigo', element: <SeguimientoPage /> }],
+      extraRoutes: [{ path: '/seguimiento/:numeroGuia', element: <SeguimientoPage /> }],
     })
 
-    await user.type(screen.getByLabelText('Código de seguimiento'), ' pc-7k2m9qxa ')
+    await user.type(screen.getByLabelText('Número de guía'), ' 0040425 ')
     await user.click(screen.getByRole('button', { name: /Buscar/ }))
 
-    expect(await screen.findByText('PC-7K2M9QXA')).toBeInTheDocument()
-    expect(fetchMock.mock.calls[0]![0]).toBe('/api/seguimiento/PC-7K2M9QXA')
+    expect(await screen.findByText('Guía 40425')).toBeInTheDocument()
+    expect(fetchMock.mock.calls[0]![0]).toBe('/api/seguimiento/40425')
+  })
+
+  it('avisa si se escriben letras y no consulta', async () => {
+    const fetchMock = mockFetch(() => jsonResponse(seguimiento))
+    const user = userEvent.setup()
+    renderWithProviders(<SeguimientoPage />, { route: '/seguimiento', path: '/seguimiento' })
+
+    await user.type(screen.getByLabelText('Número de guía'), 'PC-7K2M9QXA')
+    await user.click(screen.getByRole('button', { name: /Buscar/ }))
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/solo los números/)
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('muestra aviso con el motivo cuando el envío no pudo entregarse', async () => {
@@ -79,7 +91,7 @@ describe('SeguimientoPage (pública)', () => {
         ],
       } satisfies Seguimiento),
     )
-    renderWithProviders(<SeguimientoPage />, { route: '/seguimiento/PC-7K2M9QXA', path: '/seguimiento/:codigo' })
+    renderWithProviders(<SeguimientoPage />, { route: '/seguimiento/40425', path: '/seguimiento/:numeroGuia' })
 
     const aviso = await screen.findByRole('status')
     expect(aviso).toHaveTextContent('No pudimos entregar tu encomienda')

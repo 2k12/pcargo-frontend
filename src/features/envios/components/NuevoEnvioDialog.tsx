@@ -31,6 +31,7 @@ import { ItemsEditor } from './ItemsEditor'
 const DEFAULTS = {
   rutaId: '',
   descripcion: '',
+  numeroGuia: '',
   items: [itemVacio()],
 } as unknown as Partial<EnvioFormValues>
 
@@ -94,7 +95,7 @@ export function NuevoEnvioDialog() {
   const onSubmit = async (values: EnvioFormValues) => {
     try {
       const envio = await crear.mutateAsync(toNuevoEnvio(values))
-      toast.success(`Envío ${envio.codigo} registrado`)
+      toast.success(`Guía ${envio.numeroGuia} registrada`)
       reset(DEFAULTS)
       setOpen(false)
     } catch (e) {
@@ -111,7 +112,7 @@ export function NuevoEnvioDialog() {
       <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Nuevo envío</DialogTitle>
-          <DialogDescription>Registra una encomienda y obtén su código de seguimiento.</DialogDescription>
+          <DialogDescription>Registra la encomienda con el número de su guía física.</DialogDescription>
         </DialogHeader>
 
         <form id="nuevo-envio" onSubmit={handleSubmit(onSubmit)} className="space-y-3" noValidate>
@@ -143,6 +144,12 @@ export function NuevoEnvioDialog() {
           </Paso>
 
           <Paso n={3} titulo="Carga">
+            <Campo label="N.º de guía (opcional)" htmlFor="numeroGuia" error={errors.numeroGuia?.message}>
+              <Input id="numeroGuia" inputMode="numeric" autoComplete="off" placeholder="Ej. 0040425" className="font-mono" {...register('numeroGuia')} />
+              {!errors.numeroGuia && (
+                <p className="text-xs text-muted-foreground">Escribe el número impreso en la guía. Si lo dejas vacío, se asigna el siguiente.</p>
+              )}
+            </Campo>
             <Campo label="Ruta" error={errors.rutaId?.message}>
               <Controller
                 control={control}

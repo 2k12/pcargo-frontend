@@ -1,5 +1,6 @@
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useParams } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { jsonResponse, mockFetch, renderWithProviders } from '@/test/utils'
 import type { CatalogoPublico, Ruta } from '@/types/api'
@@ -79,15 +80,19 @@ describe('LandingPage (pública)', () => {
     )
   })
 
-  it('el rastreador lleva al seguimiento con el código normalizado', async () => {
+  it('el rastreador lleva al seguimiento con la guía sin ceros a la izquierda', async () => {
     mockFetch(() => jsonResponse(catalogo))
     const user = userEvent.setup()
+    function Destino() {
+      const { numeroGuia } = useParams()
+      return <p>Seguimiento de {numeroGuia}</p>
+    }
     renderWithProviders(<LandingPage />, {
-      extraRoutes: [{ path: '/seguimiento/:codigo', element: <p>Página de seguimiento</p> }],
+      extraRoutes: [{ path: '/seguimiento/:numeroGuia', element: <Destino /> }],
     })
 
-    await user.type(screen.getByLabelText('Código de seguimiento'), ' pc-abcd2345 ')
+    await user.type(screen.getByLabelText('Número de guía'), ' 0040425 ')
     await user.click(screen.getByRole('button', { name: /Rastrear/ }))
-    expect(await screen.findByText('Página de seguimiento')).toBeInTheDocument()
+    expect(await screen.findByText('Seguimiento de 40425')).toBeInTheDocument()
   })
 })

@@ -38,7 +38,7 @@ const ruta: Ruta = {
 
 const envio = {
   id: 'e1',
-  codigo: 'PC-ABC12345',
+  numeroGuia: 40425,
   remitente: { nombre: 'Ana', telefono: '0991112233' },
   destinatario: { nombre: 'Almacén El Sol', telefono: '0994445566', direccion: 'Quito' },
   ruta: { id: 7, origen: 'Ibarra', destino: 'Quito' },

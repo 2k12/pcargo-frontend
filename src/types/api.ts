@@ -95,7 +95,8 @@ export interface GestionEntrega extends Gestion {
 
 export interface Envio {
   id: string
-  codigo: string
+  /** Número de la guía física (contrato v4). */
+  numeroGuia: number
   remitente: { nombre: string; telefono: string }
   destinatario: { nombre: string; telefono: string; direccion: string }
   ruta: { id: number; origen: string; destino: string }
@@ -120,6 +121,8 @@ export interface NuevoEnvio {
   items: ItemSolicitud[]
   formaPago: FormaPago
   descripcion?: string
+  /** Guía física; vacío → el sistema asigna el consecutivo. */
+  numeroGuia?: string
 }
 
 export interface CotizacionRequest {
@@ -156,7 +159,8 @@ export interface FiltrosEnvios {
 }
 
 export interface Seguimiento {
-  codigo: string
+  /** Número de la guía física (contrato v4). */
+  numeroGuia: number
   estado: Estado
   origen: string
   destino: string

@@ -20,7 +20,7 @@ export function EnvioCard({ envio: e, onSelect, className }: { envio: Envio; onS
       )}
     >
       <span className="flex items-center justify-between gap-2">
-        <span className="font-mono text-xs text-muted-foreground">{e.codigo}</span>
+        <span className="font-mono text-xs text-muted-foreground">Guía {e.numeroGuia}</span>
         <EstadoBadge estado={e.estado} />
       </span>
       <span className="flex items-end justify-between gap-3">

@@ -28,7 +28,7 @@ export function AppRoutes() {
         <Route index element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/seguimiento" element={<SeguimientoPage />} />
-        <Route path="/seguimiento/:codigo" element={<SeguimientoPage />} />
+        <Route path="/seguimiento/:numeroGuia" element={<SeguimientoPage />} />
         <Route element={<ProtectedRoute />}>
           <Route element={<AppShell />}>
             <Route path="/panel" element={<DashboardPage />} />

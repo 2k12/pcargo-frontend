@@ -15,6 +15,7 @@ import { formatDateTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { Estado, EventoHistorial } from '@/types/api'
 import { ESTADO_TONO } from '@/features/envios/ui'
+import { MENSAJE_GUIA_INVALIDA, normalizarGuia } from '@/features/envios/guia'
 import { useSeguimiento } from './api'
 
 /** Aviso para estados fuera del camino feliz, con el motivo registrado. */
@@ -94,15 +95,18 @@ function Stepper({ estado }: { estado: Estado }) {
 }
 
 export function SeguimientoPage() {
-  const { codigo } = useParams<{ codigo: string }>()
+  const { numeroGuia } = useParams<{ numeroGuia: string }>()
   const navigate = useNavigate()
-  const [valor, setValor] = useState(codigo ?? '')
-  const { data, isLoading, error } = useSeguimiento(codigo)
+  const [valor, setValor] = useState(numeroGuia ?? '')
+  const [invalido, setInvalido] = useState(false)
+  const { data, isLoading, error } = useSeguimiento(numeroGuia)
 
   const buscar = (e: FormEvent) => {
     e.preventDefault()
-    const c = valor.trim().toUpperCase()
-    if (c) navigate(`/seguimiento/${c}`)
+    if (!valor.trim()) return
+    const n = normalizarGuia(valor)
+    setInvalido(n === null)
+    if (n) navigate(`/seguimiento/${n}`)
   }
 
   const noEncontrado = error instanceof ApiError && error.status === 404
@@ -119,18 +123,24 @@ export function SeguimientoPage() {
       <main className="mx-auto max-w-2xl space-y-6 px-4 py-8 sm:py-12">
         <div className="space-y-2 text-center">
           <h1 className="text-2xl font-semibold tracking-tight">Rastrea tu encomienda</h1>
-          <p className="text-sm text-muted-foreground">Ingresa el código que recibiste al enviar (ej. PC-7K2M9QXA).</p>
+          <p className="text-sm text-muted-foreground">Ingresa el número de tu guía, con o sin los ceros de adelante (ej. 0040425).</p>
         </div>
 
         <form onSubmit={buscar} className="flex gap-2">
           <div className="relative flex-1">
             <PackageSearch className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              aria-label="Código de seguimiento"
-              className="h-10 pl-8 font-mono uppercase"
-              placeholder="PC-XXXXXXXX"
+              aria-label="Número de guía"
+              aria-invalid={invalido}
+              inputMode="numeric"
+              autoComplete="off"
+              className="h-10 pl-8 font-mono"
+              placeholder="N.º de guía"
               value={valor}
-              onChange={(e) => setValor(e.target.value)}
+              onChange={(e) => {
+                setValor(e.target.value)
+                setInvalido(false)
+              }}
             />
           </div>
           <Button type="submit" size="lg" className="h-10">
@@ -138,6 +148,11 @@ export function SeguimientoPage() {
             Buscar
           </Button>
         </form>
+        {invalido && (
+          <p role="alert" className="-mt-3 text-sm text-destructive">
+            {MENSAJE_GUIA_INVALIDA}
+          </p>
+        )}
 
         {isLoading && (
           <div className="flex justify-center py-10">
@@ -151,7 +166,7 @@ export function SeguimientoPage() {
               {noEncontrado ? (
                 <>
                   <p className="font-medium">No encontramos ese envío</p>
-                  <p className="text-muted-foreground">Verifica el código e inténtalo nuevamente.</p>
+                  <p className="text-muted-foreground">Verifica el número de la guía e inténtalo nuevamente.</p>
                 </>
               ) : (
                 <p className="text-destructive">{errorMessage(error)}</p>
@@ -164,7 +179,7 @@ export function SeguimientoPage() {
           <Card>
             <CardHeader className="flex flex-row items-start justify-between gap-4">
               <div className="space-y-1">
-                <CardTitle className="font-mono">{data.codigo}</CardTitle>
+                <CardTitle className="font-mono">Guía {data.numeroGuia}</CardTitle>
                 <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
                   {data.origen}
                   <ArrowRight className="size-3.5" />

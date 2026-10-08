@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { ItemSolicitud, NuevoEnvio, TipoCarga } from '@/types/api'
+import { MENSAJE_GUIA_INVALIDA, normalizarGuia } from './guia'
 
 export const MAX_ITEMS = 20
 export const MAX_CANTIDAD = 999
@@ -44,6 +45,11 @@ export function crearEnvioSchema(tipos: TipoCarga[]) {
       .max(MAX_ITEMS, `Máximo ${MAX_ITEMS} ítems`),
     formaPago: z.enum(['PAGADO', 'AL_COBRO', 'CONTRATO', 'SEGURO'], { message: 'Selecciona la forma de pago' }),
     descripcion: z.string().trim().max(200).optional(),
+    // Guía física (opcional): solo dígitos, admite ceros a la izquierda.
+    numeroGuia: z
+      .string()
+      .optional()
+      .refine((v) => !v?.trim() || normalizarGuia(v) !== null, MENSAJE_GUIA_INVALIDA),
   })
 }
 
@@ -79,5 +85,6 @@ export function toNuevoEnvio(v: EnvioFormValues): NuevoEnvio {
     items: v.items.map(({ tipoCarga, cantidad, pesoKg }) => ({ tipoCarga, cantidad, pesoKg })),
     formaPago: v.formaPago,
     descripcion: v.descripcion || undefined,
+    ...(v.numeroGuia?.trim() ? { numeroGuia: normalizarGuia(v.numeroGuia)! } : {}),
   }
 }

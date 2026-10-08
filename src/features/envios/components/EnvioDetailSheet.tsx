@@ -112,7 +112,7 @@ export function EnvioDetailSheet({ envioId, onClose }: { envioId: string | null;
   const transicionar = async (estado: Estado, nota: string) => {
     try {
       const actualizado = await cambiar.mutateAsync({ estado, nota })
-      toast.success(`Envío ${actualizado.codigo}: ${ESTADO_LABEL[estado].toLowerCase()}`)
+      toast.success(`Guía ${actualizado.numeroGuia}: ${ESTADO_LABEL[estado].toLowerCase()}`)
     } catch (e) {
       toast.error(errorMessage(e))
       throw e
@@ -121,7 +121,7 @@ export function EnvioDetailSheet({ envioId, onClose }: { envioId: string | null;
 
   const copiarCodigo = () => {
     if (!envio) return
-    navigator.clipboard?.writeText(envio.codigo).then(() => toast.success('Código copiado'))
+    navigator.clipboard?.writeText(String(envio.numeroGuia)).then(() => toast.success('Número de guía copiado'))
   }
 
   return (
@@ -129,9 +129,9 @@ export function EnvioDetailSheet({ envioId, onClose }: { envioId: string | null;
       <SheetContent className="w-full gap-0 overflow-y-auto sm:max-w-lg">
         <SheetHeader className="border-b">
           <SheetTitle className="flex items-center gap-2 font-mono">
-            {envio?.codigo ?? 'Envío'}
+            {envio ? `Guía ${envio.numeroGuia}` : 'Envío'}
             {envio && (
-              <Button variant="ghost" size="icon-xs" onClick={copiarCodigo} aria-label="Copiar código">
+              <Button variant="ghost" size="icon-xs" onClick={copiarCodigo} aria-label="Copiar número de guía">
                 <Copy />
               </Button>
             )}
