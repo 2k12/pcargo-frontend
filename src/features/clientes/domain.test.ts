@@ -9,6 +9,7 @@ const cliente = (id: string, nombre: string, telefono: string, extra: Partial<Cl
   direccion: null,
   notas: null,
   creadoEn: '2026-09-01T00:00:00.000Z',
+  consentimientoEn: '2026-10-08T15:00:00.000Z',
   envios: 0,
   monto: 0,
   ultimoEnvio: null,

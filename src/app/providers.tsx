@@ -3,6 +3,7 @@ import { ThemeProvider } from 'next-themes'
 import { useState, type ReactNode } from 'react'
 import { AuthProvider } from '@/features/auth/AuthProvider'
 import { ApiError } from '@/lib/api'
+import { CLAVE_TEMA } from '@/lib/tema'
 
 function createQueryClient() {
   return new QueryClient({
@@ -20,7 +21,7 @@ function createQueryClient() {
 export function AppProviders({ children }: { children: ReactNode }) {
   const [queryClient] = useState(createQueryClient)
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+    <ThemeProvider storageKey={CLAVE_TEMA} attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           {/* Toaster vive en AppShell: todos los avisos son del panel y así la landing no descarga sonner. */}

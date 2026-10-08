@@ -129,6 +129,8 @@ export interface NuevoEnvio {
   clienteId?: string
   /** Sin clienteId: guarda al remitente como cliente frecuente (o reutiliza el de su teléfono). */
   guardarCliente?: boolean
+  /** Obligatorio (true) junto con guardarCliente: el remitente aceptó que guardemos sus datos. */
+  consentimientoCliente?: boolean
 }
 
 export interface CotizacionRequest {
@@ -196,6 +198,8 @@ export interface Cliente {
   direccion: string | null
   notas: string | null
   creadoEn: string
+  /** Cuándo aceptó que se guarden sus datos (LOPDP); null en clientes anteriores al contrato v7. */
+  consentimientoEn: string | null
   /** Envíos a su nombre (incluye cancelados). */
   envios: number
   /** Suma de sus envíos no cancelados. */
@@ -209,6 +213,12 @@ export interface DatosCliente {
   direccion?: string | null
   notas?: string | null
 }
+
+/** Alta de cliente: exige el consentimiento del titular para guardar sus datos. */
+export type NuevoCliente = DatosCliente & { consentimiento: true }
+
+/** Edición; `consentimiento: true` registra el de un cliente antiguo. */
+export type CambiosCliente = Partial<DatosCliente> & { consentimiento?: true }
 
 export interface FiltroResumen {
   clienteId?: string

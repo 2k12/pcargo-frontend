@@ -61,7 +61,7 @@ describe('LandingPage (pública)', () => {
     expect(within(tabla).getAllByText('$6,00')).toHaveLength(2)
     expect(within(tabla).getByText('$2,00')).toBeInTheDocument()
 
-    const accesos = screen.getAllByRole('link', { name: /Acceso personal/ })
+    const accesos = screen.getAllByRole('link', { name: /Acceso del personal/ })
     expect(accesos.length).toBeGreaterThan(0)
     for (const a of accesos) expect(a).toHaveAttribute('href', '/login')
 
@@ -104,5 +104,50 @@ describe('LandingPage (pública)', () => {
     await user.type(screen.getByLabelText('Número de guía'), ' 0040425 ')
     await user.click(screen.getByRole('button', { name: /Rastrear/ }))
     expect(await screen.findByText('Seguimiento de 40425')).toBeInTheDocument()
+  })
+})
+
+describe('LandingPage — información veraz y legal', () => {
+  it('no publica horario ni correo sin confirmar', async () => {
+    mockFetch(() => jsonResponse(catalogo))
+    renderWithProviders(<LandingPage />)
+    const seccion = (await screen.findByRole('heading', { name: 'Contáctanos' })).closest('section')!
+    expect(within(seccion).queryByText('Horario')).not.toBeInTheDocument()
+    expect(within(seccion).queryByText('Correo')).not.toBeInTheDocument()
+    expect(within(seccion).queryByText(/@pcargo\.ec/)).not.toBeInTheDocument()
+  })
+
+  it('la foto generada con IA se declara ilustrativa y su texto alternativo no dice que es personal real', async () => {
+    mockFetch(() => jsonResponse(catalogo))
+    renderWithProviders(<LandingPage />)
+    const foto = await screen.findByRole('img', { name: /repartidor con uniforme azul/ })
+    expect(foto.getAttribute('alt')).not.toMatch(/de PCargo/)
+    expect(screen.getByText('Imagen ilustrativa generada con inteligencia artificial.')).toBeInTheDocument()
+  })
+
+  it('el pie enlaza las políticas y muestra los datos del negocio', async () => {
+    mockFetch(() => jsonResponse(catalogo))
+    renderWithProviders(<LandingPage />)
+    const footer = screen.getByRole('contentinfo')
+    const legal = within(footer).getByRole('navigation', { name: 'Información legal' })
+    for (const [nombre, href] of [
+      ['Política de privacidad', '/privacidad'],
+      ['Términos y condiciones', '/terminos'],
+      ['Política de pago al cobro', '/pago-al-cobro'],
+      ['Política de cookies', '/cookies'],
+    ]) {
+      expect(within(legal).getByRole('link', { name: nombre })).toHaveAttribute('href', href)
+    }
+    expect(within(footer).getByText(/RUC/)).toBeInTheDocument()
+  })
+
+  it('los enlaces a WhatsApp y Google Maps avisan que se abren en otra pestaña', async () => {
+    mockFetch(() => jsonResponse(catalogo))
+    renderWithProviders(<LandingPage />)
+    await screen.findByRole('heading', { name: 'Contáctanos' })
+    for (const enlace of screen.getAllByRole('link').filter((a) => a.getAttribute('target') === '_blank')) {
+      expect(enlace).toHaveAccessibleName(/se abre en una pestaña nueva/)
+      expect(enlace.getAttribute('rel')).toContain('noopener')
+    }
   })
 })

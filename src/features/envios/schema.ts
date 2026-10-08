@@ -53,8 +53,16 @@ export function crearEnvioSchema(tipos: TipoCarga[]) {
     // Cliente frecuente elegido, o guardar al remitente como cliente nuevo.
     clienteId: z.string().optional(),
     guardarCliente: z.boolean().optional(),
+    consentimientoCliente: z.boolean().optional(),
   })
+    // LOPDP: guardar al remitente como cliente frecuente exige su consentimiento expreso.
+    .refine((v) => !v.guardarCliente || !!v.clienteId || v.consentimientoCliente === true, {
+      path: ['consentimientoCliente'],
+      message: MENSAJE_CONSENTIMIENTO,
+    })
 }
+
+export const MENSAJE_CONSENTIMIENTO = 'Confirma que el cliente aceptó que guardemos sus datos'
 
 export type EnvioFormValues = z.infer<ReturnType<typeof crearEnvioSchema>>
 
@@ -89,6 +97,6 @@ export function toNuevoEnvio(v: EnvioFormValues): NuevoEnvio {
     formaPago: v.formaPago,
     descripcion: v.descripcion || undefined,
     ...(v.numeroGuia?.trim() ? { numeroGuia: normalizarGuia(v.numeroGuia)! } : {}),
-    ...(v.clienteId ? { clienteId: v.clienteId } : v.guardarCliente ? { guardarCliente: true } : {}),
+    ...(v.clienteId ? { clienteId: v.clienteId } : v.guardarCliente ? { guardarCliente: true, consentimientoCliente: v.consentimientoCliente === true } : {}),
   }
 }

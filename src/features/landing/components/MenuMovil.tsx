@@ -2,6 +2,7 @@ import { LogIn, Menu, MessageCircle, PackageSearch } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { Logo } from '@/components/brand/PCargoLogo'
+import { EnlaceExterno } from '@/components/EnlaceExterno'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { whatsappUrl } from '../marca'
@@ -32,11 +33,11 @@ export function MenuMovil({ secciones }: { secciones: { href: string; label: str
           </Link>
         </nav>
         <div className="mt-auto space-y-2 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-          <Button size="lg" variant="outline" className="w-full" nativeButton={false} render={<a href={whatsappUrl()} target="_blank" rel="noreferrer" />}>
+          <Button size="lg" variant="outline" className="w-full" nativeButton={false} render={<EnlaceExterno href={whatsappUrl()} />}>
             <MessageCircle /> Escríbenos por WhatsApp
           </Button>
           <Button size="lg" className="w-full" nativeButton={false} render={<Link to="/login" />}>
-            <LogIn /> Acceso personal
+            <LogIn /> Acceso del personal
           </Button>
         </div>
       </SheetContent>
@@ -50,8 +51,8 @@ export function WhatsAppFlotante() {
     <a
       href={whatsappUrl()}
       target="_blank"
-      rel="noreferrer"
-      aria-label="¿Dudas? Escríbenos por WhatsApp"
+      rel="noopener noreferrer"
+      aria-label="¿Dudas? Escríbenos por WhatsApp (se abre en una pestaña nueva)"
       className="fixed right-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-40 inline-flex items-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-medium text-primary-foreground shadow-lg shadow-primary/30 transition-transform hover:scale-105 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
     >
       <MessageCircle className="size-5" />

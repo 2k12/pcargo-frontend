@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { generarCatalogoAgentes, generarLlmsTxt, generarRobotsTxt, generarSitemap } from './agentic.ts'
+import { generarCatalogoAgentes, generarLlmsTxt, generarRobotsTxt, generarSitemap, RUTAS_LEGALES } from './agentic.ts'
 
 // Mismas reglas que verifica Lighthouse 13.5 (audits llms-txt y ard-schema).
 const URN = /^urn:air:([a-zA-Z0-9.-]+)(?::([a-zA-Z0-9._:-]+))?:([a-zA-Z0-9._-]+)$/
@@ -39,6 +39,8 @@ describe('sitemap.xml', () => {
     const xml = generarSitemap('https://pcargo.ec/')!
     expect(xml).toContain('<loc>https://pcargo.ec/</loc>')
     expect(xml).toContain('<loc>https://pcargo.ec/seguimiento</loc>')
+    expect(xml).toContain('<loc>https://pcargo.ec/privacidad</loc>')
+    expect(xml).toContain('<loc>https://pcargo.ec/pago-al-cobro</loc>')
     expect(xml).not.toContain('/panel')
     expect(generarSitemap(undefined)).toBeNull()
   })
@@ -63,5 +65,13 @@ describe('ai-catalog.json (ARD)', () => {
     expect(e.url).toBeUndefined()
     expect(e.data).toBeTypeOf('object')
     expect(e.identifier).toMatch(URN)
+  })
+})
+
+describe('páginas legales', () => {
+  it('coinciden con las rutas de la app y aparecen en llms.txt', () => {
+    expect(RUTAS_LEGALES.map((l) => l.ruta)).toEqual(['/privacidad', '/terminos', '/pago-al-cobro', '/cookies'])
+    const txt = generarLlmsTxt('https://pcargo.ec')
+    for (const l of RUTAS_LEGALES) expect(txt).toContain(`(https://pcargo.ec${l.ruta})`)
   })
 })

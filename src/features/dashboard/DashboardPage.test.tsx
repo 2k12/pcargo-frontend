@@ -43,6 +43,7 @@ const cliente: Cliente = {
   direccion: 'Av. Julio Andrade 5-20',
   notas: null,
   creadoEn: '2026-09-01T00:00:00.000Z',
+  consentimientoEn: '2026-10-08T15:00:00.000Z',
   envios: 12,
   monto: 80,
   ultimoEnvio: '2026-10-07T10:00:00.000Z',
@@ -74,6 +75,7 @@ const envio = {
   registro: { fecha: '2026-10-07T10:00:00.000Z', operador: 'Operador' },
   entrega: null,
   creadoEn: '2026-10-07T10:00:00.000Z',
+  consentimientoEn: '2026-10-08T15:00:00.000Z',
   actualizadoEn: '2026-10-07T10:00:00.000Z',
   historial: [],
 } as unknown as Envio

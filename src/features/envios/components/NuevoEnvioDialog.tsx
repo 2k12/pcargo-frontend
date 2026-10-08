@@ -21,6 +21,7 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { useClientes } from '@/features/clientes/api'
 import { ClienteBuscador } from '@/features/clientes/components/ClienteBuscador'
+import { ConsentimientoDatos } from '@/features/clientes/components/ConsentimientoDatos'
 import { clientePorTelefono, digitos } from '@/features/clientes/domain'
 import { rutaLabel, useRutas } from '@/features/rutas/hooks'
 import { useDebounced } from '@/hooks/useDebounced'
@@ -39,6 +40,7 @@ const DEFAULTS = {
   numeroGuia: '',
   clienteId: '',
   guardarCliente: false,
+  consentimientoCliente: false,
   items: [itemVacio()],
 } as unknown as Partial<EnvioFormValues>
 
@@ -127,7 +129,10 @@ export function NuevoEnvioDialog({
     if (open) reset(cliente ? conCliente(cliente) : DEFAULTS)
   }, [open, cliente, reset])
 
-  const [clienteId, remitenteTelefono] = useWatch({ control, name: ['clienteId', 'remitenteTelefono'] })
+  const [clienteId, remitenteTelefono, guardarCliente] = useWatch({
+    control,
+    name: ['clienteId', 'remitenteTelefono', 'guardarCliente'],
+  })
   const elegido = clienteId ? clientes.find((c) => c.id === clienteId) : undefined
   // Sin cliente elegido: si el teléfono ya es de un cliente, el servidor lo asociará solo.
   const reconocido = !clienteId ? clientePorTelefono(clientes, remitenteTelefono ?? '') : undefined
@@ -135,6 +140,7 @@ export function NuevoEnvioDialog({
   const elegirRemitente = (c: Cliente) => {
     setValue('clienteId', c.id)
     setValue('guardarCliente', false)
+    setValue('consentimientoCliente', false)
     setValue('remitenteNombre', c.nombre, { shouldValidate: !!errors.remitenteNombre })
     setValue('remitenteTelefono', c.telefono, { shouldValidate: !!errors.remitenteTelefono })
   }
@@ -190,7 +196,10 @@ export function NuevoEnvioDialog({
       <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Nuevo envío</DialogTitle>
-          <DialogDescription>Registra la encomienda con el número de su guía física.</DialogDescription>
+          <DialogDescription>
+            Registra la encomienda con el número de su guía física. Los datos del remitente y del destinatario se usan solo para este
+            envío, según la política de privacidad.
+          </DialogDescription>
         </DialogHeader>
 
         <form id="nuevo-envio" onSubmit={handleSubmit(onSubmit)} className="space-y-3" noValidate>
@@ -240,6 +249,13 @@ export function NuevoEnvioDialog({
                   />
                 </div>
               ))}
+            {!clienteId && guardarCliente && (
+              <ConsentimientoDatos
+                id="consentimientoCliente"
+                error={errors.consentimientoCliente?.message}
+                {...register('consentimientoCliente')}
+              />
+            )}
           </Paso>
 
           <Paso n={2} titulo="Destinatario">

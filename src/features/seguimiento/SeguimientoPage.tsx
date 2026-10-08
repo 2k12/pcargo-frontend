@@ -18,6 +18,7 @@ import type { Estado, EventoHistorial } from '@/types/api'
 import { ESTADO_TONO } from '@/features/envios/ui'
 import { MENSAJE_GUIA_INVALIDA, normalizarGuia } from '@/features/envios/guia'
 import { consultarGuiaParaAgente, HERRAMIENTAS_PUBLICAS } from '@/features/landing/agente'
+import { EnlacesLegales } from '@/features/legal/components/EnlacesLegales'
 import { useSeguimiento } from './api'
 import { MENSAJE_ESTADO } from './estados'
 import { PersonajeEstado } from './PersonajeEstado'
@@ -41,8 +42,8 @@ function AvisoEntrega({ estado, historial }: { estado: Estado; historial: Evento
         <p className="font-medium">
           {noEntregado ? 'No pudimos entregar tu encomienda' : 'Tu encomienda tiene una novedad'}
         </p>
-        {ultimo?.nota && <p className="opacity-90">Motivo: {ultimo.nota}</p>}
-        <p className="opacity-80">
+        {ultimo?.nota && <p>Motivo: {ultimo.nota}</p>}
+        <p>
           {noEntregado ? 'Reintentaremos la entrega o te contactaremos.' : 'Estamos gestionándola para continuar con la entrega.'}
         </p>
       </div>
@@ -239,6 +240,11 @@ export function SeguimientoPage({ embebido = false }: { embebido?: boolean }) {
           </div>
         )}
       </main>
+      {!embebido && (
+        <footer className="mx-auto max-w-5xl px-4 pb-10 text-xs text-muted-foreground">
+          <EnlacesLegales className="flex justify-center" />
+        </footer>
+      )}
     </div>
   )
 }

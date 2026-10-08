@@ -60,7 +60,7 @@
     --brand-green: oklch(0.776 0.172 123.3);         /* #A1C734 */
     --brand-green-foreground: oklch(0.26 0.07 123.3); /* texto sobre verde (AA) */
     --brand-green-text: oklch(0.52 0.14 128);        /* verde legible sobre fondo claro: ingresos (AA) */
-    --brand-gradient: linear-gradient(135deg, oklch(0.62 0.139 241.6), oklch(0.5 0.13 241.6));
+    --brand-gradient: linear-gradient(135deg, oklch(0.55 0.139 241.6), oklch(0.45 0.13 241.6)); /* texto blanco ≥ 4,6:1 (AA) en todo el degradado */
 
     --background: oklch(1 0 0);
     --foreground: oklch(0.21 0.03 245);

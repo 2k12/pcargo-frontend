@@ -20,6 +20,7 @@ import {
 import { lazy, Suspense, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { Logo, LogoMark } from '@/components/brand/PCargoLogo'
+import { EnlaceExterno } from '@/components/EnlaceExterno'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -32,6 +33,8 @@ import { cn } from '@/lib/utils'
 import { responderAgente, useHerramientasAgente } from '@/lib/webmcp'
 import type { TipoCargaCodigo } from '@/types/api'
 import { MENSAJE_GUIA_INVALIDA, normalizarGuia } from '@/features/envios/guia'
+import { EnlacesLegales } from '@/features/legal/components/EnlacesLegales'
+import { datoLegal } from '@/features/legal/datos'
 import { consultarGuiaParaAgente, HERRAMIENTAS_PUBLICAS } from './agente'
 import { useCatalogoPublico } from './api'
 import { CarruselCiudades } from './components/CarruselCiudades'
@@ -55,15 +58,15 @@ const NAV = [
 ]
 
 const DESCRIPCION_CARGA: Record<TipoCargaCodigo, string> = {
-  SOBRE: 'Documentos, cartas, contratos y trámites que necesitan llegar hoy.',
+  SOBRE: 'Documentos, cartas, contratos y trámites.',
   PAQUETE: 'Compras, ropa, repuestos y pedidos de tu tienda en línea.',
   CARTON: 'Cajas de mercadería, textiles y productos para tu negocio.',
   VALIJA: 'Equipaje y maletas que viajan sin ti, de puerta a puerta.',
 }
 
 const PASOS = [
-  { icon: Store, titulo: 'Deja o agenda tu envío', texto: 'Acércate a nuestra oficina en Ibarra o escríbenos por WhatsApp y coordinamos el retiro.' },
-  { icon: PackageCheck, titulo: 'Recibe tu guía', texto: 'Te entregamos tu guía con su número de seguimiento y el costo exacto, sin sorpresas.' },
+  { icon: Store, titulo: 'Deja o agenda tu envío', texto: 'Acércate a nuestra oficina en Ibarra o escríbenos por WhatsApp para coordinar tu envío.' },
+  { icon: PackageCheck, titulo: 'Recibe tu guía', texto: 'Te entregamos tu guía con su número de seguimiento y el costo calculado con las tarifas publicadas.' },
   { icon: Truck, titulo: 'Entregamos a domicilio', texto: 'Llevamos tu encomienda hasta la puerta del destinatario y puedes seguirla en línea.' },
 ]
 
@@ -148,7 +151,7 @@ function AvisosHero() {
           <Truck className="size-4" />
         </span>
         <div className="leading-tight">
-          <p className="font-mono text-[11px] text-muted-foreground">Guía 0040425</p>
+          <p className="font-mono text-[11px] text-muted-foreground">Ejemplo · Guía 0040425</p>
           <p className="text-xs font-medium">En reparto · Otavalo</p>
         </div>
       </div>
@@ -188,7 +191,7 @@ export function LandingPage() {
           <div className="flex items-center gap-1">
             <ThemeToggle />
             <Button className="hidden sm:inline-flex" nativeButton={false} render={<Link to="/login" />}>
-              <LogIn /> Acceso personal
+              <LogIn /> Acceso del personal
             </Button>
             <MenuMovil secciones={NAV} />
           </div>
@@ -207,7 +210,7 @@ export function LandingPage() {
               <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl">
                 Tus encomiendas,{' '}
                 <span className="text-brand-blue-text">
-                  puerta a puerta<span className="text-brand-green">.</span>
+                  puerta a puerta<span className="text-brand-green-text">.</span>
                 </span>
               </h1>
               <p className="max-w-xl text-lg text-muted-foreground text-pretty">
@@ -218,8 +221,8 @@ export function LandingPage() {
                 <Button size="lg" nativeButton={false} render={<a href="#cotizar" />}>
                   Cotizar mi envío <ArrowRight />
                 </Button>
-                <Button size="lg" variant="outline" nativeButton={false} render={<a href={whatsappUrl()} target="_blank" rel="noreferrer" />}>
-                  <MessageCircle /> Escríbenos
+                <Button size="lg" variant="outline" nativeButton={false} render={<EnlaceExterno href={whatsappUrl()} />}>
+                  <MessageCircle /> Escríbenos por WhatsApp
                 </Button>
               </div>
               <ul className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
@@ -308,17 +311,20 @@ export function LandingPage() {
                 </li>
               ))}
             </ol>
-            <img
-              src="/landing/entrega-1600.webp"
-              srcSet="/landing/entrega-640.webp 640w, /landing/entrega-800.webp 800w, /landing/entrega-1600.webp 1600w"
-              sizes="(min-width: 1024px) 560px, 100vw"
-              width={1600}
-              height={1065}
-              loading="lazy"
-              decoding="async"
-              alt="Repartidor de PCargo entregando una caja a una clienta en la puerta de su casa"
-              className="h-auto w-full rounded-3xl shadow-xl ring-1 ring-foreground/10"
-            />
+            <figure className="space-y-2">
+              <img
+                src="/landing/entrega-1600.webp"
+                srcSet="/landing/entrega-640.webp 640w, /landing/entrega-800.webp 800w, /landing/entrega-1600.webp 1600w"
+                sizes="(min-width: 1024px) 560px, 100vw"
+                width={1600}
+                height={1065}
+                loading="lazy"
+                decoding="async"
+                alt="Un repartidor con uniforme azul entrega una caja de cartón a una clienta en la puerta de su casa. Un globo dice: ¡Entregado! En la puerta de tu casa."
+                className="h-auto w-full rounded-3xl shadow-xl ring-1 ring-foreground/10"
+              />
+              <figcaption className="text-xs text-muted-foreground">Imagen ilustrativa generada con inteligencia artificial.</figcaption>
+            </figure>
           </div>
         </Seccion>
 
@@ -369,13 +375,14 @@ export function LandingPage() {
             <Skeleton className="h-64 rounded-2xl" />
           )}
           <p className="mt-4 text-xs text-muted-foreground">
-            Precio final = tarifa base × factor del tipo de carga (sobre ×1, paquete ×1,4, cartón ×1,6, valija ×1,8)
-            + $0,50 por cada kg adicional sobre el peso incluido.
+            Precio = tarifa base × factor del tipo de carga (sobre ×1, paquete ×1,4, cartón ×1,6, valija ×1,8)
+            + $0,50 por cada kg adicional sobre el peso incluido. El valor definitivo es el de tu guía, con el peso verificado en
+            la oficina. Los tiempos son estimados y pueden variar.
           </p>
         </Seccion>
 
         {/* Cotizador */}
-        <Seccion id="cotizar" titulo="Cotiza en segundos" subtitulo="Calcula el precio exacto de tu envío antes de venir." className="bg-muted/30">
+        <Seccion id="cotizar" titulo="Cotiza en segundos" subtitulo="Calcula el precio referencial de tu envío antes de venir." className="bg-muted/30">
           {catalogo ? (
             <Suspense fallback={<Skeleton className="h-80 rounded-2xl" />}>
               <CotizadorPublico catalogo={catalogo} />
@@ -386,12 +393,12 @@ export function LandingPage() {
         </Seccion>
 
         {/* Confianza */}
-        <Seccion titulo="¿Por qué PCargo?" subtitulo="Somos tus vecinos: una empresa de Ibarra que conoce cada calle de la zona.">
+        <Seccion titulo="¿Por qué PCargo?" subtitulo="Somos una empresa de Ibarra, con oficina física y tarifas a la vista.">
           <div className="grid gap-4 md:grid-cols-3">
             {[
-              { icon: ShieldCheck, t: 'Precio transparente', d: 'La tarifa se calcula por sistema: pagas exactamente lo cotizado, y puedes pagar al cobro.' },
-              { icon: PackageSearch, t: 'Trazabilidad total', d: 'Cada cambio de estado queda registrado y lo ves con tu número de guía, a cualquier hora.' },
-              { icon: MapPin, t: 'Gente de la zona', d: 'Entregamos en la puerta, no en una agencia. Y si algo pasa, te avisamos el motivo.' },
+              { icon: ShieldCheck, t: 'Tarifas publicadas', d: 'El precio se calcula con la tabla de esta página. Pagas al registrar el envío o lo paga el destinatario al recibirlo.' },
+              { icon: PackageSearch, t: 'Seguimiento en línea', d: 'Cada cambio de estado que registramos aparece en el seguimiento con tu número de guía.' },
+              { icon: MapPin, t: 'Entrega a domicilio', d: 'Llevamos la encomienda a la dirección del destinatario. Si una entrega no se concreta, el motivo queda en el seguimiento.' },
             ].map((x) => (
               <div key={x.t} className="space-y-3 rounded-2xl border bg-card p-6">
                 <span className="flex size-10 items-center justify-center rounded-xl bg-accent text-accent-foreground">
@@ -406,19 +413,17 @@ export function LandingPage() {
 
         {/* Contacto */}
         <Seccion id="contacto" titulo="Contáctanos" subtitulo={`Visítanos en nuestra oficina principal en ${MARCA.oficina.ciudad}.`} className="bg-muted/30">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className={cn('grid gap-4 sm:grid-cols-2', MARCA.oficina.horario && MARCA.email && 'lg:grid-cols-4')}>
             <div className="space-y-2 rounded-2xl border bg-card p-6">
               <MapPin className="size-4 text-brand-blue-text" />
               <p className="text-sm font-medium">Oficina</p>
               <address className="text-sm text-muted-foreground not-italic">{MARCA.oficina.direccion}</address>
-              <a
+              <EnlaceExterno
                 href={mapsUrl}
-                target="_blank"
-                rel="noreferrer"
                 className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-blue-text hover:underline"
               >
-                <Navigation className="size-3.5" /> Cómo llegar
-              </a>
+                <Navigation className="size-3.5" /> Cómo llegar en Google Maps
+              </EnlaceExterno>
             </div>
             <div className="space-y-2 rounded-2xl border bg-card p-6">
               <Phone className="size-4 text-brand-blue-text" />
@@ -437,40 +442,42 @@ export function LandingPage() {
                   </a>
                 </li>
               </ul>
-              <a
+              <EnlaceExterno
                 href={whatsappUrl()}
-                target="_blank"
-                rel="noreferrer"
                 className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-blue-text hover:underline"
               >
                 <MessageCircle className="size-3.5" /> Escríbenos por WhatsApp
-              </a>
+              </EnlaceExterno>
             </div>
-            <div className="space-y-2 rounded-2xl border bg-card p-6">
-              <Clock className="size-4 text-brand-blue-text" />
-              <p className="text-sm font-medium">Horario</p>
-              <p className="text-sm text-muted-foreground">{MARCA.oficina.horario}</p>
-            </div>
-            <div className="space-y-2 rounded-2xl border bg-card p-6">
-              <Mail className="size-4 text-brand-blue-text" />
-              <p className="text-sm font-medium">Correo</p>
-              <a href={`mailto:${MARCA.email}`} className="text-sm break-all text-muted-foreground hover:text-foreground">
-                {MARCA.email}
-              </a>
-            </div>
+            {MARCA.oficina.horario && (
+              <div className="space-y-2 rounded-2xl border bg-card p-6">
+                <Clock className="size-4 text-brand-blue-text" />
+                <p className="text-sm font-medium">Horario</p>
+                <p className="text-sm text-muted-foreground">{MARCA.oficina.horario}</p>
+              </div>
+            )}
+            {MARCA.email && (
+              <div className="space-y-2 rounded-2xl border bg-card p-6">
+                <Mail className="size-4 text-brand-blue-text" />
+                <p className="text-sm font-medium">Correo</p>
+                <a href={`mailto:${MARCA.email}`} className="text-sm break-all text-muted-foreground hover:text-foreground">
+                  {MARCA.email}
+                </a>
+              </div>
+            )}
           </div>
         </Seccion>
 
-        {/* Acceso personal */}
+        {/* Acceso del personal */}
         <section className="px-4 py-16 sm:px-6">
           <div className="relative mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 overflow-hidden rounded-2xl bg-[image:var(--brand-gradient)] px-6 py-10 text-white sm:flex-row sm:items-center sm:px-10">
             <LogoMark className="pointer-events-none absolute -right-6 -bottom-8 size-40 opacity-15" />
             <div className="relative space-y-1">
               <h2 className="text-2xl font-semibold tracking-tight">¿Eres parte del equipo PCargo?</h2>
-              <p className="text-sm opacity-80">Ingresa al panel de operaciones para registrar y gestionar envíos.</p>
+              <p className="text-sm">Ingresa al panel de operaciones para registrar y gestionar envíos.</p>
             </div>
             <Button size="lg" className="relative bg-brand-green text-brand-green-foreground hover:bg-brand-green/90" nativeButton={false} render={<Link to="/login" />}>
-              <LogIn /> Acceso personal
+              <LogIn /> Acceso del personal
             </Button>
           </div>
         </section>
@@ -487,11 +494,14 @@ export function LandingPage() {
               {' · '}
               <a href={`tel:${MARCA.telefonos.celular.tel}`} className="hover:text-foreground">{MARCA.telefonos.celular.texto}</a>
             </p>
-            <p>© {ANIO} {MARCA.nombre} · {MARCA.eslogan}</p>
+            <p>
+              © {ANIO} {datoLegal('razonSocial')} ({MARCA.nombre}) · RUC {datoLegal('ruc')}
+            </p>
             <div className="flex gap-4">
               <Link to="/seguimiento" className="hover:text-foreground">Rastrear envío</Link>
-              <Link to="/login" className="hover:text-foreground">Acceso personal</Link>
+              <Link to="/login" className="hover:text-foreground">Acceso del personal</Link>
             </div>
+            <EnlacesLegales />
           </div>
           <CarruselCiudades ciudades={catalogo?.ciudades ?? []} />
         </div>

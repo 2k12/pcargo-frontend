@@ -59,6 +59,9 @@ function ClienteCard({
         </span>
         <div className="min-w-0 flex-1 space-y-0.5">
           <p className="truncate font-medium">{cliente.nombre}</p>
+          {!cliente.consentimientoEn && (
+            <p className="text-xs text-amber-700 dark:text-amber-300">Sin consentimiento registrado: confírmalo al editar</p>
+          )}
           <a href={`tel:${cliente.telefono.replace(/\s/g, '')}`} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
             <Phone className="size-3" />
             {cliente.telefono}

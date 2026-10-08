@@ -16,6 +16,7 @@ const ana: Cliente = {
   direccion: 'Bolívar 3-20, Ibarra',
   notas: null,
   creadoEn: '2026-09-01T00:00:00.000Z',
+  consentimientoEn: '2026-10-08T15:00:00.000Z',
   envios: 4,
   monto: 32.5,
   ultimoEnvio: null,
@@ -52,12 +53,15 @@ describe('ClientesPage', () => {
     expect(screen.getByText('Luis Mora')).toBeInTheDocument()
   })
 
-  it('registra un cliente nuevo con solo nombre y teléfono', async () => {
+  it('registra un cliente nuevo con nombre, teléfono y su consentimiento', async () => {
     const fetch = setup([])
     await userEvent.click(await screen.findByRole('button', { name: 'Registrar el primero' }))
     const dialogo = await screen.findByRole('dialog')
     await userEvent.type(within(dialogo).getByLabelText('Nombre o razón social'), 'Comercial Otavalo')
     await userEvent.type(within(dialogo).getByLabelText('Teléfono'), '062920333')
+    const consentimiento = within(dialogo).getByRole('checkbox', { name: 'El cliente aceptó que guardemos sus datos' })
+    expect(consentimiento).not.toBeChecked()
+    await userEvent.click(consentimiento)
     await userEvent.click(within(dialogo).getByRole('button', { name: 'Registrar cliente' }))
 
     expect(await screen.findByText('Comercial Otavalo')).toBeInTheDocument()
@@ -67,7 +71,25 @@ describe('ClientesPage', () => {
       telefono: '062920333',
       direccion: null,
       notas: null,
+      consentimiento: true,
     })
+  })
+
+  it('no registra a un cliente sin su consentimiento (LOPDP)', async () => {
+    const fetch = setup([])
+    await userEvent.click(await screen.findByRole('button', { name: 'Registrar el primero' }))
+    const dialogo = await screen.findByRole('dialog')
+    await userEvent.type(within(dialogo).getByLabelText('Nombre o razón social'), 'Comercial Otavalo')
+    await userEvent.type(within(dialogo).getByLabelText('Teléfono'), '062920333')
+    await userEvent.click(within(dialogo).getByRole('button', { name: 'Registrar cliente' }))
+    expect(await within(dialogo).findByText('Confirma que el cliente aceptó que guardemos sus datos')).toBeInTheDocument()
+    expect(within(dialogo).getByRole('checkbox', { name: 'El cliente aceptó que guardemos sus datos' })).toHaveAttribute('aria-invalid', 'true')
+    expect(fetch.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false)
+  })
+
+  it('señala a los clientes antiguos sin consentimiento registrado', async () => {
+    setup([{ ...ana, consentimientoEn: null }])
+    expect(await screen.findByText(/Sin consentimiento registrado/)).toBeInTheDocument()
   })
 
   it('valida el teléfono antes de enviar', async () => {

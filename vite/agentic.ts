@@ -23,6 +23,17 @@ export const HERRAMIENTAS_WEBMCP = [
   { nombre: 'consultar_cobertura', descripcion: 'Lista ciudades, rutas con tarifa base y tiempo estimado, y tipos de carga.' },
 ] as const
 
+/**
+ * Páginas legales públicas. Se repite aquí (y no se importa de src/) porque la config de Vite se carga sin los alias `@/`;
+ * un test comprueba que coincide con PAGINAS_LEGALES de src/features/legal/datos.ts.
+ */
+export const RUTAS_LEGALES = [
+  { ruta: '/privacidad', titulo: 'Política de privacidad' },
+  { ruta: '/terminos', titulo: 'Términos y condiciones' },
+  { ruta: '/pago-al-cobro', titulo: 'Política de pago al cobro' },
+  { ruta: '/cookies', titulo: 'Política de cookies' },
+] as const
+
 const limpiar = (sitio: string | undefined) => (sitio ?? '').trim().replace(/\/+$/, '')
 
 /** `pcargo.ec` a partir de la URL pública; `pcargo` si no hay URL válida. */
@@ -53,6 +64,12 @@ export function generarLlmsTxt(sitioUrl: string | undefined): string {
 - [Cobertura y tarifas](${s}/#cobertura): matriz de tarifas base y tiempos estimados por trayecto.
 - [Rastrear una encomienda](${s}/seguimiento): estado e historial con el número de guía (\`${s}/seguimiento/{numeroGuia}\`).
 - [Contacto](${s}/#contacto): oficina en Las Gardenias s/n y El Rosal (La Florida), Ibarra · 06 263 2669 · WhatsApp +593 99 518 7551.
+
+## Información legal
+
+${RUTAS_LEGALES.map((l) => `- [${l.titulo}](${s}${l.ruta})`).join('\n')}
+- El pago al cobro cubre solo el valor del envío; PCargo no recauda el precio de la mercadería.
+- Los tiempos de entrega son estimados y el cotizador es referencial: el valor definitivo es el de la guía.
 
 ## API pública (JSON, sin autenticación, 60 solicitudes/min por IP)
 
@@ -86,7 +103,7 @@ ${s ? `\nSitemap: ${s}/sitemap.xml\n` : ''}`
 export function generarSitemap(sitioUrl: string | undefined): string | null {
   const s = limpiar(sitioUrl)
   if (!s) return null
-  const urls = ['/', '/seguimiento'].map((r) => `  <url><loc>${s}${r}</loc></url>`).join('\n')
+  const urls = ['/', '/seguimiento', ...RUTAS_LEGALES.map((l) => l.ruta)].map((r) => `  <url><loc>${s}${r}</loc></url>`).join('\n')
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urls}

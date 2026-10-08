@@ -14,6 +14,11 @@ const DashboardPage = lazy(() => import('@/features/dashboard/DashboardPage').th
 const EnviosPage = lazy(() => import('@/features/envios/EnviosPage').then((m) => ({ default: m.EnviosPage })))
 const ClientesPage = lazy(() => import('@/features/clientes/ClientesPage').then((m) => ({ default: m.ClientesPage })))
 const RutasPage = lazy(() => import('@/features/rutas/RutasPage').then((m) => ({ default: m.RutasPage })))
+const legal = () => import('@/features/legal/paginas')
+const PrivacidadPage = lazy(() => legal().then((m) => ({ default: m.PrivacidadPage })))
+const TerminosPage = lazy(() => legal().then((m) => ({ default: m.TerminosPage })))
+const CookiesPage = lazy(() => legal().then((m) => ({ default: m.CookiesPage })))
+const PagoAlCobroPage = lazy(() => legal().then((m) => ({ default: m.PagoAlCobroPage })))
 const SeguimientoPage = lazy(() =>
   import('@/features/seguimiento/SeguimientoPage').then((m) => ({ default: m.SeguimientoPage })),
 )
@@ -34,6 +39,10 @@ export function AppRoutes() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/seguimiento" element={<SeguimientoPage />} />
         <Route path="/seguimiento/:numeroGuia" element={<SeguimientoPage />} />
+        <Route path="/privacidad" element={<PrivacidadPage />} />
+        <Route path="/terminos" element={<TerminosPage />} />
+        <Route path="/cookies" element={<CookiesPage />} />
+        <Route path="/pago-al-cobro" element={<PagoAlCobroPage />} />
         <Route element={<ProtectedRoute />}>
           <Route element={<AppShell />}>
             <Route path="/panel" element={<DashboardPage />} />

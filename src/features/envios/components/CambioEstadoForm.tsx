@@ -68,8 +68,12 @@ export function CambioEstadoForm({ estado, pendiente, onTransicion }: Props) {
           value={nota}
           onChange={(e) => setNota(e.target.value)}
           aria-invalid={motivoFaltante}
+          aria-describedby="nota-estado-publica"
           rows={2}
         />
+        <p id="nota-estado-publica" className="text-xs text-muted-foreground">
+          Se muestra en el seguimiento público: no escribas nombres, teléfonos ni direcciones.
+        </p>
         {motivoFaltante && <p className="text-xs text-destructive">Indica el motivo para continuar.</p>}
       </div>
       <div className="flex flex-wrap gap-2">

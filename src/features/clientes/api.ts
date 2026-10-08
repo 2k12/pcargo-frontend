@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import type { Cliente, DatosCliente } from '@/types/api'
+import type { CambiosCliente, Cliente, NuevoCliente } from '@/types/api'
 
 export const clientesApi = {
   listar: () => api.get<Cliente[]>('/clientes'),
-  crear: (data: DatosCliente) => api.post<Cliente>('/clientes', data),
-  actualizar: (id: string, cambios: Partial<DatosCliente>) => api.patch<Cliente>(`/clientes/${id}`, cambios),
+  crear: (data: NuevoCliente) => api.post<Cliente>('/clientes', data),
+  actualizar: (id: string, cambios: CambiosCliente) => api.patch<Cliente>(`/clientes/${id}`, cambios),
   eliminar: (id: string) => api.delete(`/clientes/${id}`),
 }
 
@@ -33,7 +33,7 @@ export function useCrearCliente() {
 export function useActualizarCliente() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, cambios }: { id: string; cambios: Partial<DatosCliente> }) => clientesApi.actualizar(id, cambios),
+    mutationFn: ({ id, cambios }: { id: string; cambios: CambiosCliente }) => clientesApi.actualizar(id, cambios),
     onSuccess: () => invalidar(qc),
   })
 }

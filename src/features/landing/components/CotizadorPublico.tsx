@@ -1,5 +1,6 @@
 import { Clock, Loader2, MessageCircle } from 'lucide-react'
 import { useState } from 'react'
+import { EnlaceExterno } from '@/components/EnlaceExterno'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -141,6 +142,7 @@ export function CotizadorPublico({ catalogo }: { catalogo: CatalogoPublico }) {
                   <Clock className="size-3.5" /> Entrega estimada en {formatDuracion(ruta.tiempoEstimadoMin)}
                 </p>
               )}
+              <p className="text-xs text-muted-foreground">Valor referencial: el definitivo es el de tu guía, con el peso verificado.</p>
             </>
           ) : (
             <p className="text-sm">
@@ -151,7 +153,7 @@ export function CotizadorPublico({ catalogo }: { catalogo: CatalogoPublico }) {
         <Button
           size="lg"
           nativeButton={false}
-          render={<a href={whatsappUrl(resumen)} target="_blank" rel="noreferrer" />}
+          render={<EnlaceExterno href={whatsappUrl(resumen)} />}
         >
           <MessageCircle /> Solicitar envío por WhatsApp
         </Button>

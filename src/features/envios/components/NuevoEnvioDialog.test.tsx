@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { jsonResponse, mockFetch, renderWithProviders } from '@/test/utils'
 import type { Cliente } from '@/types/api'
-import { toNuevoEnvio, type EnvioFormValues } from '../schema'
+import { TIPOS_CARGA_DEFAULT } from '../domain'
+import { crearEnvioSchema, MENSAJE_CONSENTIMIENTO, toNuevoEnvio, type EnvioFormValues } from '../schema'
 import { NuevoEnvioDialog } from './NuevoEnvioDialog'
 
 afterEach(() => {
@@ -17,6 +18,7 @@ const tienda: Cliente = {
   direccion: 'Bolívar 3-20, Ibarra',
   notas: null,
   creadoEn: '2026-09-01T00:00:00.000Z',
+  consentimientoEn: '2026-10-08T15:00:00.000Z',
   envios: 7,
   monto: 50,
   ultimoEnvio: null,
@@ -50,6 +52,16 @@ describe('NuevoEnvioDialog — clientes frecuentes', () => {
 
     expect(within(dialogo).getByLabelText('Nombre', { selector: '#remitenteNombre' })).toHaveValue('Pedro Ruiz')
     expect(within(dialogo).getByRole('switch', { name: 'Guardar como cliente frecuente' })).toBeChecked()
+    // LOPDP: guardar exige el consentimiento, que nunca viene marcado de antemano.
+    expect(within(dialogo).getByRole('checkbox', { name: 'El cliente aceptó que guardemos sus datos' })).not.toBeChecked()
+  })
+
+  it('la casilla de consentimiento solo aparece al guardar al cliente', async () => {
+    const dialogo = await abrir()
+    await within(dialogo).findByRole('combobox', { name: 'Buscar cliente remitente' })
+    expect(within(dialogo).queryByRole('checkbox', { name: /aceptó que guardemos/ })).not.toBeInTheDocument()
+    await userEvent.click(within(dialogo).getByRole('switch', { name: 'Guardar como cliente frecuente' }))
+    expect(within(dialogo).getByRole('checkbox', { name: /aceptó que guardemos/ })).toBeInTheDocument()
   })
 
   it('reconoce a un cliente por el teléfono escrito a mano', async () => {
@@ -94,5 +106,24 @@ describe('toNuevoEnvio', () => {
     const sinCliente = toNuevoEnvio({ ...base, clienteId: '', guardarCliente: false })
     expect(sinCliente).not.toHaveProperty('clienteId')
     expect(sinCliente).not.toHaveProperty('guardarCliente')
+  })
+
+  it('envía el consentimiento tal como lo marcó el operador', () => {
+    expect(toNuevoEnvio({ ...base, clienteId: '', guardarCliente: true, consentimientoCliente: true })).toMatchObject({
+      guardarCliente: true,
+      consentimientoCliente: true,
+    })
+    expect(toNuevoEnvio({ ...base, clienteId: '', guardarCliente: true })).toMatchObject({ consentimientoCliente: false })
+    expect(toNuevoEnvio({ ...base, clienteId: 'c1', consentimientoCliente: true })).not.toHaveProperty('consentimientoCliente')
+  })
+
+  it('el formulario no deja guardar al cliente sin su consentimiento (LOPDP)', () => {
+    const schema = crearEnvioSchema(TIPOS_CARGA_DEFAULT)
+    const errores = (v: Partial<EnvioFormValues>) =>
+      (schema.safeParse({ ...base, ...v }).error?.issues ?? []).filter((i) => i.path[0] === 'consentimientoCliente')
+    expect(errores({ guardarCliente: true })[0]?.message).toBe(MENSAJE_CONSENTIMIENTO)
+    expect(errores({ guardarCliente: true, consentimientoCliente: true })).toHaveLength(0)
+    expect(errores({ guardarCliente: true, clienteId: 'c1' })).toHaveLength(0)
+    expect(errores({ guardarCliente: false })).toHaveLength(0)
   })
 })
