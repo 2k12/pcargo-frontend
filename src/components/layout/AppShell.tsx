@@ -1,4 +1,4 @@
-import { ArrowUpRight, LayoutDashboard, LogOut, PackageSearch, Route, Package, type LucideIcon } from 'lucide-react'
+import { ArrowUpRight, LayoutDashboard, LogOut, PackageSearch, Route, Package, Users, type LucideIcon } from 'lucide-react'
 import { Suspense } from 'react'
 import { Link, NavLink, Outlet } from 'react-router'
 import { Logo, LogoMark } from '@/components/brand/PCargoLogo'
@@ -39,6 +39,7 @@ const GRUPOS: { titulo: string; items: ItemNav[] }[] = [
     items: [
       { to: '/panel', label: 'Resumen', corto: 'Resumen', icon: LayoutDashboard, end: true },
       { to: '/envios', label: 'Envíos', corto: 'Envíos', icon: Package, end: false },
+      { to: '/clientes', label: 'Clientes', corto: 'Clientes', icon: Users, end: false },
     ],
   },
   {
@@ -61,7 +62,7 @@ function BottomNav() {
   return (
     <nav
       aria-label="Navegación principal"
-      className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t bg-background/90 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t bg-background/90 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
     >
       {NAV.map(({ to, corto, icon: Icon, end }) => (
         <NavLink
@@ -77,7 +78,7 @@ function BottomNav() {
         >
           {({ isActive }) => (
             <>
-              <span className={cn('rounded-full px-4 py-1 transition-colors', isActive && ACTIVO)}>
+              <span className={cn('rounded-full px-3 py-1 transition-colors', isActive && ACTIVO)}>
                 <Icon className="size-4" />
               </span>
               {corto}

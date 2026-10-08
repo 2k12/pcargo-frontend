@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Loader2, Plus } from 'lucide-react'
-import { useMemo, useState, type ReactNode } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { Loader2, Plus, UserCheck, X } from 'lucide-react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -16,11 +17,15 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
+import { useClientes } from '@/features/clientes/api'
+import { ClienteBuscador } from '@/features/clientes/components/ClienteBuscador'
+import { clientePorTelefono, digitos } from '@/features/clientes/domain'
 import { rutaLabel, useRutas } from '@/features/rutas/hooks'
 import { useDebounced } from '@/hooks/useDebounced'
 import { errorMessage } from '@/lib/api'
-import type { CotizacionRequest } from '@/types/api'
+import type { Cliente, CotizacionRequest } from '@/types/api'
 import { TIPOS_CARGA_DEFAULT } from '../domain'
 import { useCrearEnvio, useTiposCarga } from '../hooks'
 import { crearEnvioSchema, itemsCotizables, itemVacio, toNuevoEnvio, type EnvioFormValues } from '../schema'
@@ -32,8 +37,32 @@ const DEFAULTS = {
   rutaId: '',
   descripcion: '',
   numeroGuia: '',
+  clienteId: '',
+  guardarCliente: false,
   items: [itemVacio()],
 } as unknown as Partial<EnvioFormValues>
+
+const conCliente = (c: Cliente) =>
+  ({ ...DEFAULTS, clienteId: c.id, remitenteNombre: c.nombre, remitenteTelefono: c.telefono }) as Partial<EnvioFormValues>
+
+/** Cliente frecuente elegido como remitente: se muestra como ficha para poder cambiarlo con un toque. */
+function FichaCliente({ cliente, onQuitar }: { cliente: Cliente; onQuitar: () => void }) {
+  return (
+    <div className="flex items-center gap-3 rounded-lg bg-accent/60 px-3 py-2 text-sm ring-1 ring-primary/30">
+      <UserCheck className="size-4 shrink-0 text-primary" />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-medium">{cliente.nombre}</span>
+        <span className="block truncate text-xs text-muted-foreground">
+          Cliente frecuente · {cliente.envios} {cliente.envios === 1 ? 'envío' : 'envíos'}
+        </span>
+      </span>
+      <Button type="button" variant="ghost" size="sm" onClick={onQuitar}>
+        <X />
+        Cambiar
+      </Button>
+    </div>
+  )
+}
 
 /**
  * Paso del formulario: región delimitada y numerada (región común + continuidad 1 → 4),
@@ -63,8 +92,19 @@ function Campo({ label, htmlFor, error, children }: { label: string; htmlFor?: s
   )
 }
 
-export function NuevoEnvioDialog() {
+export function NuevoEnvioDialog({
+  cliente,
+  label = 'Nuevo envío',
+  variant = 'default',
+}: {
+  /** Abre el formulario con este cliente como remitente. */
+  cliente?: Cliente
+  label?: string
+  variant?: 'default' | 'outline'
+} = {}) {
   const [open, setOpen] = useState(false)
+  const qc = useQueryClient()
+  const { data: clientes = [] } = useClientes()
   const { data: tipos = TIPOS_CARGA_DEFAULT } = useTiposCarga()
   const { data: rutas = [] } = useRutas(true)
   const crear = useCrearEnvio()
@@ -75,11 +115,47 @@ export function NuevoEnvioDialog() {
     control,
     handleSubmit,
     reset,
+    setValue,
+    setFocus,
     formState: { errors },
   } = useForm<EnvioFormValues>({
     resolver: zodResolver(schema),
     defaultValues: DEFAULTS,
   })
+
+  useEffect(() => {
+    if (open) reset(cliente ? conCliente(cliente) : DEFAULTS)
+  }, [open, cliente, reset])
+
+  const [clienteId, remitenteTelefono] = useWatch({ control, name: ['clienteId', 'remitenteTelefono'] })
+  const elegido = clienteId ? clientes.find((c) => c.id === clienteId) : undefined
+  // Sin cliente elegido: si el teléfono ya es de un cliente, el servidor lo asociará solo.
+  const reconocido = !clienteId ? clientePorTelefono(clientes, remitenteTelefono ?? '') : undefined
+
+  const elegirRemitente = (c: Cliente) => {
+    setValue('clienteId', c.id)
+    setValue('guardarCliente', false)
+    setValue('remitenteNombre', c.nombre, { shouldValidate: !!errors.remitenteNombre })
+    setValue('remitenteTelefono', c.telefono, { shouldValidate: !!errors.remitenteTelefono })
+  }
+  const registrarRemitente = (texto: string) => {
+    // Lo escrito puede ser el nombre o el teléfono del cliente nuevo.
+    const esTelefono = digitos(texto).length >= 7 && /^[\d\s+-]+$/.test(texto)
+    setValue(esTelefono ? 'remitenteTelefono' : 'remitenteNombre', texto)
+    setValue('guardarCliente', true)
+    setFocus(esTelefono ? 'remitenteNombre' : 'remitenteTelefono')
+  }
+  const quitarCliente = () => {
+    setValue('clienteId', '')
+    setValue('remitenteNombre', '')
+    setValue('remitenteTelefono', '')
+  }
+  const elegirDestinatario = (c: Cliente) => {
+    setValue('destinatarioNombre', c.nombre)
+    setValue('destinatarioTelefono', c.telefono)
+    if (c.direccion) setValue('destinatarioDireccion', c.direccion)
+    if (!c.direccion) setFocus('destinatarioDireccion')
+  }
 
   const [rutaId, items] = useWatch({ control, name: ['rutaId', 'items'] })
   // JSON estable: useWatch devuelve un array nuevo en cada render del field array.
@@ -96,6 +172,8 @@ export function NuevoEnvioDialog() {
     try {
       const envio = await crear.mutateAsync(toNuevoEnvio(values))
       toast.success(`Guía ${envio.numeroGuia} registrada`)
+      if (values.guardarCliente && !values.clienteId) toast.success(`${values.remitenteNombre} quedó guardado como cliente`)
+      qc.invalidateQueries({ queryKey: ['clientes'] })
       reset(DEFAULTS)
       setOpen(false)
     } catch (e) {
@@ -105,9 +183,9 @@ export function NuevoEnvioDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button />}>
+      <DialogTrigger render={<Button variant={variant} />}>
         <Plus />
-        Nuevo envío
+        {label}
       </DialogTrigger>
       <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
@@ -117,6 +195,19 @@ export function NuevoEnvioDialog() {
 
         <form id="nuevo-envio" onSubmit={handleSubmit(onSubmit)} className="space-y-3" noValidate>
           <Paso n={1} titulo="Remitente">
+            {elegido ? (
+              <FichaCliente cliente={elegido} onQuitar={quitarCliente} />
+            ) : (
+              clientes.length > 0 && (
+                <ClienteBuscador
+                  clientes={clientes}
+                  onSelect={elegirRemitente}
+                  onCrear={registrarRemitente}
+                  label="Buscar cliente remitente"
+                  placeholder="Cliente frecuente: busca por nombre o teléfono"
+                />
+              )
+            )}
             <div className="grid gap-4 sm:grid-cols-2">
               <Campo label="Nombre" htmlFor="remitenteNombre" error={errors.remitenteNombre?.message}>
                 <Input id="remitenteNombre" {...register('remitenteNombre')} />
@@ -125,9 +216,41 @@ export function NuevoEnvioDialog() {
                 <Input id="remitenteTelefono" inputMode="tel" placeholder="0991234567" {...register('remitenteTelefono')} />
               </Campo>
             </div>
+            {!elegido &&
+              (reconocido ? (
+                <p className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                  <UserCheck className="size-3.5 text-primary" />
+                  Este teléfono es de <strong className="text-foreground">{reconocido.nombre}</strong>: el envío se suma a su historial.
+                  <button type="button" className="text-primary underline-offset-2 hover:underline" onClick={() => elegirRemitente(reconocido)}>
+                    Usar sus datos
+                  </button>
+                </p>
+              ) : (
+                <div className="flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm ring-1 ring-foreground/10">
+                  <span>
+                    Guardar como cliente frecuente
+                    <span className="block text-xs text-muted-foreground">La próxima vez lo encuentras escribiendo su nombre.</span>
+                  </span>
+                  <Controller
+                    control={control}
+                    name="guardarCliente"
+                    render={({ field }) => (
+                      <Switch aria-label="Guardar como cliente frecuente" checked={!!field.value} onCheckedChange={field.onChange} />
+                    )}
+                  />
+                </div>
+              ))}
           </Paso>
 
           <Paso n={2} titulo="Destinatario">
+            {clientes.length > 0 && (
+              <ClienteBuscador
+                clientes={clientes}
+                onSelect={elegirDestinatario}
+                label="Buscar cliente destinatario"
+                placeholder="¿Es un cliente? Autocompleta sus datos"
+              />
+            )}
             <div className="grid gap-4 sm:grid-cols-2">
               <Campo label="Nombre" htmlFor="destinatarioNombre" error={errors.destinatarioNombre?.message}>
                 <Input id="destinatarioNombre" {...register('destinatarioNombre')} />

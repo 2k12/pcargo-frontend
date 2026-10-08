@@ -50,6 +50,9 @@ export function crearEnvioSchema(tipos: TipoCarga[]) {
       .string()
       .optional()
       .refine((v) => !v?.trim() || normalizarGuia(v) !== null, MENSAJE_GUIA_INVALIDA),
+    // Cliente frecuente elegido, o guardar al remitente como cliente nuevo.
+    clienteId: z.string().optional(),
+    guardarCliente: z.boolean().optional(),
   })
 }
 
@@ -86,5 +89,6 @@ export function toNuevoEnvio(v: EnvioFormValues): NuevoEnvio {
     formaPago: v.formaPago,
     descripcion: v.descripcion || undefined,
     ...(v.numeroGuia?.trim() ? { numeroGuia: normalizarGuia(v.numeroGuia)! } : {}),
+    ...(v.clienteId ? { clienteId: v.clienteId } : v.guardarCliente ? { guardarCliente: true } : {}),
   }
 }

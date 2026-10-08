@@ -12,6 +12,7 @@ const AppShell = lazy(() => import('@/components/layout/AppShell').then((m) => (
 
 const DashboardPage = lazy(() => import('@/features/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage })))
 const EnviosPage = lazy(() => import('@/features/envios/EnviosPage').then((m) => ({ default: m.EnviosPage })))
+const ClientesPage = lazy(() => import('@/features/clientes/ClientesPage').then((m) => ({ default: m.ClientesPage })))
 const RutasPage = lazy(() => import('@/features/rutas/RutasPage').then((m) => ({ default: m.RutasPage })))
 const SeguimientoPage = lazy(() =>
   import('@/features/seguimiento/SeguimientoPage').then((m) => ({ default: m.SeguimientoPage })),
@@ -37,6 +38,7 @@ export function AppRoutes() {
           <Route element={<AppShell />}>
             <Route path="/panel" element={<DashboardPage />} />
             <Route path="/envios" element={<EnviosPage />} />
+            <Route path="/clientes" element={<ClientesPage />} />
             <Route path="/rutas" element={<RutasPage />} />
             {/* Rastreo dentro del panel: misma consulta que la pública, sin salir del menú */}
             <Route path="/panel/seguimiento" element={<SeguimientoPage embebido />} />

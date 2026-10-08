@@ -1,4 +1,4 @@
-import { PackageOpen, Search, X } from 'lucide-react'
+import { PackageOpen, Search, UserRound, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { useClientes } from '@/features/clientes/api'
 import { rutaLabel, useRutas } from '@/features/rutas/hooks'
 import { useDebounced } from '@/hooks/useDebounced'
 import { errorMessage } from '@/lib/api'
@@ -75,8 +76,12 @@ export function EnviosPage() {
   const setEstado = setFiltro('estado')
   const setRutaId = setFiltro('rutaId')
   const setFormaPago = setFiltro('formaPago')
+  // Filtro por cliente: llega desde el resumen o la ficha del cliente (?clienteId=).
+  const clienteId = params.get('clienteId') ?? undefined
+  const { data: clientes = [] } = useClientes()
+  const clienteFiltro = clienteId ? clientes.find((c) => c.id === clienteId) : undefined
   const [busqueda, setBusqueda] = useState('')
-  const hayFiltros = estado !== TODOS || rutaId !== TODOS || formaPago !== TODOS || busqueda !== ''
+  const hayFiltros = estado !== TODOS || rutaId !== TODOS || formaPago !== TODOS || !!clienteId || busqueda !== ''
   const limpiar = () => {
     setBusqueda('')
     setParams({}, { replace: true })
@@ -94,6 +99,7 @@ export function EnviosPage() {
     estado: estado === TODOS ? undefined : (estado as Estado),
     rutaId: rutaId === TODOS ? undefined : Number(rutaId),
     formaPago: formaPago === TODOS ? undefined : (formaPago as FormaPago),
+    clienteId,
     q: q || undefined,
     pagina,
     porPagina,
@@ -185,9 +191,23 @@ export function EnviosPage() {
         </Select>
       </div>
 
-      <div className="-mt-2 flex min-h-8 items-center justify-between text-xs text-muted-foreground md:-mt-4">
-        <span aria-live="polite">
+      <div className="-mt-2 flex min-h-8 items-center justify-between gap-2 text-xs text-muted-foreground md:-mt-4">
+        <span className="flex min-w-0 items-center gap-2" aria-live="polite">
           {envios ? `${envios.length} ${envios.length === 1 ? 'envío' : 'envíos'}` : ''}
+          {clienteId && (
+            <span className="inline-flex min-w-0 items-center gap-1 rounded-md bg-accent px-2 py-0.5 font-medium text-accent-foreground">
+              <UserRound className="size-3.5 shrink-0" />
+              <span className="truncate">{clienteFiltro?.nombre ?? 'Cliente'}</span>
+              <button
+                type="button"
+                aria-label="Quitar filtro de cliente"
+                className="rounded hover:text-foreground"
+                onClick={() => setFiltro('clienteId')(null)}
+              >
+                <X className="size-3.5" />
+              </button>
+            </span>
+          )}
         </span>
         {hayFiltros && (
           <Button variant="ghost" size="sm" onClick={limpiar}>

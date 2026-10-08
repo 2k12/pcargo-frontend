@@ -6,6 +6,11 @@ export function formatCurrency(value: number): string {
   return currency.format(value)
 }
 
+/** Ingreso de dinero: siempre con signo "+" (se muestra en verde de marca). */
+export function formatIngreso(value: number): string {
+  return `+${currency.format(value)}`
+}
+
 export function formatDateTime(iso: string): string {
   const d = new Date(iso)
   return Number.isNaN(d.getTime()) ? '—' : dateTime.format(d)

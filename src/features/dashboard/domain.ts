@@ -57,3 +57,57 @@ export function ticketPromedio(r: Pick<Resumen, 'porEstado' | 'totalEnvios' | 'i
   const validos = r.totalEnvios - (r.porEstado.CANCELADO ?? 0)
   return validos > 0 ? r.ingresos / validos : 0
 }
+
+export type Periodo = 'hoy' | '7d' | '30d' | 'mes' | 'todo'
+
+export const PERIODOS: { value: Periodo; label: string }[] = [
+  { value: 'hoy', label: 'Hoy' },
+  { value: '7d', label: '7 días' },
+  { value: '30d', label: '30 días' },
+  { value: 'mes', label: 'Este mes' },
+  { value: 'todo', label: 'Todo' },
+]
+
+export const esPeriodo = (v: string | null): v is Periodo => PERIODOS.some((p) => p.value === v)
+
+/** Ecuador continental no tiene horario de verano: UTC−5, igual que el servidor. */
+const OFFSET_EC_MS = -5 * 60 * 60 * 1000
+const DIA_MS = 24 * 60 * 60 * 1000
+
+/** Fecha local de Ecuador `YYYY-MM-DD`. */
+export const fechaEC = (ms: number): string => new Date(ms + OFFSET_EC_MS).toISOString().slice(0, 10)
+
+/** Rango `desde`–`hasta` (inclusive) de un periodo predefinido; `todo` no filtra por fecha. */
+export function rangoPeriodo(periodo: Periodo, ahora: number = Date.now()): { desde?: string; hasta?: string } {
+  const hoy = fechaEC(ahora)
+  switch (periodo) {
+    case 'hoy':
+      return { desde: hoy, hasta: hoy }
+    case '7d':
+      return { desde: fechaEC(ahora - 6 * DIA_MS), hasta: hoy }
+    case '30d':
+      return { desde: fechaEC(ahora - 29 * DIA_MS), hasta: hoy }
+    case 'mes':
+      return { desde: `${hoy.slice(0, 8)}01`, hasta: hoy }
+    default:
+      return {}
+  }
+}
+
+const diaCorto = new Intl.DateTimeFormat('es-EC', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+const diaLargo = new Intl.DateTimeFormat('es-EC', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
+
+/** "3 oct" / "sábado, 3 de octubre" a partir de `YYYY-MM-DD` (sin desfase de zona horaria). */
+export const formatDia = (fecha: string, largo = false): string =>
+  (largo ? diaLargo : diaCorto).format(new Date(`${fecha}T00:00:00Z`))
+
+/** Texto del rango elegido: "3 oct" o "1 oct – 7 oct". */
+export const formatRango = (desde: string, hasta: string): string =>
+  desde === hasta ? formatDia(desde) : `${formatDia(desde)} – ${formatDia(hasta)}`
+
+/** Promedio diario y día pico de la serie. */
+export function estadisticasSerie(serie: { fecha: string; envios: number; ingresos: number }[], metrica: 'envios' | 'ingresos') {
+  const total = serie.reduce((a, d) => a + d[metrica], 0)
+  const pico = serie.reduce<(typeof serie)[number] | null>((m, d) => (d[metrica] > (m?.[metrica] ?? 0) ? d : m), null)
+  return { total, promedio: serie.length ? total / serie.length : 0, pico }
+}

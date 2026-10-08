@@ -11,6 +11,7 @@ afterEach(() => {
 const envio: Envio = {
   id: '30f4b9af-89f6-45c0-aa6d-c505fdb4c0eb',
   numeroGuia: 7,
+  clienteId: null,
   remitente: { nombre: 'Textiles Atuntaqui S.A.', telefono: '0991112233' },
   destinatario: { nombre: 'Almacén El Sol', telefono: '0994445566', direccion: 'Av. 10 de Agosto N20-15, Quito' },
   ruta: { id: 13, origen: 'Atuntaqui', destino: 'Quito' },

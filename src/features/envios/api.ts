@@ -16,6 +16,7 @@ export const enviosApi = {
       estado: filtros.estado,
       rutaId: filtros.rutaId,
       formaPago: filtros.formaPago,
+      clienteId: filtros.clienteId,
       q: filtros.q,
       pagina: filtros.pagina,
       porPagina: filtros.porPagina,

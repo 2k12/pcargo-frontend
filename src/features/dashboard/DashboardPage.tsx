@@ -1,26 +1,55 @@
-import { ArrowUpRight, CircleCheck, DollarSign, Package, RefreshCw, Truck, type LucideIcon } from 'lucide-react'
+import {
+  ArrowUpRight,
+  CalendarDays,
+  CircleCheck,
+  HandCoins,
+  Package,
+  RefreshCw,
+  TrendingUp,
+  Truck,
+  UserRound,
+  X,
+  type LucideIcon,
+} from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { SectionLabel } from '@/components/layout/SectionLabel'
 import { Segmented } from '@/components/Segmented'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useClientes } from '@/features/clientes/api'
+import { ClienteBuscador } from '@/features/clientes/components/ClienteBuscador'
 import { EnvioCard } from '@/features/envios/components/EnvioCard'
 import { EnvioDetailSheet } from '@/features/envios/components/EnvioDetailSheet'
 import { NuevoEnvioDialog } from '@/features/envios/components/NuevoEnvioDialog'
 import { ESTADO_LABEL, FORMA_PAGO_LABEL, TIPO_CARGA_LABEL } from '@/features/envios/domain'
 import { useEnvios } from '@/features/envios/hooks'
 import { ATENCION_TONO, ESTADO_DOT, TIPO_CARGA_ICON } from '@/features/envios/ui'
-import { rutaLabel, useRutas } from '@/features/rutas/hooks'
 import { errorMessage } from '@/lib/api'
 import { INTERACTIVA, SUPERFICIE } from '@/lib/estilos'
-import { formatCurrency, formatRelativo } from '@/lib/format'
+import { formatCurrency, formatIngreso, formatRelativo } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import type { Estado, Resumen } from '@/types/api'
+import type { Estado, FiltroResumen, Resumen } from '@/types/api'
 import { useResumen } from './api'
-import { enCamino, GRUPOS_ESTADO, segmentosEstado, tasaEntrega, ticketPromedio, totalGrupo } from './domain'
+import { ClienteFiltradoCard, ClientesCard } from './components/ClientesCard'
+import { TendenciaCard } from './components/TendenciaCard'
+import {
+  enCamino,
+  esPeriodo,
+  formatRango,
+  GRUPOS_ESTADO,
+  PERIODOS,
+  rangoPeriodo,
+  segmentosEstado,
+  tasaEntrega,
+  ticketPromedio,
+  totalGrupo,
+  type Periodo,
+} from './domain'
+
+const PERIODO_INICIAL: Periodo = '30d'
 
 /** Re-renderiza cada `ms` para mantener vigentes los textos relativos ("hace 2 minutos"). */
 function useAhora(ms = 30_000) {
@@ -32,6 +61,42 @@ function useAhora(ms = 30_000) {
   return ahora
 }
 
+/**
+ * Filtros del resumen en la URL (?periodo=, ?desde=&hasta=, ?cliente=): se pueden compartir
+ * y la página de clientes enlaza directo al resumen de uno.
+ */
+function useFiltrosResumen() {
+  const [params, setParams] = useSearchParams()
+  const desdeUrl = params.get('desde') ?? undefined
+  const hastaUrl = params.get('hasta') ?? undefined
+  const personalizado = !!desdeUrl
+  const periodo: Periodo | null = personalizado ? null : esPeriodo(params.get('periodo')) ? (params.get('periodo') as Periodo) : PERIODO_INICIAL
+  const rango = personalizado ? { desde: desdeUrl, hasta: hastaUrl ?? desdeUrl } : rangoPeriodo(periodo!)
+  const clienteId = params.get('cliente') ?? undefined
+
+  const actualizar = (cambios: Record<string, string | null>) =>
+    setParams(
+      (p) => {
+        for (const [k, v] of Object.entries(cambios)) {
+          if (v === null) p.delete(k)
+          else p.set(k, v)
+        }
+        return p
+      },
+      { replace: true },
+    )
+
+  return {
+    filtro: { ...rango, clienteId } satisfies FiltroResumen,
+    periodo,
+    clienteId,
+    setPeriodo: (v: Periodo) => actualizar({ periodo: v === PERIODO_INICIAL ? null : v, desde: null, hasta: null }),
+    setDia: (fecha: string) => actualizar({ desde: fecha, hasta: fecha, periodo: null }),
+    quitarRango: () => actualizar({ desde: null, hasta: null }),
+    setCliente: (id: string | null) => actualizar({ cliente: id }),
+  }
+}
+
 /** Indicador clave. Todos comparten forma y jerarquía (similitud); solo los enlazables reaccionan al cursor. */
 function Kpi({
   label,
@@ -40,6 +105,8 @@ function Kpi({
   icon: Icon,
   to,
   tono,
+  valueClassName,
+  className,
 }: {
   label: string
   value: string
@@ -47,6 +114,8 @@ function Kpi({
   icon: LucideIcon
   to?: string
   tono?: string
+  valueClassName?: string
+  className?: string
 }) {
   const contenido = (
     <>
@@ -54,14 +123,14 @@ function Kpi({
         {label}
         <Icon className={cn('size-4', tono)} />
       </span>
-      <span className="text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl">{value}</span>
+      <span className={cn('truncate text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl', valueClassName)}>{value}</span>
       <span className="flex items-center justify-between gap-1 text-xs text-muted-foreground">
         <span className="truncate">{hint}</span>
         {to && <ArrowUpRight className="size-3.5 shrink-0 opacity-0 transition group-hover:opacity-100" />}
       </span>
     </>
   )
-  const base = cn('group flex flex-col gap-1.5 p-4', SUPERFICIE)
+  const base = cn('group flex min-w-0 flex-col gap-1.5 p-4', SUPERFICIE, className)
   return to ? (
     <Link to={to} className={cn(base, INTERACTIVA)}>
       {contenido}
@@ -71,11 +140,61 @@ function Kpi({
   )
 }
 
+/** Barra de filtros: periodo y cliente, en una fila sobre todas las cifras (afectan a todo el panel). */
+function FiltrosBar({ f }: { f: ReturnType<typeof useFiltrosResumen> }) {
+  const { data: clientes = [] } = useClientes()
+  const cliente = f.clienteId ? clientes.find((c) => c.id === f.clienteId) : undefined
+
+  return (
+    <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+      <div className="flex flex-wrap items-center gap-2">
+        <Segmented
+          label="Periodo"
+          value={f.periodo ?? ('' as Periodo)}
+          onChange={f.setPeriodo}
+          options={PERIODOS}
+          className="overflow-x-auto"
+        />
+        {!f.periodo && f.filtro.desde && (
+          <span className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-2.5 py-1 text-xs font-medium text-accent-foreground">
+            <CalendarDays className="size-3.5" />
+            {formatRango(f.filtro.desde, f.filtro.hasta ?? f.filtro.desde)}
+            <button type="button" aria-label="Quitar filtro de fecha" onClick={f.quitarRango} className="rounded hover:text-foreground">
+              <X className="size-3.5" />
+            </button>
+          </span>
+        )}
+      </div>
+      <div className="lg:ml-auto lg:w-80">
+        {f.clienteId ? (
+          <span className="flex h-8 items-center gap-2 rounded-lg bg-accent px-2.5 text-sm text-accent-foreground ring-1 ring-primary/30">
+            <UserRound className="size-4 shrink-0 text-primary" />
+            <span className="min-w-0 flex-1 truncate">
+              <span className="text-xs text-muted-foreground">Cliente: </span>
+              {cliente?.nombre ?? 'Cliente'}
+            </span>
+            <button type="button" aria-label="Quitar filtro de cliente" onClick={() => f.setCliente(null)} className="rounded hover:text-foreground">
+              <X className="size-4" />
+            </button>
+          </span>
+        ) : (
+          <ClienteBuscador
+            clientes={clientes}
+            onSelect={(c) => f.setCliente(c.id)}
+            label="Filtrar por cliente"
+            placeholder="Filtrar por cliente"
+          />
+        )}
+      </div>
+    </div>
+  )
+}
+
 /**
  * Estados en tres grupos con significado propio (proximidad + región común).
  * Al señalar un estado o un grupo se resaltan sus segmentos en la barra (destino común).
  */
-function EstadoCard({ data }: { data: Resumen }) {
+function EstadoCard({ data, sufijo }: { data: Resumen; sufijo: string }) {
   const [activos, setActivos] = useState<Estado[] | null>(null)
   const segmentos = segmentosEstado(data)
   const resaltar = (estados: Estado[] | null) => () => setActivos(estados)
@@ -137,7 +256,7 @@ function EstadoCard({ data }: { data: Resumen }) {
                     return (
                       <li key={e}>
                         <Link
-                          to={`/envios?estado=${e}`}
+                          to={`/envios?estado=${e}${sufijo}`}
                           onMouseEnter={resaltar([e])}
                           onFocus={resaltar([e])}
                           onBlur={resaltar(null)}
@@ -168,20 +287,25 @@ function EstadoCard({ data }: { data: Resumen }) {
 }
 
 type Vista = 'ruta' | 'carga' | 'pago'
-type Fila = { key: string; label: string; value: number; display: string; to?: string; icon?: LucideIcon }
+type Fila = { key: string; label: string; value: number; display: string; to?: string; icon?: LucideIcon; ingreso?: boolean }
 
-function DistribucionCard({ data }: { data: Resumen }) {
+function DistribucionCard({ data, sufijo }: { data: Resumen; sufijo: string }) {
   const [vista, setVista] = useState<Vista>('ruta')
   const [enMonto, setEnMonto] = useState(false)
-  const { data: rutas = [] } = useRutas()
-  const idPorRuta = new Map(rutas.map((r) => [rutaLabel({ origen: r.origen.nombre, destino: r.destino.nombre }), r.id]))
+  const conMonto = vista !== 'carga' && enMonto
 
   const filas: Fila[] =
     vista === 'ruta'
-      ? data.porRuta.map((r) => {
-          const id = idPorRuta.get(r.ruta)
-          return { key: r.ruta, label: r.ruta, value: r.total, display: String(r.total), to: id ? `/envios?rutaId=${id}` : undefined }
-        })
+      ? [...data.porRuta]
+          .sort((a, b) => (conMonto ? b.monto - a.monto : b.total - a.total))
+          .map((r) => ({
+            key: String(r.rutaId),
+            label: r.ruta,
+            value: conMonto ? r.monto : r.total,
+            display: conMonto ? formatIngreso(r.monto) : String(r.total),
+            to: `/envios?rutaId=${r.rutaId}${sufijo}`,
+            ingreso: conMonto,
+          }))
       : vista === 'carga'
         ? [...data.porTipo]
             .sort((a, b) => b.piezas - a.piezas)
@@ -193,13 +317,14 @@ function DistribucionCard({ data }: { data: Resumen }) {
               icon: TIPO_CARGA_ICON[t.tipoCarga],
             }))
         : [...data.porFormaPago]
-            .sort((a, b) => (enMonto ? b.monto - a.monto : b.envios - a.envios))
+            .sort((a, b) => (conMonto ? b.monto - a.monto : b.envios - a.envios))
             .map((p) => ({
               key: p.formaPago,
               label: FORMA_PAGO_LABEL[p.formaPago] ?? p.formaPago,
-              value: enMonto ? p.monto : p.envios,
-              display: enMonto ? formatCurrency(p.monto) : String(p.envios),
-              to: `/envios?formaPago=${p.formaPago}`,
+              value: conMonto ? p.monto : p.envios,
+              display: conMonto ? formatIngreso(p.monto) : String(p.envios),
+              to: `/envios?formaPago=${p.formaPago}${sufijo}`,
+              ingreso: conMonto,
             }))
 
   const max = Math.max(1, ...filas.map((f) => f.value))
@@ -209,7 +334,7 @@ function DistribucionCard({ data }: { data: Resumen }) {
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
         <CardTitle>Distribución</CardTitle>
         <div className="flex items-center gap-2">
-          {vista === 'pago' && (
+          {vista !== 'carga' && (
             <Segmented
               label="Métrica"
               value={enMonto ? 'monto' : 'envios'}
@@ -234,10 +359,10 @@ function DistribucionCard({ data }: { data: Resumen }) {
       </CardHeader>
       <CardContent>
         {filas.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">Sin datos todavía.</p>
+          <p className="py-6 text-center text-sm text-muted-foreground">Sin datos en el periodo.</p>
         ) : (
           <ul className="-mx-2 space-y-0.5">
-            {filas.map(({ key, label, value, display, to, icon: Icon }) => {
+            {filas.map(({ key, label, value, display, to, icon: Icon, ingreso }) => {
               const fila = (
                 <>
                   <span className="flex items-center justify-between gap-3 text-sm">
@@ -245,13 +370,20 @@ function DistribucionCard({ data }: { data: Resumen }) {
                       {Icon && <Icon className="size-3.5 shrink-0 text-muted-foreground" />}
                       <span className="truncate">{label}</span>
                     </span>
-                    <span className="shrink-0 tabular-nums text-muted-foreground group-hover:text-foreground">{display}</span>
+                    <span
+                      className={cn(
+                        'shrink-0 tabular-nums',
+                        ingreso && value > 0 ? 'font-medium text-brand-green-text' : 'text-muted-foreground group-hover:text-foreground',
+                      )}
+                    >
+                      {display}
+                    </span>
                   </span>
                   <span className="block h-1.5 overflow-hidden rounded-full bg-muted">
                     <span
                       className={cn(
                         'block h-full rounded-full transition-all duration-500',
-                        vista === 'carga' ? 'bg-brand-green' : 'bg-primary',
+                        vista === 'carga' || ingreso ? 'bg-brand-green' : 'bg-primary',
                       )}
                       style={{ width: `${(value / max) * 100}%` }}
                     />
@@ -278,9 +410,9 @@ function DistribucionCard({ data }: { data: Resumen }) {
   )
 }
 
-function RecientesCard() {
+function RecientesCard({ clienteId }: { clienteId?: string }) {
   // Solo la primera página de 5: el servidor no envía el resto.
-  const { data: envios, isLoading } = useEnvios({ porPagina: 5 })
+  const { data: envios, isLoading } = useEnvios({ porPagina: 5, clienteId })
   const [seleccionado, setSeleccionado] = useState<string | null>(null)
   const recientes = envios?.datos ?? []
 
@@ -288,7 +420,7 @@ function RecientesCard() {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Recientes</CardTitle>
-        <Link to="/envios" className="text-xs text-muted-foreground hover:text-foreground">
+        <Link to={clienteId ? `/envios?clienteId=${clienteId}` : '/envios'} className="text-xs text-muted-foreground hover:text-foreground">
           Ver todos
         </Link>
       </CardHeader>
@@ -307,9 +439,15 @@ function RecientesCard() {
 }
 
 export function DashboardPage() {
-  const { data, isLoading, error, isFetching, refetch, dataUpdatedAt } = useResumen()
+  const f = useFiltrosResumen()
+  const { data, isLoading, error, isFetching, refetch, dataUpdatedAt } = useResumen(f.filtro)
+  const { data: clientes = [] } = useClientes()
   const ahora = useAhora()
   const tasa = data ? tasaEntrega(data) : null
+  const cliente = f.clienteId ? clientes.find((c) => c.id === f.clienteId) : undefined
+  // Los enlaces al listado de envíos conservan el filtro de cliente.
+  const sufijo = f.clienteId ? `&clienteId=${f.clienteId}` : ''
+  const diaUnico = !f.periodo && f.filtro.desde === f.filtro.hasta ? f.filtro.desde : undefined
 
   return (
     <>
@@ -321,54 +459,80 @@ export function DashboardPage() {
             <Button variant="ghost" size="icon" aria-label="Actualizar" onClick={() => refetch()} disabled={isFetching}>
               <RefreshCw className={cn(isFetching && 'animate-spin')} />
             </Button>
-            <NuevoEnvioDialog />
+            <NuevoEnvioDialog cliente={cliente} />
           </>
         }
       />
 
+      <FiltrosBar f={f} />
+
       {error && <p className="text-sm text-destructive">{errorMessage(error)}</p>}
 
       {isLoading || !data ? (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {Array.from({ length: 4 }, (_, i) => (
-            <Skeleton key={i} className="h-28 rounded-xl" />
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+          {Array.from({ length: 5 }, (_, i) => (
+            <Skeleton key={i} className={cn('h-28 rounded-xl', i === 4 && 'col-span-2 lg:col-span-1')} />
           ))}
         </div>
       ) : (
-        <>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <Kpi label="Envíos" value={String(data.totalEnvios)} hint={`${data.totalPiezas} piezas`} icon={Package} to="/envios" />
+        <div className={cn('space-y-4 transition-opacity', isFetching && 'opacity-70')}>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+            <Kpi
+              label="Envíos"
+              value={String(data.totalEnvios)}
+              hint={`${data.totalPiezas} piezas`}
+              icon={Package}
+              to={f.clienteId ? `/envios?clienteId=${f.clienteId}` : '/envios'}
+            />
             <Kpi
               label="En camino"
               value={String(enCamino(data))}
               hint={`${data.porEstado.EN_REPARTO ?? 0} en reparto`}
               icon={Truck}
-              to="/envios?estado=EN_TRANSITO"
+              to={`/envios?estado=EN_TRANSITO${sufijo}`}
             />
             <Kpi
               label="Entrega"
               value={tasa === null ? '—' : `${tasa}%`}
               hint={`${data.porEstado.ENTREGADO ?? 0} entregados`}
               icon={CircleCheck}
-              to="/envios?estado=ENTREGADO"
+              to={`/envios?estado=ENTREGADO${sufijo}`}
               tono="text-brand-green"
             />
             <Kpi
               label="Ingresos"
-              value={formatCurrency(data.ingresos)}
+              value={formatIngreso(data.ingresos)}
+              valueClassName={data.ingresos > 0 ? 'text-brand-green-text' : undefined}
               hint={`${formatCurrency(ticketPromedio(data))} por envío`}
-              icon={DollarSign}
+              icon={TrendingUp}
+              tono="text-brand-green"
+            />
+            <Kpi
+              label="Por cobrar"
+              value={formatCurrency(data.porCobrar)}
+              hint="Al cobro, aún sin entregar"
+              icon={HandCoins}
+              to={`/envios?formaPago=AL_COBRO${sufijo}`}
+              className="col-span-2 lg:col-span-1"
             />
           </div>
 
           <div className="grid items-start gap-4 lg:grid-cols-3">
             <div className="space-y-4 lg:col-span-2">
-              <EstadoCard data={data} />
-              <DistribucionCard data={data} />
+              <TendenciaCard serie={data.porDia} diaSeleccionado={diaUnico} onSelectDia={f.setDia} />
+              <EstadoCard data={data} sufijo={sufijo} />
+              <DistribucionCard data={data} sufijo={sufijo} />
             </div>
-            <RecientesCard />
+            <div className="space-y-4">
+              {cliente ? (
+                <ClienteFiltradoCard cliente={cliente} onQuitar={() => f.setCliente(null)} />
+              ) : (
+                <ClientesCard data={data} onSelect={f.setCliente} />
+              )}
+              <RecientesCard clienteId={f.clienteId} />
+            </div>
           </div>
-        </>
+        </div>
       )}
     </>
   )

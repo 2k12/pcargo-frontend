@@ -95,6 +95,8 @@ export interface GestionEntrega extends Gestion {
 
 export interface Envio {
   id: string
+  /** Cliente frecuente que envía; null si es ocasional. */
+  clienteId: string | null
   /** Número de la guía física (contrato v4). */
   numeroGuia: number
   remitente: { nombre: string; telefono: string }
@@ -123,6 +125,10 @@ export interface NuevoEnvio {
   descripcion?: string
   /** Guía física; vacío → el sistema asigna el consecutivo. */
   numeroGuia?: string
+  /** Cliente frecuente elegido. */
+  clienteId?: string
+  /** Sin clienteId: guarda al remitente como cliente frecuente (o reutiliza el de su teléfono). */
+  guardarCliente?: boolean
 }
 
 export interface CotizacionRequest {
@@ -155,6 +161,7 @@ export interface FiltrosEnvios {
   estado?: Estado
   rutaId?: number
   formaPago?: FormaPago
+  clienteId?: string
   q?: string
   /** Paginación en el servidor (contrato v5): página desde 1, 1–100 por página (20 por defecto). */
   pagina?: number
@@ -182,12 +189,46 @@ export interface Seguimiento {
   historial: EventoHistorial[]
 }
 
+export interface Cliente {
+  id: string
+  nombre: string
+  telefono: string
+  direccion: string | null
+  notas: string | null
+  creadoEn: string
+  /** Envíos a su nombre (incluye cancelados). */
+  envios: number
+  /** Suma de sus envíos no cancelados. */
+  monto: number
+  ultimoEnvio: string | null
+}
+
+export interface DatosCliente {
+  nombre: string
+  telefono: string
+  direccion?: string | null
+  notas?: string | null
+}
+
+export interface FiltroResumen {
+  clienteId?: string
+  /** Fecha local `YYYY-MM-DD`, inclusive. */
+  desde?: string
+  hasta?: string
+}
+
 export interface Resumen {
   totalEnvios: number
   totalPiezas: number
+  pesoTotalKg: number
   ingresos: number
+  /** AL_COBRO aún no entregados ni cancelados. */
+  porCobrar: number
   porEstado: Record<Estado, number>
   porTipo: { tipoCarga: TipoCargaCodigo; piezas: number }[]
-  porRuta: { ruta: string; total: number }[]
+  porRuta: { rutaId: number; ruta: string; total: number; monto: number }[]
   porFormaPago: { formaPago: FormaPago; envios: number; monto: number }[]
+  porDia: { fecha: string; envios: number; ingresos: number }[]
+  /** `clienteId: null` agrupa los envíos sin cliente registrado. */
+  porCliente: { clienteId: string | null; nombre: string; envios: number; monto: number }[]
 }
