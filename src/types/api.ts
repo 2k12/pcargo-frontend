@@ -156,6 +156,18 @@ export interface FiltrosEnvios {
   rutaId?: number
   formaPago?: FormaPago
   q?: string
+  /** Paginación en el servidor (contrato v5): página desde 1, 1–100 por página (20 por defecto). */
+  pagina?: number
+  porPagina?: number
+}
+
+/** Respuesta paginada (contrato v5). */
+export interface Pagina<T> {
+  datos: T[]
+  pagina: number
+  porPagina: number
+  total: number
+  totalPaginas: number
 }
 
 export interface Seguimiento {

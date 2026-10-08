@@ -65,7 +65,7 @@ function setup() {
   mockFetch((url) => {
     if (url.includes('/dashboard/resumen')) return jsonResponse(resumen)
     if (url.includes('/rutas')) return jsonResponse([ruta])
-    if (url.includes('/envios')) return jsonResponse([envio])
+    if (url.includes('/envios')) return jsonResponse({ datos: [envio], pagina: 1, porPagina: 5, total: 1, totalPaginas: 1 })
     return jsonResponse([])
   })
   return renderWithProviders(<DashboardPage />, {

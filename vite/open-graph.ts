@@ -3,13 +3,18 @@ import type { Logger, Plugin } from 'vite'
 /** Marcador que `index.html` usa delante de las rutas de la vista previa (og:image, og:url…). */
 export const MARCADOR_SITIO = '__SITE_URL__'
 
+// Etiquetas que solo tienen sentido con URL absoluta: un canonical u og:url relativo es inválido (Lighthouse).
+const SOLO_ABSOLUTAS = /^[ \t]*<(?:link[^>]*rel="canonical"|meta[^>]*property="og:url")[^>]*__SITE_URL__[^>]*>[ \t]*\r?\n?/gm
+
 /**
  * WhatsApp, Facebook y X solo muestran la vista previa si `og:image` y `og:url` son URLs absolutas.
- * Sustituye el marcador por la URL pública del sitio (sin barra final). Sin URL, deja rutas relativas.
+ * Sustituye el marcador por la URL pública del sitio (sin barra final). Sin URL, quita canonical y og:url
+ * y deja relativas el resto de rutas (la imagen sigue sirviendo en el propio dominio).
  */
 export function absolutizarOpenGraph(html: string, sitio: string | undefined): string {
   const base = (sitio ?? '').trim().replace(/\/+$/, '')
-  return html.replaceAll(MARCADOR_SITIO, base)
+  const limpio = base ? html : html.replace(SOLO_ABSOLUTAS, '')
+  return limpio.replaceAll(MARCADOR_SITIO, base)
 }
 
 export function openGraph(sitio: string | undefined): Plugin {

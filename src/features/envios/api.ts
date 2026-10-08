@@ -6,16 +6,19 @@ import type {
   Estado,
   FiltrosEnvios,
   NuevoEnvio,
+  Pagina,
   TipoCarga,
 } from '@/types/api'
 
 export const enviosApi = {
   listar: (filtros: FiltrosEnvios = {}) =>
-    api.get<Envio[]>('/envios', {
+    api.get<Pagina<Envio>>('/envios', {
       estado: filtros.estado,
       rutaId: filtros.rutaId,
       formaPago: filtros.formaPago,
       q: filtros.q,
+      pagina: filtros.pagina,
+      porPagina: filtros.porPagina,
     }),
   obtener: (id: string) => api.get<Envio>(`/envios/${id}`),
   crear: (data: NuevoEnvio) => api.post<Envio>('/envios', data),

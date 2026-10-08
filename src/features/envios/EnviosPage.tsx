@@ -1,7 +1,8 @@
 import { PackageOpen, Search, X } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { Paginacion } from '@/components/Paginacion'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -11,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { rutaLabel, useRutas } from '@/features/rutas/hooks'
 import { useDebounced } from '@/hooks/useDebounced'
 import { errorMessage } from '@/lib/api'
+import { OPCIONES_POR_PAGINA } from '@/lib/paginacion'
 import { formatCurrency, formatDate } from '@/lib/format'
 import type { Estado, FormaPago } from '@/types/api'
 import { EnvioCard } from './components/EnvioCard'
@@ -22,6 +24,13 @@ import { ESTADO_LABEL, ESTADOS, FORMA_PAGO_LABEL, FORMAS_PAGO, piezasLabel, resu
 import { useEnvios } from './hooks'
 
 const TODOS = 'TODOS'
+const POR_PAGINA_DEFECTO = 20
+
+/** Lee un entero positivo de la URL; si falta o no es válido usa el valor por defecto. */
+const enteroPositivo = (valor: string | null, defecto: number) => {
+  const n = Number(valor)
+  return Number.isInteger(n) && n > 0 ? n : defecto
+}
 
 export function EnviosPage() {
   // Los filtros viven en la URL: el resumen enlaza a /envios?estado=… y se pueden compartir.
@@ -29,11 +38,36 @@ export function EnviosPage() {
   const estado = params.get('estado') ?? TODOS
   const rutaId = params.get('rutaId') ?? TODOS
   const formaPago = params.get('formaPago') ?? TODOS
+  // La página también vive en la URL (se puede compartir y "Atrás" vuelve a la anterior).
+  const pagina = enteroPositivo(params.get('pagina'), 1)
+  const porPaginaUrl = enteroPositivo(params.get('porPagina'), POR_PAGINA_DEFECTO)
+  const porPagina = (OPCIONES_POR_PAGINA as readonly number[]).includes(porPaginaUrl) ? porPaginaUrl : POR_PAGINA_DEFECTO
+  const irAPagina = (n: number, opciones: { replace?: boolean } = {}) =>
+    setParams(
+      (p) => {
+        if (n <= 1) p.delete('pagina')
+        else p.set('pagina', String(n))
+        return p
+      },
+      opciones,
+    )
+  const setPorPagina = (n: number) =>
+    setParams(
+      (p) => {
+        p.delete('pagina')
+        if (n === POR_PAGINA_DEFECTO) p.delete('porPagina')
+        else p.set('porPagina', String(n))
+        return p
+      },
+      { replace: true },
+    )
+  // Cambiar un filtro vuelve a la primera página: la página actual podría no existir con el filtro nuevo.
   const setFiltro = (clave: string) => (v: string | null) =>
     setParams(
       (p) => {
         if (!v || v === TODOS) p.delete(clave)
         else p.set(clave, v)
+        p.delete('pagina')
         return p
       },
       { replace: true },
@@ -51,12 +85,34 @@ export function EnviosPage() {
   const q = useDebounced(busqueda.trim(), 300)
 
   const { data: rutas = [] } = useRutas()
-  const { data: envios, isLoading, error } = useEnvios({
+  const {
+    data: resultado,
+    isLoading,
+    isPlaceholderData,
+    error,
+  } = useEnvios({
     estado: estado === TODOS ? undefined : (estado as Estado),
     rutaId: rutaId === TODOS ? undefined : Number(rutaId),
     formaPago: formaPago === TODOS ? undefined : (formaPago as FormaPago),
     q: q || undefined,
+    pagina,
+    porPagina,
   })
+  const envios = resultado?.datos
+
+  // Si la página pedida ya no existe (p. ej. se cancelaron envíos o la URL es vieja), ir a la última.
+  const totalPaginas = resultado?.totalPaginas ?? 0
+  useEffect(() => {
+    if (isPlaceholderData || totalPaginas === 0 || pagina <= totalPaginas) return
+    setParams(
+      (p) => {
+        if (totalPaginas <= 1) p.delete('pagina')
+        else p.set('pagina', String(totalPaginas))
+        return p
+      },
+      { replace: true },
+    )
+  }, [isPlaceholderData, totalPaginas, pagina, setParams])
 
   const estadoItems = { [TODOS]: 'Todos los estados', ...ESTADO_LABEL }
   const pagoItems = { [TODOS]: 'Todo pago', ...FORMA_PAGO_LABEL }
@@ -80,7 +136,11 @@ export function EnviosPage() {
             className="pl-8"
             placeholder="Buscar por N.º de guía, remitente o destinatario"
             value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
+            onChange={(e) => {
+              setBusqueda(e.target.value)
+              // Una búsqueda nueva empieza en la primera página.
+              if (pagina > 1) irAPagina(1, { replace: true })
+            }}
             aria-label="Buscar envíos"
           />
         </div>
@@ -211,6 +271,21 @@ export function EnviosPage() {
             </Table>
           </Card>
         </>
+      )}
+
+      {resultado && resultado.total > 0 && (
+        <Paginacion
+          pagina={resultado.pagina}
+          porPagina={resultado.porPagina}
+          total={resultado.total}
+          totalPaginas={resultado.totalPaginas}
+          onPagina={(n) => {
+            irAPagina(n)
+            window.scrollTo?.({ top: 0, behavior: 'smooth' })
+          }}
+          onPorPagina={setPorPagina}
+          cargando={isPlaceholderData}
+        />
       )}
 
       <EnvioDetailSheet envioId={seleccionado} onClose={() => setSeleccionado(null)} />

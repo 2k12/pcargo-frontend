@@ -279,9 +279,10 @@ function DistribucionCard({ data }: { data: Resumen }) {
 }
 
 function RecientesCard() {
-  const { data: envios, isLoading } = useEnvios({})
+  // Solo la primera página de 5: el servidor no envía el resto.
+  const { data: envios, isLoading } = useEnvios({ porPagina: 5 })
   const [seleccionado, setSeleccionado] = useState<string | null>(null)
-  const recientes = (envios ?? []).slice(0, 5)
+  const recientes = envios?.datos ?? []
 
   return (
     <Card>
