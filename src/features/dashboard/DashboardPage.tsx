@@ -25,7 +25,7 @@ function Kpi({ label, value, icon: Icon, hint }: { label: string; value: string;
   )
 }
 
-function BarList({ items }: { items: { label: string; value: number; icon?: LucideIcon }[] }) {
+function BarList({ items, tono = 'bg-primary' }: { items: { label: string; value: number; icon?: LucideIcon }[]; tono?: string }) {
   const max = Math.max(1, ...items.map((i) => i.value))
   if (items.length === 0) return <p className="text-sm text-muted-foreground">Sin datos todavía.</p>
   return (
@@ -40,7 +40,7 @@ function BarList({ items }: { items: { label: string; value: number; icon?: Luci
             <span className="tabular-nums text-muted-foreground">{value}</span>
           </div>
           <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-            <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${(value / max) * 100}%` }} />
+            <div className={`h-full rounded-full transition-all ${tono}`} style={{ width: `${(value / max) * 100}%` }} />
           </div>
         </li>
       ))}
@@ -118,6 +118,7 @@ export function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <BarList
+                  tono="bg-brand-green"
                   items={data.porTipo.map((t) => ({
                     label: TIPO_CARGA_LABEL[t.tipoCarga] ?? t.tipoCarga,
                     value: t.piezas,

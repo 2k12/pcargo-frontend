@@ -1,6 +1,7 @@
-import { AlertTriangle, ArrowRight, Check, Loader2, PackageSearch, PackageX, Search, Truck, XCircle } from 'lucide-react'
+import { AlertTriangle, ArrowRight, Check, Loader2, PackageSearch, PackageX, Search, XCircle } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
+import { Logo } from '@/components/brand/PCargoLogo'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -88,11 +89,8 @@ export function SeguimientoPage() {
   return (
     <div className="min-h-svh bg-muted/30">
       <header className="mx-auto flex h-14 max-w-2xl items-center justify-between px-4">
-        <Link to="/" className="flex items-center gap-2 text-sm font-semibold">
-          <span className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Truck className="size-3.5" />
-          </span>
-          PCargo
+        <Link to="/" aria-label="PCargo — inicio">
+          <Logo markClassName="size-8" />
         </Link>
         <ThemeToggle />
       </header>

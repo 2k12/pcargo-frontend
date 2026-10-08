@@ -15,3 +15,7 @@ Repositorio independiente del frontend de PCargo. Contrato de API en `../docs/ap
 - Textos de interfaz en español; moneda USD con `formatCurrency` (es-EC).
 - Estilo minimalista: tokens neutrales de shadcn, sin colores hardcodeados salvo los tonos de estado en `features/envios/ui.tsx`.
 - Tests junto al código (`*.test.ts[x]`); mockear `fetch` con `mockFetch`/`jsonResponse` de `src/test/utils.tsx`.
+
+## Marca
+- Colores y logo: ver `../docs/marca.md`. Usar tokens (`bg-primary`, `text-brand-blue-text`, `bg-brand-green` + `text-brand-green-foreground`); nunca texto blanco sobre verde ni hex sueltos.
+- Logo: `<Logo />` / `<LogoMark />` de `src/components/brand/PCargoLogo.tsx`.

@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
+import { Logo } from '@/components/brand/PCargoLogo'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -106,11 +107,8 @@ export function LandingPage() {
     <div className="min-h-svh bg-background">
       <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-          <a href="#inicio" className="flex items-center gap-2 font-semibold">
-            <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Truck className="size-4" />
-            </span>
-            {MARCA.nombre}
+          <a href="#inicio" aria-label={`${MARCA.nombre} — inicio`}>
+            <Logo className="text-lg" markClassName="size-9" />
           </a>
           <nav className="hidden items-center gap-1 md:flex" aria-label="Secciones">
             {NAV.map((n) => (
@@ -132,14 +130,17 @@ export function LandingPage() {
       <main id="inicio">
         {/* Hero */}
         <section className="relative overflow-hidden">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,var(--color-muted),transparent_60%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,color-mix(in_oklch,var(--brand-blue)_14%,transparent),transparent_55%),radial-gradient(ellipse_at_bottom_right,color-mix(in_oklch,var(--brand-green)_18%,transparent),transparent_55%)]" />
           <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-4 py-16 sm:px-6 sm:py-24 lg:grid-cols-[1.1fr_1fr]">
             <div className="space-y-6">
               <Badge variant="secondary" className="gap-1.5">
                 <MapPin className="size-3" /> Ibarra · Atuntaqui · Otavalo · Quito
               </Badge>
               <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl">
-                Tus encomiendas, puerta a puerta.
+                Tus encomiendas,{' '}
+                <span className="text-brand-blue-text">
+                  puerta a puerta<span className="text-brand-green">.</span>
+                </span>
               </h1>
               <p className="max-w-xl text-lg text-muted-foreground text-pretty">
                 En PCargo llevamos sobres, paquetes, cartones y valijas desde Ibarra hasta el domicilio de tu
@@ -182,7 +183,7 @@ export function LandingPage() {
               const Icon = TIPO_CARGA_ICON[t.codigo]
               return (
                 <article key={t.codigo} className="group space-y-4 rounded-2xl border bg-card p-6 transition-colors hover:bg-muted/40">
-                  <span className="flex size-10 items-center justify-center rounded-xl bg-muted">
+                  <span className="flex size-10 items-center justify-center rounded-xl bg-accent text-accent-foreground">
                     <Icon className="size-5" />
                   </span>
                   <div className="space-y-1.5">
@@ -203,7 +204,7 @@ export function LandingPage() {
             {PASOS.map((p, i) => (
               <li key={p.titulo} className="space-y-3">
                 <div className="flex items-center gap-3">
-                  <span className="flex size-10 items-center justify-center rounded-full border bg-background">
+                  <span className="flex size-10 items-center justify-center rounded-full border-2 border-brand-green bg-background">
                     <p.icon className="size-4" />
                   </span>
                   <span className="text-sm text-muted-foreground">Paso {i + 1}</span>
@@ -310,12 +311,12 @@ export function LandingPage() {
 
         {/* Acceso personal */}
         <section className="py-16">
-          <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 rounded-2xl border bg-primary px-6 py-10 text-primary-foreground sm:flex-row sm:items-center sm:px-10">
+          <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 rounded-2xl bg-[image:var(--brand-gradient)] px-6 py-10 text-white sm:flex-row sm:items-center sm:px-10">
             <div className="space-y-1">
               <h2 className="text-2xl font-semibold tracking-tight">¿Eres parte del equipo PCargo?</h2>
               <p className="text-sm opacity-80">Ingresa al panel de operaciones para registrar y gestionar envíos.</p>
             </div>
-            <Button size="lg" variant="secondary" nativeButton={false} render={<Link to="/login" />}>
+            <Button size="lg" className="bg-brand-green text-brand-green-foreground hover:bg-brand-green/90" nativeButton={false} render={<Link to="/login" />}>
               <LogIn /> Acceso personal
             </Button>
           </div>

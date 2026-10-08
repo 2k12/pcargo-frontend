@@ -1,5 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { ArrowLeft, Loader2, PackageSearch, Truck } from 'lucide-react'
+import { ArrowLeft, Loader2, PackageSearch } from 'lucide-react'
+import { LogoMark } from '@/components/brand/PCargoLogo'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router'
@@ -54,10 +55,10 @@ export function LoginPage() {
       </div>
       <div className="w-full max-w-sm space-y-6">
         <div className="flex flex-col items-center gap-2 text-center">
-          <Link to="/" aria-label="Ir al inicio" className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <Truck className="size-5" />
+          <Link to="/" aria-label="Ir al inicio">
+            <LogoMark className="size-14" />
           </Link>
-          <h1 className="text-xl font-semibold tracking-tight">PCargo</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-brand-blue-text">PCargo</h1>
           <p className="text-sm text-muted-foreground">Encomiendas Ibarra · Atuntaqui · Otavalo · Quito</p>
         </div>
 

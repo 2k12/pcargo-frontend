@@ -1,6 +1,7 @@
-import { LayoutDashboard, LogOut, Menu, PackageSearch, Route, Truck, Package } from 'lucide-react'
+import { LayoutDashboard, LogOut, Menu, PackageSearch, Route, Package } from 'lucide-react'
 import { Suspense, useState } from 'react'
 import { NavLink, Outlet } from 'react-router'
+import { Logo } from '@/components/brand/PCargoLogo'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import {
@@ -27,15 +28,7 @@ const NAV = [
 
 function Brand() {
   return (
-    <div className="flex items-center gap-2 px-2">
-      <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-        <Truck className="size-4" />
-      </div>
-      <div className="leading-tight">
-        <p className="text-sm font-semibold">PCargo</p>
-        <p className="text-[11px] text-muted-foreground">Logística Imbabura</p>
-      </div>
-    </div>
+    <Logo className="px-2 text-sm" markClassName="size-9" subtitulo="Logística Imbabura" />
   )
 }
 
