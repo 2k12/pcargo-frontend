@@ -1,8 +1,9 @@
-import { BarChart3, MapPin, MoreHorizontal, Package, Pencil, Phone, Search, Trash2, UserPlus, Users, X } from 'lucide-react'
+import { ArrowUpDown, BarChart3, MapPin, MoreHorizontal, Package, Pencil, Phone, Search, Trash2, UserPlus, Users, X } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { FiltrosMovil, OpcionesFiltro } from '@/components/FiltrosMovil'
 import { Segmented } from '@/components/Segmented'
 import { Button } from '@/components/ui/button'
 import {
@@ -23,6 +24,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { NuevoEnvioDialog } from '@/features/envios/components/NuevoEnvioDialog'
+import { useEsMovil } from '@/hooks/useMediaQuery'
 import { errorMessage } from '@/lib/api'
 import { SUPERFICIE } from '@/lib/estilos'
 import { formatIngreso, formatRelativo, iniciales } from '@/lib/format'
@@ -31,6 +33,14 @@ import type { Cliente } from '@/types/api'
 import { useClientes, useEliminarCliente } from './api'
 import { ClienteFormDialog } from './components/ClienteFormDialog'
 import { buscarClientes, ordenarClientes, type OrdenClientes } from './domain'
+
+const ORDEN_INICIAL: OrdenClientes = 'nombre'
+const OPCIONES_ORDEN: { value: OrdenClientes; label: string }[] = [
+  { value: 'nombre', label: 'A–Z' },
+  { value: 'envios', label: 'Más envíos' },
+  { value: 'monto', label: 'Más ingresos' },
+  { value: 'reciente', label: 'Recientes' },
+]
 
 function ClienteCard({
   cliente,
@@ -114,7 +124,8 @@ export function ClientesPage() {
   const { data: clientes = [], isLoading, error } = useClientes()
   const eliminar = useEliminarCliente()
   const [busqueda, setBusqueda] = useState('')
-  const [orden, setOrden] = useState<OrdenClientes>('nombre')
+  const [orden, setOrden] = useState<OrdenClientes>(ORDEN_INICIAL)
+  const esMovil = useEsMovil()
   const [formAbierto, setFormAbierto] = useState(false)
   const [editando, setEditando] = useState<Cliente | null>(null)
   const [aEliminar, setAEliminar] = useState<Cliente | null>(null)
@@ -153,8 +164,9 @@ export function ClientesPage() {
         }
       />
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
+      {/* Móvil: buscador + botón «Ordenar» (hoja inferior) en una sola fila. */}
+      <div className={esMovil ? 'flex gap-2' : 'flex flex-col gap-2 sm:flex-row sm:items-center'}>
+        <div className="relative min-w-0 flex-1">
           <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             className="pl-8"
@@ -174,17 +186,19 @@ export function ClientesPage() {
             </button>
           )}
         </div>
-        <Segmented
-          label="Ordenar por"
-          value={orden}
-          onChange={setOrden}
-          options={[
-            { value: 'nombre', label: 'A–Z' },
-            { value: 'envios', label: 'Más envíos' },
-            { value: 'monto', label: 'Más ingresos' },
-            { value: 'reciente', label: 'Recientes' },
-          ]}
-        />
+        {esMovil ? (
+          <FiltrosMovil
+            activos={orden === ORDEN_INICIAL ? 0 : 1}
+            onLimpiar={() => setOrden(ORDEN_INICIAL)}
+            etiqueta="Ordenar"
+            icono={ArrowUpDown}
+            titulo="Ordenar clientes"
+          >
+            <OpcionesFiltro label="Ordenar por" value={orden} onChange={setOrden} options={OPCIONES_ORDEN} columnas={1} />
+          </FiltrosMovil>
+        ) : (
+          <Segmented label="Ordenar por" value={orden} onChange={setOrden} options={OPCIONES_ORDEN} />
+        )}
       </div>
 
       {error && <p className="text-sm text-destructive">{errorMessage(error)}</p>}

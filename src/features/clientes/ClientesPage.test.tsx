@@ -1,7 +1,7 @@
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { jsonResponse, mockFetch, renderWithProviders } from '@/test/utils'
+import { jsonResponse, mockFetch, renderWithProviders, simularMovil } from '@/test/utils'
 import type { Cliente } from '@/types/api'
 import { ClientesPage } from './ClientesPage'
 
@@ -89,5 +89,23 @@ describe('ClientesPage', () => {
     expect(within(confirmar).getByText(/Sus 4 envíos se conservan/)).toBeInTheDocument()
     await userEvent.click(within(confirmar).getByRole('button', { name: 'Eliminar' }))
     expect(await screen.findByText('Aún no hay clientes registrados')).toBeInTheDocument()
+  })
+
+  it('en móvil el orden se elige en una hoja inferior en vez de pestañas', async () => {
+    simularMovil()
+    const beto: Cliente = { ...ana, id: 'c2', nombre: 'Beto Ruiz', telefono: '0992223344', envios: 9, monto: 10 }
+    setup([ana, beto])
+    expect(await screen.findByText('Ana López')).toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Más envíos' })).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Ordenar' }))
+    const hoja = await screen.findByRole('dialog', { name: 'Ordenar clientes' })
+    await userEvent.click(within(hoja).getByRole('radio', { name: 'Más envíos' }))
+    expect(within(hoja).getByRole('radio', { name: 'Más envíos' })).toHaveAttribute('aria-checked', 'true')
+    await userEvent.click(within(hoja).getByRole('button', { name: 'Ver resultados' }))
+
+    expect(await screen.findByRole('button', { name: 'Ordenar (1 activo)' })).toBeInTheDocument()
+    const nombres = screen.getAllByText(/^(Ana López|Beto Ruiz)$/).map((n) => n.textContent)
+    expect(nombres).toEqual(['Beto Ruiz', 'Ana López'])
   })
 })

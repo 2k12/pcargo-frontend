@@ -1,6 +1,7 @@
 import { PackageOpen, Search, UserRound, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router'
+import { CampoFiltro, FiltrosMovil } from '@/components/FiltrosMovil'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Paginacion } from '@/components/Paginacion'
 import { Button } from '@/components/ui/button'
@@ -12,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useClientes } from '@/features/clientes/api'
 import { rutaLabel, useRutas } from '@/features/rutas/hooks'
 import { useDebounced } from '@/hooks/useDebounced'
+import { useEsMovil } from '@/hooks/useMediaQuery'
 import { errorMessage } from '@/lib/api'
 import { OPCIONES_POR_PAGINA } from '@/lib/paginacion'
 import { formatCurrency, formatDate } from '@/lib/format'
@@ -86,6 +88,19 @@ export function EnviosPage() {
     setBusqueda('')
     setParams({}, { replace: true })
   }
+  // Filtros de la hoja móvil: estado, pago y ruta (la búsqueda y el cliente tienen su propio control).
+  const filtrosHoja = [estado, formaPago, rutaId].filter((v) => v !== TODOS).length
+  const limpiarHoja = () =>
+    setParams(
+      (p) => {
+        for (const clave of ['estado', 'formaPago', 'rutaId', 'pagina']) p.delete(clave)
+        return p
+      },
+      { replace: true },
+    )
+  const esMovil = useEsMovil()
+  /** En móvil cada control va con su etiqueta dentro de la hoja; en escritorio, en línea. */
+  const campo = (label: string, control: ReactNode) => (esMovil ? <CampoFiltro label={label}>{control}</CampoFiltro> : control)
   const [seleccionado, setSeleccionado] = useState<string | null>(null)
   const q = useDebounced(busqueda.trim(), 300)
 
@@ -131,12 +146,66 @@ export function EnviosPage() {
     ...Object.fromEntries(opcionesRuta.map((o) => [o.value, o.label])),
   }
 
+  const controles = (
+    <>
+      {campo(
+        'Estado',
+        <Select items={estadoItems} value={estado} onValueChange={(v) => setEstado(v)}>
+          <SelectTrigger className="w-full lg:w-40" aria-label="Filtrar por estado">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={TODOS}>Todos los estados</SelectItem>
+            {ESTADOS.map((e) => (
+              <SelectItem key={e} value={e}>
+                {ESTADO_LABEL[e]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>,
+      )}
+      {campo(
+        'Forma de pago',
+        <Select items={pagoItems} value={formaPago} onValueChange={(v) => setFormaPago(v)}>
+          <SelectTrigger className="w-full lg:w-36" aria-label="Filtrar por forma de pago">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={TODOS}>Todo pago</SelectItem>
+            {FORMAS_PAGO.map((f) => (
+              <SelectItem key={f} value={f}>
+                {FORMA_PAGO_LABEL[f]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>,
+      )}
+      {campo(
+        'Ruta',
+        <Select items={rutaItems} value={rutaId} onValueChange={(v) => setRutaId(v)}>
+          <SelectTrigger className="col-span-2 w-full sm:col-span-1 lg:w-52" aria-label="Filtrar por ruta">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={TODOS}>Todas las rutas</SelectItem>
+            {opcionesRuta.map((o) => (
+              <SelectItem key={o.value} value={o.value}>
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>,
+      )}
+    </>
+  )
+
   return (
     <>
       <PageHeader title="Envíos" description="Sobres, paquetes, cartones y valijas en circulación" actions={<NuevoEnvioDialog />} />
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:flex">
-        <div className="relative col-span-2 sm:col-span-3 lg:flex-1">
+      {/* Móvil: buscador + botón «Filtros» que abre una hoja inferior. Escritorio: todo en línea. */}
+      <div className={esMovil ? 'flex gap-2' : 'grid grid-cols-2 gap-2 sm:grid-cols-3 lg:flex'}>
+        <div className={esMovil ? 'relative min-w-0 flex-1' : 'relative col-span-2 sm:col-span-3 lg:flex-1'}>
           <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             className="pl-8"
@@ -150,50 +219,18 @@ export function EnviosPage() {
             aria-label="Buscar envíos"
           />
         </div>
-        <Select items={estadoItems} value={estado} onValueChange={(v) => setEstado(v)}>
-          <SelectTrigger className="w-full lg:w-40" aria-label="Filtrar por estado">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={TODOS}>Todos los estados</SelectItem>
-            {ESTADOS.map((e) => (
-              <SelectItem key={e} value={e}>
-                {ESTADO_LABEL[e]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select items={pagoItems} value={formaPago} onValueChange={(v) => setFormaPago(v)}>
-          <SelectTrigger className="w-full lg:w-36" aria-label="Filtrar por forma de pago">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={TODOS}>Todo pago</SelectItem>
-            {FORMAS_PAGO.map((f) => (
-              <SelectItem key={f} value={f}>
-                {FORMA_PAGO_LABEL[f]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select items={rutaItems} value={rutaId} onValueChange={(v) => setRutaId(v)}>
-          <SelectTrigger className="col-span-2 w-full sm:col-span-1 lg:w-52" aria-label="Filtrar por ruta">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={TODOS}>Todas las rutas</SelectItem>
-            {opcionesRuta.map((o) => (
-              <SelectItem key={o.value} value={o.value}>
-                {o.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {esMovil ? (
+          <FiltrosMovil activos={filtrosHoja} onLimpiar={limpiarHoja} descripcion="Estado, forma de pago y ruta">
+            {controles}
+          </FiltrosMovil>
+        ) : (
+          controles
+        )}
       </div>
 
       <div className="-mt-2 flex min-h-8 items-center justify-between gap-2 text-xs text-muted-foreground md:-mt-4">
         <span className="flex min-w-0 items-center gap-2" aria-live="polite">
-          {envios ? `${envios.length} ${envios.length === 1 ? 'envío' : 'envíos'}` : ''}
+          {resultado ? `${resultado.total} ${resultado.total === 1 ? 'envío' : 'envíos'}` : ''}
           {clienteId && (
             <span className="inline-flex min-w-0 items-center gap-1 rounded-md bg-accent px-2 py-0.5 font-medium text-accent-foreground">
               <UserRound className="size-3.5 shrink-0" />
