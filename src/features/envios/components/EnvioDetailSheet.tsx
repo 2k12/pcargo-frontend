@@ -152,12 +152,15 @@ export function EnvioDetailSheet({ envioId, onClose }: { envioId: string | null;
                 <p className="text-xs text-muted-foreground">Última gestión de entrega</p>
                 {envio.entrega ? (
                   <>
-                    <p className="flex items-center gap-2 text-sm">
-                      <span className={cn('rounded-full px-1.5 py-0.5 text-[11px] font-medium', ESTADO_TONO[envio.entrega.resultado])}>
-                        {ESTADO_LABEL[envio.entrega.resultado]}
-                      </span>
-                      {formatDateTime(envio.entrega.fecha)}
-                    </p>
+                    <span
+                      className={cn(
+                        'my-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-medium whitespace-nowrap',
+                        ESTADO_TONO[envio.entrega.resultado],
+                      )}
+                    >
+                      {ESTADO_LABEL[envio.entrega.resultado]}
+                    </span>
+                    <p className="text-sm">{formatDateTime(envio.entrega.fecha)}</p>
                     <p className="text-xs text-muted-foreground">{envio.entrega.operador ?? 'Operador no disponible'}</p>
                     {envio.entrega.nota && <p className="mt-1 text-xs">{envio.entrega.nota}</p>}
                   </>
