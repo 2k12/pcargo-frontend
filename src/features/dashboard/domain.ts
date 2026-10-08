@@ -94,6 +94,21 @@ export function rangoPeriodo(periodo: Periodo, ahora: number = Date.now()): { de
   }
 }
 
+/** El servidor envía la serie diaria de, como máximo, los últimos 92 días del rango. */
+export const MAX_DIAS_SERIE = 92
+
+/** Días del rango `desde`–`hasta`, ambos inclusive. */
+export const diasEntre = (desde: string, hasta: string): number =>
+  Math.round((Date.parse(`${hasta}T00:00:00Z`) - Date.parse(`${desde}T00:00:00Z`)) / DIA_MS) + 1
+
+/** Valida un rango elegido a mano (fechas de Ecuador). Devuelve el mensaje de error o `null` si es válido. */
+export function validarRango(desde: string, hasta: string, hoy: string = fechaEC(Date.now())): string | null {
+  if (!esFecha(desde) || !esFecha(hasta)) return 'Elige la fecha de inicio y la de fin'
+  if (desde > hasta) return '«Desde» no puede ser posterior a «Hasta»'
+  if (hasta > hoy) return 'No puedes elegir fechas futuras'
+  return null
+}
+
 const diaCorto = new Intl.DateTimeFormat('es-EC', { day: 'numeric', month: 'short', timeZone: 'UTC' })
 const diaLargo = new Intl.DateTimeFormat('es-EC', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
 

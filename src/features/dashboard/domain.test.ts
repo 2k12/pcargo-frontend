@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Estado } from '@/types/api'
 import { ESTADOS } from '@/features/envios/domain'
 import {
+  diasEntre,
   enCamino,
   esPeriodo,
   estadisticasSerie,
@@ -15,6 +16,7 @@ import {
   tasaEntrega,
   ticketPromedio,
   totalGrupo,
+  validarRango,
 } from './domain'
 
 const porEstado = (p: Partial<Record<Estado, number>>) => p as Record<Estado, number>
@@ -89,5 +91,28 @@ describe('periodos del resumen', () => {
     expect(estadisticasSerie(serie, 'envios')).toMatchObject({ total: 6, promedio: 2, pico: serie[2] })
     expect(estadisticasSerie(serie, 'ingresos').pico).toBe(serie[0])
     expect(estadisticasSerie([], 'envios')).toEqual({ total: 0, promedio: 0, pico: null })
+  })
+})
+
+describe('rango de fechas personalizado (issue #5)', () => {
+  const hoy = '2026-10-08'
+
+  it('acepta un rango válido, incluido un solo día y hasta hoy', () => {
+    expect(validarRango('2026-09-01', '2026-09-15', hoy)).toBeNull()
+    expect(validarRango('2026-09-01', '2026-09-01', hoy)).toBeNull()
+    expect(validarRango('2026-01-01', hoy, hoy)).toBeNull()
+  })
+
+  it('rechaza fechas vacías o inválidas, desde > hasta y fechas futuras', () => {
+    expect(validarRango('', '2026-09-15', hoy)).toBe('Elige la fecha de inicio y la de fin')
+    expect(validarRango('2026-09-01', 'abc', hoy)).toBe('Elige la fecha de inicio y la de fin')
+    expect(validarRango('2026-09-15', '2026-09-01', hoy)).toBe('«Desde» no puede ser posterior a «Hasta»')
+    expect(validarRango('2026-10-01', '2026-10-09', hoy)).toBe('No puedes elegir fechas futuras')
+  })
+
+  it('cuenta los días del rango, ambos extremos incluidos', () => {
+    expect(diasEntre('2026-09-01', '2026-09-01')).toBe(1)
+    expect(diasEntre('2026-09-01', '2026-09-30')).toBe(30)
+    expect(diasEntre('2026-02-01', '2026-03-01')).toBe(29)
   })
 })
