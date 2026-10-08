@@ -34,6 +34,7 @@ import type { TipoCargaCodigo } from '@/types/api'
 import { MENSAJE_GUIA_INVALIDA, normalizarGuia } from '@/features/envios/guia'
 import { consultarGuiaParaAgente, HERRAMIENTAS_PUBLICAS } from './agente'
 import { useCatalogoPublico } from './api'
+import { CarruselCiudades } from './components/CarruselCiudades'
 import { matrizTarifas, tarifaDesde } from './cobertura'
 import { MenuMovil, WhatsAppFlotante } from './components/MenuMovil'
 import { HeroPaisaje } from './ilustraciones/HeroPaisaje'
@@ -476,7 +477,8 @@ export function LandingPage() {
       </main>
 
       <footer className="border-t">
-        <div className="mx-auto grid max-w-6xl gap-6 px-4 py-10 pb-24 text-sm text-muted-foreground sm:grid-cols-[1fr_auto] sm:items-end sm:px-6 sm:pb-10">
+        {/* Datos de PCargo a la izquierda; a la derecha, centradas verticalmente, las ciudades con cobertura. */}
+        <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 pb-24 text-sm text-muted-foreground sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center sm:gap-10 sm:px-6 sm:pb-10">
           <div className="space-y-3">
             <Logo markClassName="size-8" />
             <p>{MARCA.oficina.direccion}</p>
@@ -486,11 +488,12 @@ export function LandingPage() {
               <a href={`tel:${MARCA.telefonos.celular.tel}`} className="hover:text-foreground">{MARCA.telefonos.celular.texto}</a>
             </p>
             <p>© {ANIO} {MARCA.nombre} · {MARCA.eslogan}</p>
+            <div className="flex gap-4">
+              <Link to="/seguimiento" className="hover:text-foreground">Rastrear envío</Link>
+              <Link to="/login" className="hover:text-foreground">Acceso personal</Link>
+            </div>
           </div>
-          <div className="flex gap-4">
-            <Link to="/seguimiento" className="hover:text-foreground">Rastrear envío</Link>
-            <Link to="/login" className="hover:text-foreground">Acceso personal</Link>
-          </div>
+          <CarruselCiudades ciudades={catalogo?.ciudades ?? []} />
         </div>
       </footer>
 

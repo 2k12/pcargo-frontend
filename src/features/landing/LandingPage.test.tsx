@@ -40,6 +40,16 @@ describe('cobertura', () => {
 })
 
 describe('LandingPage (pública)', () => {
+  it('el footer muestra a la derecha el carrusel con las ciudades de cobertura del catálogo', async () => {
+    mockFetch((url) => (url.endsWith('/publico/catalogo') ? jsonResponse(catalogo) : jsonResponse({}, 404)))
+    renderWithProviders(<LandingPage />)
+    const footer = screen.getByRole('contentinfo')
+    const carrusel = await within(footer).findByRole('region', { name: 'Ciudades con cobertura' })
+    expect(within(carrusel).getByText('Ibarra', { ignore: '[aria-hidden="true"] *' })).toBeInTheDocument()
+    expect(within(carrusel).getByText('Quito', { ignore: '[aria-hidden="true"] *' })).toBeInTheDocument()
+    expect(within(footer).getByRole('link', { name: 'Rastrear envío' })).toBeInTheDocument()
+  })
+
   it('muestra servicios, tarifas reales y enlaza al login', async () => {
     const fetchMock = mockFetch((url) => (url.endsWith('/publico/catalogo') ? jsonResponse(catalogo) : jsonResponse({}, 404)))
     renderWithProviders(<LandingPage />)

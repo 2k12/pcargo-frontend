@@ -149,3 +149,16 @@
     @apply font-sans;
     }
 }
+/* Carrusel de ciudades del footer: desplaza la pista la mitad de su ancho (contenido duplicado → bucle sin saltos). */
+@theme {
+  --animate-marquesina: marquesina var(--duracion-marquesina, 30s) linear infinite;
+
+  @keyframes marquesina {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+}
