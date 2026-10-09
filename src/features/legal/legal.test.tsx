@@ -1,6 +1,7 @@
 import { screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TOKEN_KEY } from '@/lib/api'
+import { CLAVE_MENU } from '@/hooks/useMenuMinimizado'
 import { CLAVE_TEMA } from '@/lib/tema'
 import { renderWithProviders } from '@/test/utils'
 import { datoLegal, datosLegalesPendientes, DATOS_LEGALES, fechaVigencia, PAGINAS_LEGALES } from './datos'
@@ -69,6 +70,6 @@ describe('páginas legales', () => {
       .getAllByRole('row')
       .slice(1)
       .map((fila) => within(fila).getAllByRole('cell')[0]!.textContent)
-    expect(claves).toEqual([CLAVE_TEMA, TOKEN_KEY])
+    expect(claves).toEqual([CLAVE_TEMA, CLAVE_MENU, TOKEN_KEY])
   })
 })

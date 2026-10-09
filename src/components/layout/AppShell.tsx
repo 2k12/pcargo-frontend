@@ -1,10 +1,22 @@
-import { ArrowUpRight, LayoutDashboard, LogOut, PackageSearch, Route, Package, Users, type LucideIcon } from 'lucide-react'
+import {
+  ArrowUpRight,
+  LayoutDashboard,
+  LogOut,
+  PackageSearch,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Route,
+  Package,
+  Users,
+  type LucideIcon,
+} from 'lucide-react'
 import { Suspense } from 'react'
 import { Link, NavLink, Outlet } from 'react-router'
 import { Logo, LogoMark } from '@/components/brand/PCargoLogo'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Toaster } from '@/components/ui/sonner'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,7 +27,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useAuth } from '@/features/auth/hooks'
-import { listaCiudades, useCiudades } from '@/features/rutas/hooks'
+import { useMenuMinimizado } from '@/hooks/useMenuMinimizado'
 import { iniciales } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { ThemeToggle } from './ThemeToggle'
@@ -90,20 +102,27 @@ function BottomNav() {
   )
 }
 
-function Brand() {
-  return (
+function Brand({ minimizado }: { minimizado: boolean }) {
+  return minimizado ? (
+    <LogoMark className="mx-auto size-9" />
+  ) : (
     <Logo className="px-2 text-sm" markClassName="size-9" subtitulo="Logística Imbabura" />
   )
 }
 
-function NavItems() {
+function NavItems({ minimizado }: { minimizado: boolean }) {
   return (
     <nav className="flex flex-col gap-5" aria-label="Navegación principal">
-      {GRUPOS.map((g) => (
+      {GRUPOS.map((g, i) => (
         <div key={g.titulo} className="space-y-1">
-          <p className="px-3 text-[11px] font-medium tracking-wide text-muted-foreground/80 uppercase">{g.titulo}</p>
+          {minimizado ? (
+            // Sin espacio para el título del grupo: una línea mantiene la separación (proximidad).
+            i > 0 && <div role="presentation" className="mx-2 border-t" />
+          ) : (
+            <p className="px-3 text-[11px] font-medium tracking-wide text-muted-foreground/80 uppercase">{g.titulo}</p>
+          )}
           {g.items.map(({ to, label, icon: Icon, end, externo }) => {
-            return (
+            const enlace = (
               <NavLink
                 key={to}
                 to={to}
@@ -111,19 +130,47 @@ function NavItems() {
                 className={({ isActive }) =>
                   cn(
                     'flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
+                    minimizado && 'justify-center px-0',
                     isActive && ACTIVO,
                   )
                 }
               >
-                <Icon className="size-4" />
-                <span className="flex-1">{label}</span>
-                {externo && <ArrowUpRight className="size-3.5 opacity-60" />}
+                <Icon className="size-4 shrink-0" />
+                {/* Minimizado, el nombre sigue ahí para lectores de pantalla; a la vista aparece como tooltip. */}
+                <span className={cn('flex-1', minimizado && 'sr-only')}>{label}</span>
+                {externo && !minimizado && <ArrowUpRight className="size-3.5 opacity-60" />}
               </NavLink>
+            )
+            return minimizado ? (
+              <Tooltip key={to}>
+                <TooltipTrigger render={<div />}>{enlace}</TooltipTrigger>
+                <TooltipContent side="right">{label}</TooltipContent>
+              </Tooltip>
+            ) : (
+              enlace
             )
           })}
         </div>
       ))}
     </nav>
+  )
+}
+
+/** Botón al pie de la barra lateral para minimizarla a solo iconos (o volver a expandirla). */
+function BotonMinimizar({ minimizado, onAlternar }: { minimizado: boolean; onAlternar: () => void }) {
+  const Icon = minimizado ? PanelLeftOpen : PanelLeftClose
+  const texto = minimizado ? 'Expandir menú' : 'Minimizar menú'
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      aria-label={texto}
+      onClick={onAlternar}
+      className={cn('mt-auto w-full text-muted-foreground', minimizado ? 'justify-center px-0' : 'justify-start')}
+    >
+      <Icon />
+      {!minimizado && texto}
+    </Button>
   )
 }
 
@@ -159,20 +206,20 @@ function UserMenu() {
   )
 }
 
-/** Pie de la barra lateral: ciudades de cobertura activas, desde la API. */
-function CiudadesActivas() {
-  const { data } = useCiudades(true)
-  const texto = listaCiudades(data)
-  return <p className="mt-auto min-h-4 px-2 text-[11px] text-muted-foreground">{texto}</p>
-}
-
 export function AppShell() {
+  const { minimizado, alternar } = useMenuMinimizado()
   return (
     <div className="flex min-h-svh bg-muted/40">
-      <aside className="sticky top-0 hidden h-svh w-60 shrink-0 flex-col gap-6 border-r bg-background p-4 md:flex">
-        <Brand />
-        <NavItems />
-        <CiudadesActivas />
+      <aside
+        id="menu-lateral"
+        className={cn(
+          'sticky top-0 hidden h-svh shrink-0 flex-col gap-6 overflow-y-auto border-r bg-background py-4 transition-[width] duration-200 motion-reduce:transition-none md:flex',
+          minimizado ? 'w-16 px-2' : 'w-60 px-4',
+        )}
+      >
+        <Brand minimizado={minimizado} />
+        <NavItems minimizado={minimizado} />
+        <BotonMinimizar minimizado={minimizado} onAlternar={alternar} />
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">

@@ -1,10 +1,11 @@
 import { Link } from 'react-router'
 import { TOKEN_KEY } from '@/lib/api'
+import { CLAVE_MENU } from '@/hooks/useMenuMinimizado'
 import { CLAVE_TEMA } from '@/lib/tema'
 import { Apartado, LegalLayout } from './components/LegalLayout'
 
 /**
- * Política de cookies. El sitio no usa cookies ni rastreadores: solo dos entradas de almacenamiento local
+ * Política de cookies. El sitio no usa cookies ni rastreadores: solo tres entradas de almacenamiento local
  * necesarias o pedidas por el usuario, por eso no muestra un aviso de consentimiento.
  * Si algún día se agrega analítica o publicidad, hay que pedir consentimiento antes de cargarla y actualizar esta tabla.
  */
@@ -12,7 +13,7 @@ export function CookiesPage() {
   return (
     <LegalLayout
       titulo="Política de cookies"
-      resumen="Este sitio no usa cookies ni herramientas de seguimiento, analítica o publicidad. Solo guarda en tu navegador el tema claro u oscuro que elijas y, si eres parte del personal, tu sesión. Por eso no te pedimos aceptar cookies."
+      resumen="Este sitio no usa cookies ni herramientas de seguimiento, analítica o publicidad. Solo guarda en tu navegador el tema claro u oscuro que elijas y, si eres parte del personal, tu sesión y cómo prefieres ver el menú. Por eso no te pedimos aceptar cookies."
     >
       <Apartado id="que-son" titulo="1. Qué son las cookies y el almacenamiento local">
         <p>
@@ -41,6 +42,12 @@ export function CookiesPage() {
                 <td className="p-3">Hasta que borres los datos del navegador</td>
               </tr>
               <tr className="border-t">
+                <td className="p-3 font-mono text-xs">{CLAVE_MENU}</td>
+                <td className="p-3">Almacenamiento local · preferencia</td>
+                <td className="p-3">Recordar si el personal minimizó el menú lateral del panel. No te identifica.</td>
+                <td className="p-3">Hasta que vuelvas a expandir el menú o borres los datos del navegador</td>
+              </tr>
+              <tr className="border-t">
                 <td className="p-3 font-mono text-xs">{TOKEN_KEY}</td>
                 <td className="p-3">Almacenamiento local · necesario</td>
                 <td className="p-3">Mantener abierta la sesión del personal de PCargo en el panel. Solo existe si inicias sesión.</td>
@@ -58,7 +65,7 @@ export function CookiesPage() {
       <Apartado id="consentimiento" titulo="3. Por qué no te pedimos aceptar cookies">
         <p>
           Lo que guardamos es estrictamente necesario para el servicio que pides (la sesión) o es una preferencia que tú mismo eliges (el
-          tema), y no sirve para seguirte ni para hacer perfiles. Si en el futuro usamos herramientas de medición o publicidad, te
+          tema o el menú minimizado), y no sirve para seguirte ni para hacer perfiles. Si en el futuro usamos herramientas de medición o publicidad, te
           pediremos tu consentimiento antes de activarlas y actualizaremos esta política.
         </p>
       </Apartado>
