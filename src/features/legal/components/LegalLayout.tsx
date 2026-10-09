@@ -75,7 +75,7 @@ export function LegalLayout({ titulo, resumen, children }: { titulo: string; res
 
       <footer className="border-t">
         <div className="mx-auto flex max-w-3xl flex-col gap-3 px-4 py-5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <p>{lineaCopyright(ANIO)}</p>
+          <p>{lineaCopyright(ANIO, { titular: true })}</p>
           <EnlacesLegales />
         </div>
       </footer>
@@ -99,9 +99,6 @@ export function DatosResponsable() {
     <ul>
       <li>
         <strong>Responsable:</strong> {datoLegal('razonSocial')}, que opera con el nombre comercial {MARCA.nombre}.
-      </li>
-      <li>
-        <strong>RUC:</strong> {datoLegal('ruc')}
       </li>
       <li>
         <strong>Dirección:</strong> {DATOS_LEGALES.direccion}

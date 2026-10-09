@@ -187,7 +187,9 @@ describe('LandingPage — información veraz y legal', () => {
     ]) {
       expect(within(legal).getByRole('link', { name: nombre })).toHaveAttribute('href', href)
     }
-    expect(within(footer).getByText(/RUC/)).toBeInTheDocument()
+    // El pie de la landing solo lleva el copyright: la razón social va en las páginas legales y no hay RUC.
+    expect(within(footer).getByText(`© ${new Date().getFullYear()} PCargo`)).toBeInTheDocument()
+    expect(within(footer).queryByText(/RUC|Wilson Pastillo/)).not.toBeInTheDocument()
   })
 
   it('los enlaces a WhatsApp y Google Maps avisan que se abren en otra pestaña', async () => {

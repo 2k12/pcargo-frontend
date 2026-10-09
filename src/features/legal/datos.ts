@@ -8,10 +8,8 @@ import { MARCA } from '@/features/landing/marca'
  * para que nunca se publique un dato inventado. Completa estos campos antes de poner el sitio en producción.
  */
 export const DATOS_LEGALES = {
-  /** Razón social de la empresa o nombre completo de la persona natural titular del RUC. */
-  razonSocial: null as string | null,
-  /** RUC (13 dígitos). */
-  ruc: null as string | null,
+  /** Razón social: nombre de la persona natural titular del negocio. Se muestra solo en las páginas legales. */
+  razonSocial: 'Wilson Pastillo' as string | null,
   /** Correo para solicitudes de datos personales y reclamos. */
   emailDatos: null as string | null,
   /** Título habilitante como operador postal, si aplica (Ley General de los Servicios Postales). */
@@ -21,11 +19,10 @@ export const DATOS_LEGALES = {
   vigenteDesde: '2026-10-08',
 } as const
 
-export type CampoLegal = 'razonSocial' | 'ruc' | 'emailDatos' | 'registroPostal'
+export type CampoLegal = 'razonSocial' | 'emailDatos' | 'registroPostal'
 
 const ETIQUETA: Record<CampoLegal, string> = {
   razonSocial: 'razón social',
-  ruc: 'RUC',
   emailDatos: 'correo de contacto',
   registroPostal: 'registro de operador postal',
 }
@@ -40,9 +37,12 @@ export function datosLegalesPendientes(): CampoLegal[] {
   return (Object.keys(ETIQUETA) as CampoLegal[]).filter((c) => DATOS_LEGALES[c] === null)
 }
 
-/** Línea de pie de página: «© 2026 PCargo · Razón social · RUC 1000000000001» (o los marcadores de pendiente). */
-export function lineaCopyright(anio = new Date().getFullYear()): string {
-  return `© ${anio} ${MARCA.nombre} · ${datoLegal('razonSocial')} · RUC ${datoLegal('ruc')}`
+/**
+ * Línea de copyright: «© 2026 PCargo». En las páginas legales (`titular: true`) añade la razón social:
+ * «© 2026 PCargo · Wilson Pastillo».
+ */
+export function lineaCopyright(anio = new Date().getFullYear(), { titular = false }: { titular?: boolean } = {}): string {
+  return titular ? `© ${anio} ${MARCA.nombre} · ${datoLegal('razonSocial')}` : `© ${anio} ${MARCA.nombre}`
 }
 
 /** Fecha de vigencia en formato largo de Ecuador: «8 de octubre de 2026». */

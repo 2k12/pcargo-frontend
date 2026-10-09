@@ -4,7 +4,7 @@ import { TOKEN_KEY } from '@/lib/api'
 import { CLAVE_MENU } from '@/hooks/useMenuMinimizado'
 import { CLAVE_TEMA } from '@/lib/tema'
 import { renderWithProviders } from '@/test/utils'
-import { datoLegal, datosLegalesPendientes, DATOS_LEGALES, fechaVigencia, PAGINAS_LEGALES } from './datos'
+import { datoLegal, datosLegalesPendientes, fechaVigencia, PAGINAS_LEGALES } from './datos'
 import { CookiesPage, PagoAlCobroPage, PrivacidadPage, TerminosPage } from './paginas'
 
 vi.mock('next-themes', () => ({ useTheme: () => ({ resolvedTheme: 'light', setTheme: vi.fn() }) }))
@@ -26,7 +26,6 @@ const PAGINAS = [
 describe('datos legales', () => {
   it('un dato sin confirmar se muestra como pendiente, nunca inventado', () => {
     for (const campo of datosLegalesPendientes()) expect(datoLegal(campo)).toMatch(/^\[pendiente: .+\]$/)
-    if (DATOS_LEGALES.ruc) expect(DATOS_LEGALES.ruc).toMatch(/^\d{13}$/)
   })
 
   it('formatea la fecha de vigencia en español de Ecuador', () => {
@@ -56,6 +55,12 @@ describe('páginas legales', () => {
     expect(screen.getByText(/Superintendencia de Protección de Datos Personales/)).toBeInTheDocument()
     // El enlace de WhatsApp avisa que abre otra pestaña.
     expect(screen.getAllByRole('link', { name: /se abre en una pestaña nueva/ })[0]).toHaveAttribute('target', '_blank')
+  })
+
+  it.each(PAGINAS)('$ruta identifica al titular (Wilson Pastillo) y no muestra RUC', ({ ruta, Pagina }) => {
+    renderWithProviders(<Pagina />, { route: ruta, path: ruta })
+    expect(screen.getByText(`© ${new Date().getFullYear()} PCargo · Wilson Pastillo`)).toBeInTheDocument()
+    expect(screen.queryByText(/RUC/)).not.toBeInTheDocument()
   })
 
   it('la política de pago al cobro aclara que solo se cobra el envío', () => {
