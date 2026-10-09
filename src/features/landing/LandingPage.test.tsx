@@ -202,3 +202,23 @@ describe('LandingPage — información veraz y legal', () => {
     }
   })
 })
+
+describe('LandingPage — pie de página y mapa', () => {
+  it('muestra el crédito del desarrollador en el pie, como enlace externo accesible', async () => {
+    mockFetch(() => jsonResponse(catalogo))
+    renderWithProviders(<LandingPage />)
+    const footer = screen.getByRole('contentinfo')
+    expect(within(footer).getByText('Desarrollado por')).toBeInTheDocument()
+    const enlace = within(footer).getByRole('link', { name: /KUVRO\s+TECH/ })
+    expect(enlace).toHaveAttribute('href', 'https://kuvro-production.up.railway.app/')
+    expect(enlace).toHaveAttribute('target', '_blank')
+    expect(enlace).toHaveAccessibleName(/se abre en una pestaña nueva/)
+  })
+
+  it('el mapa de cobertura ya no lleva la nota «Mapa esquemático»', async () => {
+    mockFetch(() => jsonResponse(catalogo))
+    renderWithProviders(<LandingPage />)
+    await screen.findByRole('img', { name: /Mapa de cobertura/ })
+    expect(screen.queryByText(/Mapa esquemático/)).not.toBeInTheDocument()
+  })
+})

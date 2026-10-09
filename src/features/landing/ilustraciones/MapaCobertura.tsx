@@ -80,10 +80,12 @@ export function MapaCobertura({ ciudades, rutas, className }: { ciudades: Ciudad
           </g>
         ))}
       </svg>
-      <figcaption className="text-xs text-muted-foreground">
-        Mapa esquemático: las líneas unen ciudades con ruta directa.
-        {sinUbicar.length > 0 && <> También llegamos a: {sinUbicar.map((c) => c.nombre).join(', ')}.</>}
-      </figcaption>
+      {/* Solo si alguna ciudad no tiene coordenadas: así ninguna ciudad de cobertura queda sin mencionar. */}
+      {sinUbicar.length > 0 && (
+        <figcaption className="text-xs text-muted-foreground">
+          También llegamos a: {sinUbicar.map((c) => c.nombre).join(', ')}.
+        </figcaption>
+      )}
     </figure>
   )
 }
