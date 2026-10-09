@@ -111,15 +111,6 @@ export function LoginPage() {
             </CardContent>
           </Card>
 
-          {/* Solo en desarrollo: publicar credenciales en producción expondría los datos personales de los clientes. */}
-          {import.meta.env.DEV && (
-            <div className="rounded-xl border border-dashed p-3 text-xs text-muted-foreground">
-              <p className="mb-1 font-medium text-foreground">Credenciales de demostración (solo en desarrollo)</p>
-              <p>admin@pcargo.ec · Admin123!</p>
-              <p>operador@pcargo.ec · Operador123!</p>
-            </div>
-          )}
-
           <Button variant="ghost" className="w-full" nativeButton={false} render={<Link to="/seguimiento" />}>
             <PackageSearch />
             Rastrear un envío

@@ -103,3 +103,10 @@ describe('LoginPage', () => {
     expect(JSON.parse(init.body as string)).toEqual({ email: 'admin@pcargo.ec', password: 'Admin123!' })
   })
 })
+
+describe('LoginPage — seguridad', () => {
+  it('no muestra credenciales de ningún usuario', () => {
+    renderWithProviders(<LoginPage />, { route: '/login', path: '/login' })
+    expect(screen.queryByText(/Admin123|Operador123|credenciales de demostración/i)).not.toBeInTheDocument()
+  })
+})
