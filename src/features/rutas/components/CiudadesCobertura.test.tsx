@@ -19,7 +19,7 @@ const quito: Ciudad = { id: 4, nombre: 'Quito', activa: false }
 const ciudades = [ibarra, atuntaqui, quito]
 
 const ruta = (id: number, origen: Ciudad, destino: Ciudad): Ruta => ({
-  id, origen, destino, tarifaBase: 2.5, tiempoEstimadoMin: 30, activa: true,
+  id, origen, destino, tiempoEstimadoMin: 30, activa: true,
   operativa: origen.activa && destino.activa,
 })
 // Ibarra: urbana + 2 interurbanas = 3 · Atuntaqui: 1 · Quito: 1

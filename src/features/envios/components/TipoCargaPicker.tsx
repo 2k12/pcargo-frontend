@@ -23,13 +23,15 @@ export function TipoCargaPicker({ tipos, value, onChange }: Props) {
             aria-checked={activo}
             onClick={() => onChange(t.codigo)}
             className={cn(
-              'flex flex-col items-center gap-1 rounded-xl p-3 text-sm ring-1 ring-foreground/10',
+              'flex min-h-24 flex-col items-center justify-center gap-1 rounded-xl p-3 text-center text-sm ring-1 ring-foreground/10',
+              // 7 tipos: el último ocupa la fila completa en 2 columnas para no dejar un hueco.
+              'max-sm:last:odd:col-span-2',
               INTERACTIVA,
               activo && SELECCIONADA,
             )}
           >
             <Icon className="size-5" />
-            <span className="font-medium">{t.nombre}</span>
+            <span className="leading-tight font-medium">{t.nombre}</span>
             <span className="text-[11px] text-muted-foreground">hasta {t.pesoMaxKg} kg</span>
           </button>
         )

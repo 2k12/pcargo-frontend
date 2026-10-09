@@ -17,6 +17,16 @@ describe('llms.txt', () => {
   it('sin URL pública usa rutas relativas', () => {
     expect(generarLlmsTxt(undefined)).toContain('](/seguimiento)')
   })
+
+  it('describe el precio por unidad del contrato v8 (sin tarifa base, factor ni recargo por kilo)', () => {
+    const txt = generarLlmsTxt('https://pcargo.ec')
+    expect(txt).not.toMatch(/tarifa base|factor|\$0,50/i)
+    // Mismos precios que la tabla «Tipos de carga» del contrato (y TIPOS_CARGA_DEFAULT del frontend).
+    expect(txt).toContain('valija y plumón pequeño $3,00; plumón grande $4,00; rollo de tela $1,25 en zona urbana y $1,50 en zona rural')
+    expect(txt).toContain('Más de 50 rollos de tela en un mismo envío: todos a $1,00 c/u')
+    expect(txt).toContain('"zona"?: "URBANA"|"RURAL"')
+    expect(txt).toContain('"PLUMON_GRANDE"')
+  })
 })
 
 describe('robots.txt', () => {

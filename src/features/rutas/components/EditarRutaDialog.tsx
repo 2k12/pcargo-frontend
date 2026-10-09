@@ -13,7 +13,6 @@ import type { Ruta } from '@/types/api'
 import { rutaLabel, useActualizarRuta } from '../hooks'
 
 const schema = z.object({
-  tarifaBase: z.number({ message: 'Requerido' }).positive('Debe ser mayor a 0'),
   tiempoEstimadoMin: z.number({ message: 'Requerido' }).int('Minutos enteros').positive('Debe ser mayor a 0'),
 })
 type Values = z.infer<typeof schema>
@@ -28,7 +27,7 @@ export function EditarRutaDialog({ ruta, onClose }: { ruta: Ruta | null; onClose
   } = useForm<Values>({ resolver: zodResolver(schema) })
 
   useEffect(() => {
-    if (ruta) reset({ tarifaBase: ruta.tarifaBase, tiempoEstimadoMin: ruta.tiempoEstimadoMin })
+    if (ruta) reset({ tiempoEstimadoMin: ruta.tiempoEstimadoMin })
   }, [ruta, reset])
 
   const onSubmit = async (values: Values) => {
@@ -51,14 +50,10 @@ export function EditarRutaDialog({ ruta, onClose }: { ruta: Ruta | null; onClose
         </DialogHeader>
         <form id="editar-ruta" onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <div className="space-y-1.5">
-            <Label htmlFor="tarifaBase">Tarifa base (USD)</Label>
-            <Input id="tarifaBase" type="number" step="0.05" {...register('tarifaBase', { valueAsNumber: true })} />
-            {errors.tarifaBase && <p className="text-xs text-destructive">{errors.tarifaBase.message}</p>}
-          </div>
-          <div className="space-y-1.5">
             <Label htmlFor="tiempoEstimadoMin">Tiempo estimado (min)</Label>
             <Input id="tiempoEstimadoMin" type="number" step="5" {...register('tiempoEstimadoMin', { valueAsNumber: true })} />
             {errors.tiempoEstimadoMin && <p className="text-xs text-destructive">{errors.tiempoEstimadoMin.message}</p>}
+            <p className="text-xs text-muted-foreground">El precio depende del tipo de carga, no de la ruta.</p>
           </div>
         </form>
         <DialogFooter>

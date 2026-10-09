@@ -9,11 +9,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
 import { useEsAdmin } from '@/features/auth/hooks'
-import { TIPOS_CARGA_DEFAULT } from '@/features/envios/domain'
+import { mayoreoTexto, precioTipoTexto, TIPOS_CARGA_DEFAULT } from '@/features/envios/domain'
 import { TIPO_CARGA_ICON } from '@/features/envios/ui'
 import { useTiposCarga } from '@/features/envios/hooks'
 import { errorMessage } from '@/lib/api'
-import { formatCurrency, formatDuracion } from '@/lib/format'
+import { formatDuracion } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { Ruta } from '@/types/api'
 import { CiudadesCobertura } from './components/CiudadesCobertura'
@@ -29,7 +29,7 @@ export function RutasPage() {
   const [editando, setEditando] = useState<Ruta | null>(null)
 
   const ordenadas = [...(rutas ?? [])].sort(
-    (a, b) => a.origen.nombre.localeCompare(b.origen.nombre, 'es') || a.tarifaBase - b.tarifaBase,
+    (a, b) => a.origen.nombre.localeCompare(b.origen.nombre, 'es') || a.tiempoEstimadoMin - b.tiempoEstimadoMin,
   )
   // Rutas agrupadas por ciudad de origen (proximidad): cada grupo se lee como "desde aquí, hacia…".
   const porOrigen = new Map<string, Ruta[]>()
@@ -48,7 +48,7 @@ export function RutasPage() {
     <>
       <PageHeader
         title="Cobertura y tarifas"
-        description="Ciudades donde operamos, trayectos y tarifas base"
+        description="Ciudades donde operamos, trayectos con su tiempo estimado y precios por tipo de carga"
         actions={esAdmin ? <NuevaRutaDialog /> : undefined}
       />
 
@@ -65,7 +65,7 @@ export function RutasPage() {
           ))}
         </div>
       ) : (
-        <div className="space-y-6" aria-label="Rutas y tarifas">
+        <div className="space-y-6" aria-label="Rutas">
           {[...porOrigen].map(([origen, grupo]) => (
             <section key={origen} className="space-y-2" aria-label={`Desde ${origen}`}>
               <SectionLabel as="h2" aside={`${grupo.length} ${grupo.length === 1 ? 'ruta' : 'rutas'}`}>
@@ -110,11 +110,11 @@ export function RutasPage() {
                       )}
                       <div className="mt-auto flex items-end justify-between gap-2">
                         <div>
-                          <p className="text-xl font-semibold tracking-tight tabular-nums">{formatCurrency(r.tarifaBase)}</p>
-                          <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Clock className="size-3" />
+                          <p className="flex items-center gap-1.5 text-xl font-semibold tracking-tight tabular-nums">
+                            <Clock className="size-4 text-muted-foreground" />
                             {formatDuracion(r.tiempoEstimadoMin)}
                           </p>
+                          <p className="text-xs text-muted-foreground">tiempo estimado</p>
                         </div>
                         {esAdmin && (
                           <Button variant="ghost" size="icon-sm" aria-label="Editar ruta" onClick={() => setEditando(r)}>
@@ -133,11 +133,11 @@ export function RutasPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Tipos de carga</CardTitle>
-          <CardDescription>Costo = tarifa base × factor del tipo + $0,50 por cada kg sobre el peso incluido.</CardDescription>
+          <CardTitle>Precios por tipo de carga</CardTitle>
+          <CardDescription>Precio por unidad según el tipo; la ruta no influye y no hay recargo por peso.</CardDescription>
         </CardHeader>
         <CardContent>
-          <ul className="grid grid-cols-2 gap-x-4 gap-y-4 lg:grid-cols-4">
+          <ul className="grid gap-x-4 gap-y-4 sm:grid-cols-2 lg:grid-cols-4" aria-label="Precios por tipo de carga">
             {tipos.map((t) => {
               const Icon = TIPO_CARGA_ICON[t.codigo]
               return (
@@ -146,11 +146,10 @@ export function RutasPage() {
                     <Icon className="size-4" />
                   </span>
                   <span className="text-sm">
-                    <span className="block font-medium">
-                      {t.nombre} <span className="font-normal text-muted-foreground">×{t.factor}</span>
-                    </span>
+                    <span className="block font-medium">{t.nombre}</span>
+                    <span className="block tabular-nums">{precioTipoTexto(t)}</span>
                     <span className="block text-xs text-muted-foreground">
-                      incluye {t.pesoIncluidoKg} kg · máx {t.pesoMaxKg} kg
+                      {[mayoreoTexto(t), `máx ${t.pesoMaxKg} kg por unidad`].filter(Boolean).join(' · ')}
                     </span>
                   </span>
                 </li>

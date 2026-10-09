@@ -16,12 +16,15 @@ afterEach(() => {
 const ciudad = (id: number, nombre: string) => ({ id, nombre, activa: true })
 const catalogo: CatalogoPublico = {
   ciudades: [ciudad(1, 'Ibarra'), ciudad(2, 'Atuntaqui'), ciudad(4, 'Quito')],
-  tiposCarga: [{ codigo: 'PAQUETE', nombre: 'Paquete', factor: 1.4, pesoIncluidoKg: 5, pesoMaxKg: 30 }],
-  rutas: [
-    { id: 7, origen: ciudad(1, 'Ibarra'), destino: ciudad(4, 'Quito'), tarifaBase: 4, tiempoEstimadoMin: 150, activa: true, operativa: true },
-    { id: 9, origen: ciudad(2, 'Atuntaqui'), destino: ciudad(2, 'Atuntaqui'), tarifaBase: 1.75, tiempoEstimadoMin: 45, activa: true, operativa: true },
+  tiposCarga: [
+    { codigo: 'PAQUETE', nombre: 'Paquete', precio: 3, precioRural: null, mayoreo: null, pesoMaxKg: 50 },
+    { codigo: 'TELA', nombre: 'Rollo de tela', precio: 1.25, precioRural: 1.5, mayoreo: { minimoExclusivo: 50, precio: 1 }, pesoMaxKg: 50 },
   ],
-} as CatalogoPublico
+  rutas: [
+    { id: 7, origen: ciudad(1, 'Ibarra'), destino: ciudad(4, 'Quito'), tiempoEstimadoMin: 150, activa: true, operativa: true },
+    { id: 9, origen: ciudad(2, 'Atuntaqui'), destino: ciudad(2, 'Atuntaqui'), tiempoEstimadoMin: 45, activa: true, operativa: true },
+  ],
+}
 
 const herramienta = (nombre: string) => HERRAMIENTAS_PUBLICAS.find((h) => h.name === nombre)!
 
@@ -46,15 +49,54 @@ describe('herramientas WebMCP', () => {
     const fetch = mockFetch((url) =>
       url.endsWith('/publico/catalogo')
         ? jsonResponse(catalogo)
-        : jsonResponse({ costo: 11.2, tarifaBase: 4, totalPiezas: 2, pesoTotalKg: 6, items: [{ costoUnitario: 5.6 }] }),
+        : jsonResponse({ costo: 6, zona: 'URBANA', totalPiezas: 2, pesoTotalKg: 6, items: [{ costoUnitario: 3, mayoreo: false }] }),
     )
     const r = JSON.parse(
       await herramienta('cotizar_envio').execute({ origen: 'ibarra', destino: 'Quito', tipoCarga: 'paquete', cantidad: 2, pesoKg: 3 }),
     )
     expect(r.ruta).toBe('Ibarra → Quito')
-    expect(r.costoTotal).toMatch(/11,20/)
+    expect(r.costoTotal).toMatch(/6,00/)
+    expect(r.zona).toBe('Urbana')
+    expect(r.nota).toMatch(/referencial/)
     const [, init] = fetch.mock.calls.find(([u]) => String(u).endsWith('/publico/cotizar'))!
-    expect(JSON.parse(String(init!.body))).toEqual({ rutaId: 7, items: [{ tipoCarga: 'PAQUETE', cantidad: 2, pesoKg: 3 }] })
+    expect(JSON.parse(String(init!.body))).toEqual({ rutaId: 7, zona: 'URBANA', items: [{ tipoCarga: 'PAQUETE', cantidad: 2, pesoKg: 3 }] })
+  })
+
+  it('cotizar_envio acepta zona y tipos nuevos, e informa el precio por volumen', async () => {
+    const fetch = mockFetch((url) =>
+      url.endsWith('/publico/catalogo')
+        ? jsonResponse(catalogo)
+        : jsonResponse({
+            costo: 60,
+            zona: 'RURAL',
+            totalPiezas: 60,
+            pesoTotalKg: 120,
+            items: [{ tipoCarga: 'TELA', cantidad: 60, pesoKg: 2, costoUnitario: 1, subtotal: 60, mayoreo: true }],
+          }),
+    )
+    const r = JSON.parse(
+      await herramienta('cotizar_envio').execute({ origen: 'Ibarra', destino: 'Quito', tipoCarga: 'tela', cantidad: 60, pesoKg: 2, zona: 'rural' }),
+    )
+    expect(r.zona).toBe('Rural')
+    expect(r.precioPorVolumen).toBe('Más de 50 rollos de tela: $1,00 c/u')
+    const [, init] = fetch.mock.calls.find(([u]) => String(u).endsWith('/publico/cotizar'))!
+    expect(JSON.parse(String(init!.body))).toMatchObject({ zona: 'RURAL', items: [{ tipoCarga: 'TELA', cantidad: 60 }] })
+    expect(await herramienta('cotizar_envio').execute({ origen: 'Ibarra', destino: 'Quito', tipoCarga: 'TELA', cantidad: 1, pesoKg: 1, zona: 'centro' })).toContain(
+      'zona debe ser una de: URBANA, RURAL',
+    )
+  })
+
+  it('consultar_cobertura publica precios por tipo y tiempos por ruta, sin tarifa base', async () => {
+    mockFetch(() => jsonResponse(catalogo))
+    const herramientaCobertura = herramienta('consultar_cobertura')
+    expect(herramientaCobertura.description).not.toMatch(/tarifa base|factor/i)
+    const texto = await herramientaCobertura.execute({})
+    expect(texto).not.toMatch(/tarifaBase|factor|pesoIncluido/)
+    const r = JSON.parse(texto)
+    expect(r.rutas[0]).toEqual({ origen: 'Ibarra', destino: 'Quito', tiempoEstimado: '2 h 30 min' })
+    expect(r.tiposCarga[1]).toMatchObject({ codigo: 'TELA', precioUrbano: '$1,25', precioRural: '$1,50', mayoreo: 'más de 50 rollos de tela: $1,00 c/u' })
+    expect(r.tiposCarga[0]).toMatchObject({ precioUrbano: '$3,00', precioRural: '$3,00' })
+    expect(r.tiposCarga[0]).not.toHaveProperty('mayoreo')
   })
 
   it('cotizar_envio explica cuándo la ruta no existe', async () => {

@@ -6,11 +6,12 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { TipoCargaPicker } from '@/features/envios/components/TipoCargaPicker'
+import { ZonaPicker } from '@/features/envios/components/ZonaPicker'
 import { useDebounced } from '@/hooks/useDebounced'
 import { errorMessage } from '@/lib/api'
-import { nombreTipo, piezasLabel } from '@/features/envios/domain'
+import { dependeDeZona, nombreTipo, notasMayoreo, piezasLabel, ZONA_LABEL } from '@/features/envios/domain'
 import { formatCurrency, formatDuracion } from '@/lib/format'
-import type { CatalogoPublico, TipoCargaCodigo } from '@/types/api'
+import type { CatalogoPublico, TipoCargaCodigo, Zona } from '@/types/api'
 import { useCotizacionPublica } from '../api'
 import { buscarRuta } from '../cobertura'
 import { whatsappUrl } from '../marca'
@@ -22,6 +23,7 @@ export function CotizadorPublico({ catalogo }: { catalogo: CatalogoPublico }) {
   const [tipo, setTipo] = useState<TipoCargaCodigo | undefined>()
   const [peso, setPeso] = useState('')
   const [cantidadTxt, setCantidadTxt] = useState('1')
+  const [zona, setZona] = useState<Zona>('URBANA')
 
   const ciudadItems = Object.fromEntries(ciudades.map((c) => [String(c.id), c.nombre]))
   const ruta = origen && destino ? buscarRuta(rutas, Number(origen), Number(destino)) : undefined
@@ -30,9 +32,12 @@ export function CotizadorPublico({ catalogo }: { catalogo: CatalogoPublico }) {
   const pesoValido = peso !== '' && pesoKg > 0 && (!tipoSel || pesoKg <= tipoSel.pesoMaxKg)
   const cantidad = Number(cantidadTxt)
   const cantidadValida = Number.isInteger(cantidad) && cantidad >= 1 && cantidad <= 999
+  // La zona solo cambia el precio de algunos tipos (la tela): el selector aparece cuando importa.
+  const pideZona = !!tipoSel && dependeDeZona(tipoSel)
+  const zonaEfectiva: Zona = pideZona ? zona : 'URBANA'
 
   const solicitud = useDebounced(
-    ruta && tipo && pesoValido && cantidadValida ? { rutaId: ruta.id, items: [{ tipoCarga: tipo, cantidad, pesoKg }] } : null,
+    ruta && tipo && pesoValido && cantidadValida ? { rutaId: ruta.id, zona: zonaEfectiva, items: [{ tipoCarga: tipo, cantidad, pesoKg }] } : null,
     300,
   )
   const { data, isFetching, error } = useCotizacionPublica(solicitud)
@@ -40,7 +45,7 @@ export function CotizadorPublico({ catalogo }: { catalogo: CatalogoPublico }) {
   const sinRuta = origen && destino && !ruta
   const resumen =
     ruta && tipoSel && pesoValido && cantidadValida
-      ? `Hola PCargo, quiero enviar ${cantidad} ${nombreTipo(tipoSel.codigo, cantidad)} de ${pesoKg} kg c/u de ${ruta.origen.nombre} a ${ruta.destino.nombre}.`
+      ? `Hola PCargo, quiero enviar ${cantidad} ${nombreTipo(tipoSel.codigo, cantidad)} de ${pesoKg} kg c/u de ${ruta.origen.nombre} a ${ruta.destino.nombre}${pideZona ? ` (zona ${ZONA_LABEL[zona].toLowerCase()})` : ''}.`
       : undefined
 
   return (
@@ -83,6 +88,16 @@ export function CotizadorPublico({ catalogo }: { catalogo: CatalogoPublico }) {
           <Label>¿Qué envías?</Label>
           <TipoCargaPicker tipos={tiposCarga} value={tipo} onChange={setTipo} />
         </div>
+
+        {pideZona && (
+          <div className="space-y-2">
+            <Label id="cotizador-zona">Zona de entrega</Label>
+            <ZonaPicker value={zona} onChange={setZona} describedBy="cotizador-zona-ayuda" />
+            <p id="cotizador-zona-ayuda" className="text-xs text-muted-foreground">
+              El rollo de tela cuesta distinto si se entrega en zona urbana o rural.
+            </p>
+          </div>
+        )}
 
         <div className="grid gap-4 sm:max-w-sm sm:grid-cols-2">
           <div className="space-y-2">
@@ -136,13 +151,19 @@ export function CotizadorPublico({ catalogo }: { catalogo: CatalogoPublico }) {
               </p>
               <p className="text-sm text-muted-foreground" data-testid="cotizador-piezas">
                 × {piezasLabel(data.totalPiezas)} · {formatCurrency(data.items[0]?.costoUnitario ?? data.costo)} c/u
+                {pideZona && ` · zona ${ZONA_LABEL[data.zona].toLowerCase()}`}
               </p>
+              {notasMayoreo(data, tiposCarga).map((nota) => (
+                <p key={nota} className="text-sm font-medium" data-testid="cotizador-mayoreo">
+                  {nota}
+                </p>
+              ))}
               {ruta && (
                 <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
                   <Clock className="size-3.5" /> Entrega estimada en {formatDuracion(ruta.tiempoEstimadoMin)}
                 </p>
               )}
-              <p className="text-xs text-muted-foreground">Valor referencial: el definitivo es el de tu guía, con el peso verificado.</p>
+              <p className="text-xs text-muted-foreground">Valor referencial: el definitivo es el de tu guía, con las piezas y la zona verificadas.</p>
             </>
           ) : (
             <p className="text-sm">

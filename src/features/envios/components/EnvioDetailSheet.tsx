@@ -6,8 +6,8 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { Skeleton } from '@/components/ui/skeleton'
 import { errorMessage } from '@/lib/api'
 import { formatCurrency, formatDateTime, formatPeso } from '@/lib/format'
-import type { Envio, Estado } from '@/types/api'
-import { ESTADO_LABEL, piezasLabel, TIPO_CARGA_LABEL } from '../domain'
+import type { Envio, Estado, Zona } from '@/types/api'
+import { ESTADO_LABEL, piezasLabel, TIPO_CARGA_LABEL, ZONA_LABEL } from '../domain'
 import { useCambiarEstado, useEnvio } from '../hooks'
 import { TIPO_CARGA_ICON } from '../ui'
 import { CambioEstadoForm } from './CambioEstadoForm'
@@ -25,6 +25,7 @@ function Parada({
   nombre,
   telefono,
   direccion,
+  zona,
   destino,
 }: {
   ciudad: string
@@ -32,6 +33,7 @@ function Parada({
   nombre: string
   telefono: string
   direccion?: string
+  zona?: Zona
   destino?: boolean
 }) {
   return (
@@ -47,6 +49,7 @@ function Parada({
       />
       <p className="text-xs text-muted-foreground">
         {rol} · <span className="font-medium text-foreground">{ciudad}</span>
+        {zona && <span data-testid="zona-entrega"> · zona {ZONA_LABEL[zona].toLowerCase()}</span>}
       </p>
       <p className="text-sm font-medium">{nombre}</p>
       <p className="text-xs text-muted-foreground">
@@ -172,6 +175,7 @@ export function EnvioDetailSheet({ envioId, onClose }: { envioId: string | null;
                   nombre={envio.destinatario.nombre}
                   telefono={envio.destinatario.telefono}
                   direccion={envio.destinatario.direccion}
+                  zona={envio.zona ?? 'URBANA'}
                 />
               </ol>
             </section>

@@ -1,4 +1,4 @@
-// Tipos espejo de docs/api-contract.md (v2)
+// Tipos espejo de docs/api-contract.md (v8)
 export type Rol = 'ADMIN' | 'OPERADOR'
 export type Estado =
   | 'REGISTRADO'
@@ -10,7 +10,16 @@ export type Estado =
   | 'CANCELADO'
 export type ResultadoEntrega = 'ENTREGADO' | 'NO_ENTREGADO' | 'NOVEDAD'
 export type FormaPago = 'PAGADO' | 'AL_COBRO' | 'CONTRATO' | 'SEGURO'
-export type TipoCargaCodigo = 'SOBRE' | 'PAQUETE' | 'CARTON' | 'VALIJA'
+export type TipoCargaCodigo =
+  | 'SOBRE'
+  | 'PAQUETE'
+  | 'CARTON'
+  | 'VALIJA'
+  | 'TELA'
+  | 'PLUMON_PEQUENO'
+  | 'PLUMON_GRANDE'
+/** Zona de entrega (contrato v8): solo cambia el precio de los tipos con `precioRural`. */
+export type Zona = 'URBANA' | 'RURAL'
 
 export interface Usuario {
   id: string
@@ -39,8 +48,12 @@ export interface CambiosCiudad {
 export interface TipoCarga {
   codigo: TipoCargaCodigo
   nombre: string
-  factor: number
-  pesoIncluidoKg: number
+  /** Precio por unidad en zona urbana (USD). */
+  precio: number
+  /** Precio por unidad en zona rural; null = mismo precio que en la urbana. */
+  precioRural: number | null
+  /** Más de `minimoExclusivo` unidades del tipo en el envío → todas a `precio`. */
+  mayoreo: { minimoExclusivo: number; precio: number } | null
   pesoMaxKg: number
 }
 
@@ -48,7 +61,6 @@ export interface Ruta {
   id: number
   origen: Ciudad
   destino: Ciudad
-  tarifaBase: number
   tiempoEstimadoMin: number
   activa: boolean
   /** ruta.activa && origen.activa && destino.activa: solo así admite envíos nuevos. */
@@ -58,11 +70,10 @@ export interface Ruta {
 export interface NuevaRuta {
   origenId: number
   destinoId: number
-  tarifaBase: number
   tiempoEstimadoMin: number
 }
 
-export type CambiosRuta = Partial<Pick<Ruta, 'tarifaBase' | 'tiempoEstimadoMin' | 'activa'>>
+export type CambiosRuta = Partial<Pick<Ruta, 'tiempoEstimadoMin' | 'activa'>>
 
 export interface EventoHistorial {
   estado: Estado
@@ -105,6 +116,8 @@ export interface Envio {
   items: ItemEnvio[]
   totalPiezas: number
   pesoTotalKg: number
+  /** Zona de entrega; los envíos anteriores a v8 vienen como URBANA. */
+  zona: Zona
   descripcion: string | null
   costo: number
   formaPago: FormaPago
@@ -122,6 +135,8 @@ export interface NuevoEnvio {
   rutaId: number
   items: ItemSolicitud[]
   formaPago: FormaPago
+  /** Por defecto URBANA. */
+  zona?: Zona
   descripcion?: string
   /** Guía física; vacío → el sistema asigna el consecutivo. */
   numeroGuia?: string
@@ -136,6 +151,8 @@ export interface NuevoEnvio {
 export interface CotizacionRequest {
   rutaId: number
   items: ItemSolicitud[]
+  /** Por defecto URBANA. */
+  zona?: Zona
 }
 
 export interface CatalogoPublico {
@@ -145,15 +162,15 @@ export interface CatalogoPublico {
 }
 
 export interface ItemCotizado extends ItemSolicitud {
-  factor: number
-  recargoPeso: number
   costoUnitario: number
   subtotal: number
+  /** Se aplicó el precio por volumen (mayoreo). */
+  mayoreo: boolean
 }
 
 export interface Cotizacion {
   costo: number
-  tarifaBase: number
+  zona: Zona
   totalPiezas: number
   pesoTotalKg: number
   items: ItemCotizado[]

@@ -23,7 +23,6 @@ import { useCiudades, useCrearRuta } from '../hooks'
 const schema = z.object({
   origenId: z.string().min(1, 'Selecciona el origen'),
   destinoId: z.string().min(1, 'Selecciona el destino'),
-  tarifaBase: z.number({ message: 'Requerido' }).positive('Debe ser mayor a 0'),
   tiempoEstimadoMin: z.number({ message: 'Requerido' }).int().positive('Debe ser mayor a 0'),
 })
 type Values = z.infer<typeof schema>
@@ -65,7 +64,6 @@ export function NuevaRutaDialog({ open: openProp, onOpenChange, origenId }: Prop
       await crear.mutateAsync({
         origenId: Number(v.origenId),
         destinoId: Number(v.destinoId),
-        tarifaBase: v.tarifaBase,
         tiempoEstimadoMin: v.tiempoEstimadoMin,
       })
       toast.success('Ruta creada')
@@ -112,18 +110,13 @@ export function NuevaRutaDialog({ open: openProp, onOpenChange, origenId }: Prop
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Nueva ruta</DialogTitle>
-          <DialogDescription>Define un trayecto y su tarifa base.</DialogDescription>
+          <DialogDescription>Define un trayecto y su tiempo estimado. El precio depende del tipo de carga, no de la ruta.</DialogDescription>
         </DialogHeader>
         <form id="nueva-ruta" onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-2 gap-4" noValidate>
           {ciudadSelect('origenId', 'Origen')}
           {ciudadSelect('destinoId', 'Destino')}
-          <div className="space-y-1.5">
-            <Label htmlFor="nr-tarifa">Tarifa base (USD)</Label>
-            <Input id="nr-tarifa" type="number" step="0.05" {...register('tarifaBase', { valueAsNumber: true })} />
-            {errors.tarifaBase && <p className="text-xs text-destructive">{errors.tarifaBase.message}</p>}
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="nr-tiempo">Tiempo (min)</Label>
+          <div className="col-span-2 space-y-1.5 sm:col-span-1">
+            <Label htmlFor="nr-tiempo">Tiempo estimado (min)</Label>
             <Input id="nr-tiempo" type="number" step="5" {...register('tiempoEstimadoMin', { valueAsNumber: true })} />
             {errors.tiempoEstimadoMin && <p className="text-xs text-destructive">{errors.tiempoEstimadoMin.message}</p>}
           </div>

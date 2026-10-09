@@ -26,6 +26,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { precioDesde, precioTipoTexto } from '@/features/envios/domain'
 import { TIPO_CARGA_ICON } from '@/features/envios/ui'
 import { formatCurrency, formatDuracion } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -33,12 +34,13 @@ import { responderAgente, useHerramientasAgente } from '@/lib/webmcp'
 import type { TipoCargaCodigo } from '@/types/api'
 import { MENSAJE_GUIA_INVALIDA, normalizarGuia } from '@/features/envios/guia'
 import { EnlacesLegales } from '@/features/legal/components/EnlacesLegales'
-import { datoLegal } from '@/features/legal/datos'
+import { lineaCopyright } from '@/features/legal/datos'
 import { consultarGuiaParaAgente, HERRAMIENTAS_PUBLICAS } from './agente'
 import { useCatalogoPublico } from './api'
 import { CarruselCiudades } from './components/CarruselCiudades'
-import { matrizTarifas, resumenCobertura, tarifaDesde } from './cobertura'
+import { matrizRutas, resumenCobertura } from './cobertura'
 import { MenuMovil, WhatsAppFlotante } from './components/MenuMovil'
+import { TablaPrecios } from './components/TablaPrecios'
 import { HeroPaisaje } from './ilustraciones/HeroPaisaje'
 import { MapaCobertura } from './ilustraciones/MapaCobertura'
 import { MARCA, whatsappUrl } from './marca'
@@ -61,11 +63,14 @@ const DESCRIPCION_CARGA: Record<TipoCargaCodigo, string> = {
   PAQUETE: 'Compras, ropa, repuestos y pedidos de tu tienda en línea.',
   CARTON: 'Cajas de mercadería, textiles y productos para tu negocio.',
   VALIJA: 'Equipaje y maletas que viajan sin ti, de puerta a puerta.',
+  TELA: 'Rollos de tela para talleres, almacenes y confeccionistas.',
+  PLUMON_PEQUENO: 'Plumones de tamaño pequeño, empacados para el viaje.',
+  PLUMON_GRANDE: 'Plumones de tamaño grande, empacados para el viaje.',
 }
 
 const PASOS = [
   { icon: Store, titulo: 'Deja o agenda tu envío', texto: 'Acércate a nuestra oficina en Ibarra o escríbenos por WhatsApp para coordinar tu envío.' },
-  { icon: PackageCheck, titulo: 'Recibe tu guía', texto: 'Te entregamos tu guía con su número de seguimiento y el costo calculado con las tarifas publicadas.' },
+  { icon: PackageCheck, titulo: 'Recibe tu guía', texto: 'Te entregamos tu guía con su número de seguimiento y el costo calculado con los precios publicados.' },
   { icon: Truck, titulo: 'Entregamos a domicilio', texto: 'Llevamos tu encomienda hasta la puerta del destinatario y puedes seguirla en línea.' },
 ]
 
@@ -170,7 +175,8 @@ function AvisosHero() {
 export function LandingPage() {
   const { data: catalogo, isLoading } = useCatalogoPublico()
   useHerramientasAgente(HERRAMIENTAS_PUBLICAS)
-  const desde = catalogo ? tarifaDesde(catalogo.rutas) : null
+  // Menor precio base publicado (el de mayoreo no cuenta: exige más de 50 rollos).
+  const desde = catalogo ? precioDesde(catalogo.tiposCarga) : null
   const ciudadesTexto = catalogo ? resumenCobertura(catalogo.ciudades, catalogo.rutas, MARCA.oficina.ciudad) : ''
 
   return (
@@ -213,8 +219,8 @@ export function LandingPage() {
                 </span>
               </h1>
               <p className="max-w-xl text-lg text-muted-foreground text-pretty">
-                Somos una empresa de Ibarra. Llevamos sobres, paquetes, cartones y valijas hasta el domicilio de tu
-                destinatario, con precio claro y seguimiento en línea.
+                Somos una empresa de Ibarra. Llevamos sobres, paquetes, cartones, valijas, rollos de tela y plumones
+                hasta el domicilio de tu destinatario, con precio claro y seguimiento en línea.
               </p>
               <div className="flex flex-wrap gap-3">
                 <Button size="lg" nativeButton={false} render={<a href="#cotizar" />}>
@@ -225,7 +231,7 @@ export function LandingPage() {
                 </Button>
               </div>
               <ul className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
-                {['Oficina física en Ibarra', 'Pago al cobro disponible', 'Tarifas publicadas'].map((t) => (
+                {['Oficina física en Ibarra', 'Pago al cobro disponible', 'Precios publicados'].map((t) => (
                   <li key={t} className="flex items-center gap-1.5">
                     <BadgeCheck className="size-4 text-brand-blue-text" /> {t}
                   </li>
@@ -270,12 +276,12 @@ export function LandingPage() {
         </section>
 
         {/* Servicios */}
-        <Seccion id="servicios" titulo="Lo que transportamos" subtitulo="Cuatro tipos de encomienda, cada una con su tarifa y peso máximo.">
+        <Seccion id="servicios" titulo="Lo que transportamos" subtitulo="Cada tipo de encomienda tiene su precio por unidad y su peso máximo.">
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             {(catalogo?.tiposCarga ?? []).map((t) => {
               const Icon = TIPO_CARGA_ICON[t.codigo]
               return (
-                <article key={t.codigo} className="space-y-3 rounded-2xl border bg-card p-4 sm:space-y-4 sm:p-6">
+                <article key={t.codigo} className="space-y-3 rounded-2xl border bg-card p-4 max-lg:last:odd:col-span-2 sm:space-y-4 sm:p-6">
                   <span className="flex size-11 items-center justify-center rounded-xl bg-accent text-accent-foreground">
                     <Icon className="size-5" />
                   </span>
@@ -283,7 +289,9 @@ export function LandingPage() {
                     <h3 className="font-semibold">{t.nombre}</h3>
                     <p className="text-xs text-muted-foreground sm:text-sm">{DESCRIPCION_CARGA[t.codigo]}</p>
                   </div>
-                  <p className="text-xs font-medium text-brand-blue-text">Hasta {t.pesoMaxKg} kg</p>
+                  <p className="text-xs font-medium text-brand-blue-text">
+                    {precioTipoTexto(t)} c/u · hasta {t.pesoMaxKg} kg
+                  </p>
                 </article>
               )
             })}
@@ -331,52 +339,63 @@ export function LandingPage() {
         <Seccion
           id="cobertura"
           titulo="Cobertura y tarifas"
-          subtitulo="Tarifa base por trayecto. Entregas urbanas dentro de cada ciudad e interurbanas en ambos sentidos."
+          subtitulo="Pagas por unidad según lo que envías, con el mismo precio en todas las rutas. Entregas urbanas dentro de cada ciudad e interurbanas en ambos sentidos."
         >
           {catalogo ? (
-            <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
-              <MapaCobertura ciudades={catalogo.ciudades} rutas={catalogo.rutas} />
-              <div className="overflow-x-auto rounded-2xl border">
-                <table className="w-full min-w-[520px] text-sm">
-                  <thead>
-                    <tr className="border-b bg-muted/40">
-                      <th className="p-4 text-left font-medium text-muted-foreground">Desde \ Hasta</th>
-                      {catalogo.ciudades.map((c) => (
-                        <th key={c.id} className="p-4 text-left font-medium">{c.nombre}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {matrizTarifas(catalogo.ciudades, catalogo.rutas).map((fila) => (
-                      <tr key={fila[0]!.origen.id} className="border-b last:border-0">
-                        <th scope="row" className="p-4 text-left font-medium">{fila[0]!.origen.nombre}</th>
-                        {fila.map(({ destino, ruta }) => (
-                          <td key={destino.id} className="p-4">
-                            {ruta ? (
-                              <div className="space-y-0.5">
-                                <p className="font-medium">{formatCurrency(ruta.tarifaBase)}</p>
-                                <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                                  <Clock className="size-3" /> {formatDuracion(ruta.tiempoEstimadoMin)}
-                                </p>
-                              </div>
-                            ) : (
-                              <span className="text-muted-foreground">—</span>
-                            )}
-                          </td>
+            <div className="space-y-10">
+              <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+                <div className="space-y-3">
+                  <h3 className="font-semibold">Precios por unidad</h3>
+                  <TablaPrecios tipos={catalogo.tiposCarga} />
+                </div>
+                <MapaCobertura ciudades={catalogo.ciudades} rutas={catalogo.rutas} />
+              </div>
+              <div className="space-y-3">
+                <h3 className="font-semibold">Tiempos estimados por trayecto</h3>
+                <div className="overflow-x-auto rounded-2xl border">
+                  <table className="w-full min-w-[520px] text-sm">
+                    <caption className="sr-only">Tiempo estimado de entrega por trayecto (origen en filas, destino en columnas)</caption>
+                    <thead>
+                      <tr className="border-b bg-muted/40">
+                        <th scope="col" className="p-4 text-left font-medium text-muted-foreground">Desde \ Hasta</th>
+                        {catalogo.ciudades.map((c) => (
+                          <th key={c.id} scope="col" className="p-4 text-left font-medium">{c.nombre}</th>
                         ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {matrizRutas(catalogo.ciudades, catalogo.rutas).map((fila) => (
+                        <tr key={fila[0]!.origen.id} className="border-b last:border-0">
+                          <th scope="row" className="p-4 text-left font-medium">{fila[0]!.origen.nombre}</th>
+                          {fila.map(({ destino, ruta }) => (
+                            <td key={destino.id} className="p-4">
+                              {ruta ? (
+                                <span className="flex items-center gap-1.5 tabular-nums">
+                                  <Clock aria-hidden="true" className="size-3.5 text-muted-foreground" />
+                                  {formatDuracion(ruta.tiempoEstimadoMin)}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground">
+                                  <span aria-hidden="true">—</span>
+                                  <span className="sr-only">Sin ruta</span>
+                                </span>
+                              )}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           ) : (
             <Skeleton className="h-64 rounded-2xl" />
           )}
           <p className="mt-4 text-xs text-muted-foreground">
-            Precio = tarifa base × factor del tipo de carga (sobre ×1, paquete ×1,4, cartón ×1,6, valija ×1,8)
-            + $0,50 por cada kg adicional sobre el peso incluido. El valor definitivo es el de tu guía, con el peso verificado en
-            la oficina. Los tiempos son estimados y pueden variar.
+            Precios en USD por unidad, iguales en cualquier ruta y sin recargo por peso dentro del máximo de cada tipo. La zona
+            rural solo cambia el precio del rollo de tela. El valor definitivo es el de tu guía, con las piezas y la zona de
+            entrega verificadas en la oficina. Los tiempos son estimados y pueden variar.
           </p>
         </Seccion>
 
@@ -392,10 +411,10 @@ export function LandingPage() {
         </Seccion>
 
         {/* Confianza */}
-        <Seccion titulo="¿Por qué PCargo?" subtitulo="Somos una empresa de Ibarra, con oficina física y tarifas a la vista.">
+        <Seccion titulo="¿Por qué PCargo?" subtitulo="Somos una empresa de Ibarra, con oficina física y precios a la vista.">
           <div className="grid gap-4 md:grid-cols-3">
             {[
-              { icon: ShieldCheck, t: 'Tarifas publicadas', d: 'El precio se calcula con la tabla de esta página. Pagas al registrar el envío o lo paga el destinatario al recibirlo.' },
+              { icon: ShieldCheck, t: 'Precios publicados', d: 'El precio se calcula con la tabla de precios de esta página. Pagas al registrar el envío o lo paga el destinatario al recibirlo.' },
               { icon: PackageSearch, t: 'Seguimiento en línea', d: 'Cada cambio de estado que registramos aparece en el seguimiento con tu número de guía.' },
               { icon: MapPin, t: 'Entrega a domicilio', d: 'Llevamos la encomienda a la dirección del destinatario. Si una entrega no se concreta, el motivo queda en el seguimiento.' },
             ].map((x) => (
@@ -484,7 +503,7 @@ export function LandingPage() {
 
       <footer className="border-t">
         {/* Datos de PCargo a la izquierda; a la derecha, centradas verticalmente, las ciudades con cobertura. */}
-        <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 pb-24 text-sm text-muted-foreground sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center sm:gap-10 sm:px-6 sm:pb-10">
+        <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 text-sm text-muted-foreground sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center sm:gap-10 sm:px-6">
           <div className="space-y-3">
             <Logo markClassName="size-8" />
             <p>{MARCA.oficina.direccion}</p>
@@ -493,16 +512,20 @@ export function LandingPage() {
               {' · '}
               <a href={`tel:${MARCA.telefonos.celular.tel}`} className="hover:text-foreground">{MARCA.telefonos.celular.texto}</a>
             </p>
-            <p>
-              © {ANIO} {datoLegal('razonSocial')} ({MARCA.nombre}) · RUC {datoLegal('ruc')}
-            </p>
             <div className="flex gap-4">
               <Link to="/seguimiento" className="hover:text-foreground">Rastrear envío</Link>
               <Link to="/login" className="hover:text-foreground">Acceso del personal</Link>
             </div>
-            <EnlacesLegales />
           </div>
           <CarruselCiudades ciudades={catalogo?.ciudades ?? []} />
+        </div>
+        {/* Franja legal: identidad del negocio a la izquierda y políticas a la derecha. El espacio inferior extra en
+            móvil deja libre el botón flotante de WhatsApp. */}
+        <div className="border-t">
+          <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 pt-5 pb-24 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:pb-5">
+            <p>{lineaCopyright(ANIO)}</p>
+            <EnlacesLegales />
+          </div>
         </div>
       </footer>
 

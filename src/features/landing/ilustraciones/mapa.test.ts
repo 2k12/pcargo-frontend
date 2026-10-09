@@ -4,7 +4,7 @@ import { conexiones, normalizarNombre, ubicarCiudades } from './mapa'
 
 const c = (id: number, nombre: string): Ciudad => ({ id, nombre, activa: true })
 const ruta = (id: number, o: Ciudad, d: Ciudad): Ruta => ({
-  id, origen: o, destino: d, tarifaBase: 2, tiempoEstimadoMin: 30, activa: true, operativa: true,
+  id, origen: o, destino: d, tiempoEstimadoMin: 30, activa: true, operativa: true,
 })
 
 describe('mapa de cobertura', () => {

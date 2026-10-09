@@ -11,7 +11,9 @@ const telefono = z
   .regex(/^[0-9+\s-]{7,15}$/, 'Teléfono inválido')
 
 const itemSchema = z.object({
-  tipoCarga: z.enum(['SOBRE', 'PAQUETE', 'CARTON', 'VALIJA'], { message: 'Selecciona el tipo' }),
+  tipoCarga: z.enum(['SOBRE', 'PAQUETE', 'CARTON', 'VALIJA', 'TELA', 'PLUMON_PEQUENO', 'PLUMON_GRANDE'], {
+    message: 'Selecciona el tipo',
+  }),
   cantidad: z
     .number({ message: 'Cantidad' })
     .int('Debe ser entero')
@@ -43,6 +45,8 @@ export function crearEnvioSchema(tipos: TipoCarga[]) {
       )
       .min(1, 'Agrega al menos un ítem')
       .max(MAX_ITEMS, `Máximo ${MAX_ITEMS} ítems`),
+    // Zona de entrega (contrato v8): solo cambia el precio de la tela.
+    zona: z.enum(['URBANA', 'RURAL'], { message: 'Selecciona la zona' }),
     formaPago: z.enum(['PAGADO', 'AL_COBRO', 'CONTRATO', 'SEGURO'], { message: 'Selecciona la forma de pago' }),
     descripcion: z.string().trim().max(200).optional(),
     // Guía física (opcional): solo dígitos, admite ceros a la izquierda.
@@ -95,6 +99,7 @@ export function toNuevoEnvio(v: EnvioFormValues): NuevoEnvio {
     rutaId: Number(v.rutaId),
     items: v.items.map(({ tipoCarga, cantidad, pesoKg }) => ({ tipoCarga, cantidad, pesoKg })),
     formaPago: v.formaPago,
+    zona: v.zona,
     descripcion: v.descripcion || undefined,
     ...(v.numeroGuia?.trim() ? { numeroGuia: normalizarGuia(v.numeroGuia)! } : {}),
     ...(v.clienteId ? { clienteId: v.clienteId } : v.guardarCliente ? { guardarCliente: true, consentimientoCliente: v.consentimientoCliente === true } : {}),

@@ -11,10 +11,10 @@ export const MARCA = {
   },
   telefonos: {
     fijo: { texto: '06 263 2669', tel: '+59362632669' },
-    celular: { texto: '+593 99 518 7551', tel: '+593995187551' },
+    celular: { texto: '+593 99 801 4093', tel: '+593998014093' },
   },
   // Se asume que el celular también es el WhatsApp de la empresa. Formato internacional sin "+".
-  whatsapp: '593995187551',
+  whatsapp: '593998014093',
   /** Correo público de contacto; pendiente de confirmar. */
   email: null as string | null,
 } as const

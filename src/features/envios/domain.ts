@@ -1,4 +1,5 @@
-import type { Estado, FormaPago, ItemSolicitud, TipoCarga, TipoCargaCodigo } from '@/types/api'
+import { formatCurrency } from '@/lib/format'
+import type { Cotizacion, Estado, FormaPago, ItemSolicitud, TipoCarga, TipoCargaCodigo, Zona } from '@/types/api'
 
 export const ESTADOS: Estado[] = [
   'REGISTRADO',
@@ -84,12 +85,22 @@ export const FORMA_PAGO_DESCRIPCION: Record<FormaPago, string> = {
   SEGURO: 'Cubierto por seguro',
 }
 
-/** Catálogo por defecto (igual al backend); se usa mientras carga /tipos-carga. */
+/** Catálogo por defecto (igual al backend, contrato v8); se usa mientras carga /tipos-carga. */
 export const TIPOS_CARGA_DEFAULT: TipoCarga[] = [
-  { codigo: 'SOBRE', nombre: 'Sobre', factor: 1.0, pesoIncluidoKg: 0.5, pesoMaxKg: 0.5 },
-  { codigo: 'PAQUETE', nombre: 'Paquete', factor: 1.4, pesoIncluidoKg: 2, pesoMaxKg: 30 },
-  { codigo: 'CARTON', nombre: 'Cartón', factor: 1.6, pesoIncluidoKg: 2, pesoMaxKg: 40 },
-  { codigo: 'VALIJA', nombre: 'Valija', factor: 1.8, pesoIncluidoKg: 2, pesoMaxKg: 25 },
+  { codigo: 'SOBRE', nombre: 'Sobre', precio: 3, precioRural: null, mayoreo: null, pesoMaxKg: 0.5 },
+  { codigo: 'PAQUETE', nombre: 'Paquete', precio: 3, precioRural: null, mayoreo: null, pesoMaxKg: 50 },
+  { codigo: 'CARTON', nombre: 'Cartón', precio: 3, precioRural: null, mayoreo: null, pesoMaxKg: 35 },
+  { codigo: 'VALIJA', nombre: 'Valija', precio: 3, precioRural: null, mayoreo: null, pesoMaxKg: 25 },
+  {
+    codigo: 'TELA',
+    nombre: 'Rollo de tela',
+    precio: 1.25,
+    precioRural: 1.5,
+    mayoreo: { minimoExclusivo: 50, precio: 1 },
+    pesoMaxKg: 50,
+  },
+  { codigo: 'PLUMON_PEQUENO', nombre: 'Plumón pequeño', precio: 3, precioRural: null, mayoreo: null, pesoMaxKg: 50 },
+  { codigo: 'PLUMON_GRANDE', nombre: 'Plumón grande', precio: 4, precioRural: null, mayoreo: null, pesoMaxKg: 50 },
 ]
 
 export const TIPO_CARGA_LABEL: Record<TipoCargaCodigo, string> = {
@@ -97,6 +108,9 @@ export const TIPO_CARGA_LABEL: Record<TipoCargaCodigo, string> = {
   PAQUETE: 'Paquete',
   CARTON: 'Cartón',
   VALIJA: 'Valija',
+  TELA: 'Rollo de tela',
+  PLUMON_PEQUENO: 'Plumón pequeño',
+  PLUMON_GRANDE: 'Plumón grande',
 }
 
 const TIPO_CARGA_PLURAL: Record<TipoCargaCodigo, [string, string]> = {
@@ -104,6 +118,66 @@ const TIPO_CARGA_PLURAL: Record<TipoCargaCodigo, [string, string]> = {
   PAQUETE: ['paquete', 'paquetes'],
   CARTON: ['cartón', 'cartones'],
   VALIJA: ['valija', 'valijas'],
+  TELA: ['rollo de tela', 'rollos de tela'],
+  PLUMON_PEQUENO: ['plumón pequeño', 'plumones pequeños'],
+  PLUMON_GRANDE: ['plumón grande', 'plumones grandes'],
+}
+
+export const ZONAS: Zona[] = ['URBANA', 'RURAL']
+
+export const ZONA_LABEL: Record<Zona, string> = {
+  URBANA: 'Urbana',
+  RURAL: 'Rural',
+}
+
+/** El tipo cambia de precio según la zona de entrega (hoy, la tela). */
+export function dependeDeZona(tipo: Pick<TipoCarga, 'precioRural' | 'precio'>): boolean {
+  return tipo.precioRural !== null && tipo.precioRural !== tipo.precio
+}
+
+/** ¿Alguna línea del envío tiene precio distinto según la zona? */
+export function zonaInfluye(items: Pick<ItemSolicitud, 'tipoCarga'>[], tipos: TipoCarga[]): boolean {
+  return items.some((i) => {
+    const t = tipos.find((x) => x.codigo === i.tipoCarga)
+    return t ? dependeDeZona(t) : false
+  })
+}
+
+/**
+ * Precio por unidad de un tipo (contrato v8, «Precio por línea»): con mayoreo y más de `minimoExclusivo`
+ * unidades del tipo en todo el envío, todas valen el precio por volumen; si no, rural/urbano.
+ */
+export function precioUnitario(tipo: TipoCarga, zona: Zona, unidadesDelTipo: number): { precio: number; mayoreo: boolean } {
+  if (tipo.mayoreo && unidadesDelTipo > tipo.mayoreo.minimoExclusivo) return { precio: tipo.mayoreo.precio, mayoreo: true }
+  return { precio: zona === 'RURAL' && tipo.precioRural !== null ? tipo.precioRural : tipo.precio, mayoreo: false }
+}
+
+/** Menor precio base publicado (sin contar el de mayoreo): la cifra «envíos desde». */
+export function precioDesde(tipos: TipoCarga[]): number | null {
+  return tipos.length ? Math.min(...tipos.map((t) => Math.min(t.precio, t.precioRural ?? t.precio))) : null
+}
+
+/** Precio publicado de un tipo: «$3,00» o, si cambia por zona, «$1,25 urbana · $1,50 rural». */
+export function precioTipoTexto(tipo: TipoCarga): string {
+  if (!dependeDeZona(tipo)) return formatCurrency(tipo.precio)
+  return `${formatCurrency(tipo.precio)} urbana · ${formatCurrency(tipo.precioRural!)} rural`
+}
+
+/** Regla por volumen: «más de 50 rollos de tela: $1,00 c/u» (null si el tipo no tiene). */
+export function mayoreoTexto(tipo: TipoCarga): string | null {
+  if (!tipo.mayoreo) return null
+  const { minimoExclusivo, precio } = tipo.mayoreo
+  return `más de ${minimoExclusivo} ${nombreTipo(tipo.codigo, minimoExclusivo)}: ${formatCurrency(precio)} c/u`
+}
+
+/** «Más de 50 rollos de tela: $1,00 c/u» por cada tipo al que la cotización aplicó el precio por volumen. */
+export function notasMayoreo(cotizacion: Pick<Cotizacion, 'items'>, tipos: TipoCarga[]): string[] {
+  const codigos = [...new Set(cotizacion.items.filter((i) => i.mayoreo).map((i) => i.tipoCarga))]
+  return codigos.flatMap((codigo) => {
+    const tipo = tipos.find((t) => t.codigo === codigo)
+    const texto = tipo ? mayoreoTexto(tipo) : null
+    return texto ? [texto.charAt(0).toUpperCase() + texto.slice(1)] : []
+  })
 }
 
 export function nombreTipo(tipo: TipoCargaCodigo, cantidad: number): string {

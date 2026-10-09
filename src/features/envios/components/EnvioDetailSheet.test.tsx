@@ -16,13 +16,14 @@ const envio: Envio = {
   destinatario: { nombre: 'Almacén El Sol', telefono: '0994445566', direccion: 'Av. 10 de Agosto N20-15, Quito' },
   ruta: { id: 13, origen: 'Atuntaqui', destino: 'Quito' },
   items: [
-    { tipoCarga: 'PAQUETE', cantidad: 5, pesoKg: 2, costoUnitario: 7.7, subtotal: 38.5 },
-    { tipoCarga: 'CARTON', cantidad: 20, pesoKg: 8, costoUnitario: 11.8, subtotal: 236 },
+    { tipoCarga: 'PAQUETE', cantidad: 5, pesoKg: 2, costoUnitario: 3, subtotal: 15 },
+    { tipoCarga: 'TELA', cantidad: 20, pesoKg: 8, costoUnitario: 1.5, subtotal: 30 },
   ],
   totalPiezas: 25,
   pesoTotalKg: 170,
+  zona: 'RURAL',
   descripcion: null,
-  costo: 274.5,
+  costo: 45,
   formaPago: 'AL_COBRO',
   estado: 'NO_ENTREGADO',
   registro: { fecha: '2026-10-08T03:24:55.786Z', operador: 'Operador Ibarra' },
@@ -44,8 +45,11 @@ describe('EnvioDetailSheet', () => {
 
     expect(await screen.findByText('Guía 7')).toBeInTheDocument()
     expect(screen.getByText('Al cobro')).toBeInTheDocument()
-    expect(screen.getAllByText('$274,50').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('$45,00').length).toBeGreaterThan(0)
     expect(screen.getByText('170 kg')).toBeInTheDocument()
+    // Zona de entrega (contrato v8) junto al destinatario, y el tipo nuevo con su etiqueta.
+    expect(screen.getByTestId('zona-entrega')).toHaveTextContent('zona rural')
+    expect(screen.getByText('Rollo de tela')).toBeInTheDocument()
 
     expect(screen.getByText('Operador Ibarra')).toBeInTheDocument()
     const gestion = screen.getByTestId('gestion-entrega')

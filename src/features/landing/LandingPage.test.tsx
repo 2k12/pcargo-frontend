@@ -4,7 +4,7 @@ import { useParams } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { jsonResponse, mockFetch, renderWithProviders } from '@/test/utils'
 import type { CatalogoPublico, Ruta } from '@/types/api'
-import { buscarRuta, matrizTarifas, resumenCobertura, tarifaDesde } from './cobertura'
+import { buscarRuta, matrizRutas, resumenCobertura } from './cobertura'
 import { LandingPage } from './LandingPage'
 
 vi.mock('next-themes', () => ({ useTheme: () => ({ resolvedTheme: 'light', setTheme: vi.fn() }) }))
@@ -15,26 +15,26 @@ afterEach(() => {
 
 const ibarra = { id: 1, nombre: 'Ibarra', activa: true }
 const quito = { id: 4, nombre: 'Quito', activa: true }
-const ruta = (id: number, origen = ibarra, destino = quito, tarifaBase = 6): Ruta => ({
-  id, origen, destino, tarifaBase, tiempoEstimadoMin: 180, activa: true, operativa: true,
+const ruta = (id: number, origen = ibarra, destino = quito, tiempoEstimadoMin = 180): Ruta => ({
+  id, origen, destino, tiempoEstimadoMin, activa: true, operativa: true,
 })
 
 const catalogo: CatalogoPublico = {
   ciudades: [ibarra, quito],
   tiposCarga: [
-    { codigo: 'SOBRE', nombre: 'Sobre', factor: 1, pesoIncluidoKg: 0.5, pesoMaxKg: 0.5 },
-    { codigo: 'VALIJA', nombre: 'Valija', factor: 1.8, pesoIncluidoKg: 2, pesoMaxKg: 25 },
+    { codigo: 'SOBRE', nombre: 'Sobre', precio: 3, precioRural: null, mayoreo: null, pesoMaxKg: 0.5 },
+    { codigo: 'VALIJA', nombre: 'Valija', precio: 3, precioRural: null, mayoreo: null, pesoMaxKg: 25 },
+    { codigo: 'TELA', nombre: 'Rollo de tela', precio: 1.25, precioRural: 1.5, mayoreo: { minimoExclusivo: 50, precio: 1 }, pesoMaxKg: 50 },
+    { codigo: 'PLUMON_GRANDE', nombre: 'Plumón grande', precio: 4, precioRural: null, mayoreo: null, pesoMaxKg: 50 },
   ],
-  rutas: [ruta(1, ibarra, ibarra, 2), ruta(11), ruta(12, quito, ibarra, 6)],
+  rutas: [ruta(1, ibarra, ibarra, 40), ruta(11), ruta(12, quito, ibarra, 150)],
 }
 
 describe('cobertura', () => {
-  it('busca rutas, calcula la tarifa mínima y arma la matriz', () => {
+  it('busca rutas y arma la matriz de trayectos', () => {
     expect(buscarRuta(catalogo.rutas, 1, 4)?.id).toBe(11)
     expect(buscarRuta(catalogo.rutas, 4, 4)).toBeUndefined()
-    expect(tarifaDesde(catalogo.rutas)).toBe(2)
-    expect(tarifaDesde([])).toBeNull()
-    const m = matrizTarifas(catalogo.ciudades, catalogo.rutas)
+    const m = matrizRutas(catalogo.ciudades, catalogo.rutas)
     expect(m.map((fila) => fila.map((c) => c.ruta?.id ?? null))).toEqual([[1, 11], [12, null]])
   })
 
@@ -58,16 +58,13 @@ describe('LandingPage (pública)', () => {
     expect(within(footer).getByRole('link', { name: 'Rastrear envío' })).toBeInTheDocument()
   })
 
-  it('muestra servicios, tarifas reales y enlaza al login', async () => {
+  it('muestra servicios, precios reales y enlaza al login', async () => {
     const fetchMock = mockFetch((url) => (url.endsWith('/publico/catalogo') ? jsonResponse(catalogo) : jsonResponse({}, 404)))
     renderWithProviders(<LandingPage />)
 
     expect(await screen.findByRole('heading', { name: 'Valija' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Rollo de tela' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /puerta a puerta/i })).toBeInTheDocument()
-
-    const tabla = screen.getByRole('table')
-    expect(within(tabla).getAllByText('$6,00')).toHaveLength(2)
-    expect(within(tabla).getByText('$2,00')).toBeInTheDocument()
 
     const accesos = screen.getAllByRole('link', { name: /Acceso del personal/ })
     expect(accesos.length).toBeGreaterThan(0)
@@ -101,9 +98,9 @@ describe('LandingPage (pública)', () => {
 
     expect(within(seccion).getByText(/Las Gardenias s\/n y El Rosal \(La Florida\), Ibarra, Ecuador/)).toBeInTheDocument()
     expect(within(seccion).getByRole('link', { name: '06 263 2669' })).toHaveAttribute('href', 'tel:+59362632669')
-    expect(within(seccion).getByRole('link', { name: '+593 99 518 7551' })).toHaveAttribute('href', 'tel:+593995187551')
+    expect(within(seccion).getByRole('link', { name: '+593 99 801 4093' })).toHaveAttribute('href', 'tel:+593998014093')
     expect(within(seccion).getByRole('link', { name: /WhatsApp/ }).getAttribute('href')).toMatch(
-      /^https:\/\/wa\.me\/593995187551\?text=/,
+      /^https:\/\/wa\.me\/593998014093\?text=/,
     )
   })
 
@@ -121,6 +118,42 @@ describe('LandingPage (pública)', () => {
     await user.type(screen.getByLabelText('Número de guía'), ' 0040425 ')
     await user.click(screen.getByRole('button', { name: /Rastrear/ }))
     expect(await screen.findByText('Seguimiento de 40425')).toBeInTheDocument()
+  })
+})
+
+describe('LandingPage — precios por tipo (contrato v8)', () => {
+  it('publica la tabla de precios por tipo con tela urbana/rural y la regla de más de 50 rollos', async () => {
+    mockFetch(() => jsonResponse(catalogo))
+    renderWithProviders(<LandingPage />)
+    const tabla = await screen.findByRole('table', { name: /Precios por unidad según el tipo de carga/ })
+    const fila = (nombre: string) => within(tabla).getByRole('rowheader', { name: new RegExp(nombre) }).closest('tr')!
+    expect(within(fila('Sobre')).getAllByText('$3,00')).toHaveLength(2)
+    expect(within(fila('Plumón grande')).getAllByText('$4,00')).toHaveLength(2)
+    expect(within(fila('Rollo de tela')).getByText('$1,25')).toBeInTheDocument()
+    expect(within(fila('Rollo de tela')).getByText('$1,50')).toBeInTheDocument()
+    expect(screen.getByTestId('regla-mayoreo')).toHaveTextContent('Más de 50 rollos de tela en un mismo envío: todos a $1,00 c/u, en cualquier zona.')
+  })
+
+  it('ya no muestra la matriz de tarifas por ruta: los trayectos solo llevan tiempo estimado', async () => {
+    mockFetch(() => jsonResponse(catalogo))
+    renderWithProviders(<LandingPage />)
+    const tiempos = await screen.findByRole('table', { name: /Tiempo estimado de entrega por trayecto/ })
+    expect(within(tiempos).getAllByText('3 h')).toHaveLength(1)
+    expect(within(tiempos).getByText('40 min')).toBeInTheDocument()
+    expect(within(tiempos).queryByText(/\$/)).not.toBeInTheDocument()
+    expect(screen.getAllByRole('table')).toHaveLength(2)
+    const seccion = document.getElementById('cobertura')!
+    expect(seccion).not.toHaveTextContent(/tarifa base|factor|por cada kg/i)
+    expect(seccion).toHaveTextContent(/Los tiempos son estimados/)
+    expect(seccion).toHaveTextContent(/El valor definitivo es el de tu guía/)
+  })
+
+  it('«Envíos desde» usa el menor precio base publicado ($1,25), no el de mayoreo', async () => {
+    mockFetch(() => jsonResponse(catalogo))
+    renderWithProviders(<LandingPage />)
+    const cifra = (await screen.findByText('Envíos desde')).closest('div')!
+    await within(cifra).findByText('$1,25')
+    expect(within(cifra).queryByText('$1,00')).not.toBeInTheDocument()
   })
 })
 

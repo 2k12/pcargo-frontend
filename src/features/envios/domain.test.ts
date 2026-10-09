@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest'
 import type { Estado } from '@/types/api'
 import {
   accionLabel,
+  dependeDeZona,
   esEstadoFinal,
+  mayoreoTexto,
+  notasMayoreo,
+  precioDesde,
+  precioTipoTexto,
+  precioUnitario,
   pesoTotal,
   puedeTransicionar,
   requiereNota,
@@ -10,6 +16,7 @@ import {
   TIPOS_CARGA_DEFAULT,
   totalPiezas,
   transicionesPermitidas,
+  zonaInfluye,
 } from './domain'
 import { crearEnvioSchema, itemsCotizables, toNuevoEnvio } from './schema'
 
@@ -102,13 +109,32 @@ describe('crearEnvioSchema', () => {
       { tipoCarga: 'CARTON' as const, cantidad: 20, pesoKg: 8 },
     ],
     formaPago: 'AL_COBRO' as const,
+    zona: 'URBANA' as const,
   }
   const schema = crearEnvioSchema(TIPOS_CARGA_DEFAULT)
 
   it('acepta un envío con varios ítems y lo convierte al contrato', () => {
     const r = schema.safeParse(base)
     expect(r.success).toBe(true)
-    expect(toNuevoEnvio(r.data!)).toMatchObject({ rutaId: 3, formaPago: 'AL_COBRO', items: base.items })
+    expect(toNuevoEnvio(r.data!)).toMatchObject({ rutaId: 3, formaPago: 'AL_COBRO', zona: 'URBANA', items: base.items })
+  })
+
+  it('envía la zona elegida y exige que sea URBANA o RURAL (contrato v8)', () => {
+    const rural = schema.safeParse({ ...base, zona: 'RURAL' })
+    expect(toNuevoEnvio(rural.data!).zona).toBe('RURAL')
+    expect(schema.safeParse({ ...base, zona: 'CENTRO' }).success).toBe(false)
+  })
+
+  it('acepta los tipos nuevos con sus pesos máximos (tela y plumón 50 kg, cartón 35 kg)', () => {
+    const items = [
+      { tipoCarga: 'TELA' as const, cantidad: 60, pesoKg: 50 },
+      { tipoCarga: 'PLUMON_PEQUENO' as const, cantidad: 1, pesoKg: 50 },
+      { tipoCarga: 'PLUMON_GRANDE' as const, cantidad: 1, pesoKg: 50 },
+    ]
+    expect(schema.safeParse({ ...base, items }).success).toBe(true)
+    expect(schema.safeParse({ ...base, items: [{ tipoCarga: 'TELA', cantidad: 1, pesoKg: 51 }] }).success).toBe(false)
+    expect(schema.safeParse({ ...base, items: [{ tipoCarga: 'CARTON', cantidad: 1, pesoKg: 36 }] }).success).toBe(false)
+    expect(schema.safeParse({ ...base, items: [{ tipoCarga: 'PAQUETE', cantidad: 1, pesoKg: 50 }] }).success).toBe(true)
   })
 
   it('rechaza peso por unidad mayor al máximo del tipo, en la línea correcta', () => {
@@ -126,5 +152,67 @@ describe('crearEnvioSchema', () => {
 
   it('rechaza teléfono inválido', () => {
     expect(schema.safeParse({ ...base, remitenteTelefono: 'abc' }).success).toBe(false)
+  })
+})
+
+describe('precio por unidad (contrato v8)', () => {
+  const tipo = (codigo: string) => TIPOS_CARGA_DEFAULT.find((t) => t.codigo === codigo)!
+  const tela = tipo('TELA')
+
+  it('el catálogo por defecto publica el precio de cada tipo, sin factor ni recargo por peso', () => {
+    expect(TIPOS_CARGA_DEFAULT.map((t) => [t.codigo, t.precio, t.precioRural, t.pesoMaxKg])).toEqual([
+      ['SOBRE', 3, null, 0.5],
+      ['PAQUETE', 3, null, 50],
+      ['CARTON', 3, null, 35],
+      ['VALIJA', 3, null, 25],
+      ['TELA', 1.25, 1.5, 50],
+      ['PLUMON_PEQUENO', 3, null, 50],
+      ['PLUMON_GRANDE', 4, null, 50],
+    ])
+    for (const t of TIPOS_CARGA_DEFAULT) expect(t).not.toHaveProperty('factor')
+  })
+
+  it('la zona rural cambia solo el precio de la tela', () => {
+    expect(precioUnitario(tela, 'URBANA', 10)).toEqual({ precio: 1.25, mayoreo: false })
+    expect(precioUnitario(tela, 'RURAL', 10)).toEqual({ precio: 1.5, mayoreo: false })
+    expect(precioUnitario(tipo('PAQUETE'), 'RURAL', 1)).toEqual({ precio: 3, mayoreo: false })
+    expect(precioUnitario(tipo('PLUMON_GRANDE'), 'RURAL', 1).precio).toBe(4)
+    expect(dependeDeZona(tela)).toBe(true)
+    expect(dependeDeZona(tipo('SOBRE'))).toBe(false)
+    expect(zonaInfluye([{ tipoCarga: 'PAQUETE' }, { tipoCarga: 'TELA' }], TIPOS_CARGA_DEFAULT)).toBe(true)
+    expect(zonaInfluye([{ tipoCarga: 'PAQUETE' }], TIPOS_CARGA_DEFAULT)).toBe(false)
+  })
+
+  it('más de 50 rollos en el envío: todos a $1,00 en cualquier zona; con 50 exactos no aplica', () => {
+    expect(precioUnitario(tela, 'URBANA', 51)).toEqual({ precio: 1, mayoreo: true })
+    expect(precioUnitario(tela, 'RURAL', 60)).toEqual({ precio: 1, mayoreo: true })
+    expect(precioUnitario(tela, 'URBANA', 50)).toEqual({ precio: 1.25, mayoreo: false })
+    expect(precioUnitario(tela, 'RURAL', 50)).toEqual({ precio: 1.5, mayoreo: false })
+  })
+
+  it('textos publicados: precio por zona, regla de volumen y «desde» con el menor precio base', () => {
+    expect(precioTipoTexto(tela)).toBe('$1,25 urbana · $1,50 rural')
+    expect(precioTipoTexto(tipo('PLUMON_GRANDE'))).toBe('$4,00')
+    expect(mayoreoTexto(tela)).toBe('más de 50 rollos de tela: $1,00 c/u')
+    expect(mayoreoTexto(tipo('SOBRE'))).toBeNull()
+    // $1,25 (precio base de la tela), no el $1,00 de mayoreo.
+    expect(precioDesde(TIPOS_CARGA_DEFAULT)).toBe(1.25)
+    expect(precioDesde([])).toBeNull()
+  })
+
+  it('notas de mayoreo solo para los tipos a los que la cotización aplicó el precio por volumen', () => {
+    const item = { cantidad: 60, pesoKg: 2, costoUnitario: 1, subtotal: 60 }
+    expect(notasMayoreo({ items: [{ ...item, tipoCarga: 'TELA', mayoreo: true }] }, TIPOS_CARGA_DEFAULT)).toEqual([
+      'Más de 50 rollos de tela: $1,00 c/u',
+    ])
+    expect(notasMayoreo({ items: [{ ...item, tipoCarga: 'TELA', mayoreo: false }] }, TIPOS_CARGA_DEFAULT)).toEqual([])
+  })
+
+  it('nombra los tipos nuevos en singular y plural', () => {
+    expect(resumenItems([
+      { tipoCarga: 'TELA', cantidad: 60 },
+      { tipoCarga: 'PLUMON_PEQUENO', cantidad: 1 },
+      { tipoCarga: 'PLUMON_GRANDE', cantidad: 2 },
+    ])).toBe('60 rollos de tela · 1 plumón pequeño · 2 plumones grandes')
   })
 })

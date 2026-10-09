@@ -19,8 +19,8 @@ export const RUTA_CATALOGO = '/.well-known/ai-catalog.json'
 /** Herramientas WebMCP que registra el sitio (ver src/lib/webmcp.ts). */
 export const HERRAMIENTAS_WEBMCP = [
   { nombre: 'rastrear_envio', descripcion: 'Consulta el estado y el historial de una encomienda por su número de guía.' },
-  { nombre: 'cotizar_envio', descripcion: 'Calcula el precio de un envío entre dos ciudades de cobertura.' },
-  { nombre: 'consultar_cobertura', descripcion: 'Lista ciudades, rutas con tarifa base y tiempo estimado, y tipos de carga.' },
+  { nombre: 'cotizar_envio', descripcion: 'Calcula el precio referencial de un envío entre dos ciudades de cobertura (zona urbana o rural).' },
+  { nombre: 'consultar_cobertura', descripcion: 'Lista ciudades, rutas con su tiempo estimado y tipos de carga con su precio por unidad.' },
 ] as const
 
 /**
@@ -49,21 +49,23 @@ export function generarLlmsTxt(sitioUrl: string | undefined): string {
   const s = limpiar(sitioUrl)
   return `# PCargo
 
-> Servicio de encomiendas a domicilio con base en Ibarra, Ecuador. Transporta sobres, paquetes, cartones y valijas
-> entre Ibarra, Atuntaqui, Otavalo y Quito (urbano e interurbano, ambos sentidos), con precio calculado por sistema
-> y seguimiento en línea por número de guía.
+> Servicio de encomiendas a domicilio con base en Ibarra, Ecuador. Transporta sobres, paquetes, cartones, valijas,
+> rollos de tela y plumones entre Ibarra, Atuntaqui, Otavalo y Quito (urbano e interurbano, ambos sentidos), con
+> precio publicado por unidad y seguimiento en línea por número de guía.
 
 - Moneda: USD. Idioma: español (Ecuador).
 - El número de guía es solo numérico; los ceros a la izquierda no cuentan (0040425 = 40425).
-- Precio = tarifa base de la ruta × factor del tipo de carga + $0,50 por cada kg sobre el peso incluido.
+- Precio por unidad según el tipo de carga, igual en todas las rutas y sin recargo por peso: sobre, paquete, cartón,
+  valija y plumón pequeño $3,00; plumón grande $4,00; rollo de tela $1,25 en zona urbana y $1,50 en zona rural.
+- Más de 50 rollos de tela en un mismo envío: todos a $1,00 c/u, en cualquier zona.
 
 ## Páginas
 
 - [Inicio](${s}/): servicios, cómo funciona, cobertura, tarifas y contacto.
-- [Cotizar un envío](${s}/#cotizar): calcula el precio por origen, destino, tipo de carga, cantidad y peso.
-- [Cobertura y tarifas](${s}/#cobertura): matriz de tarifas base y tiempos estimados por trayecto.
+- [Cotizar un envío](${s}/#cotizar): calcula el precio por origen, destino, tipo de carga, cantidad, peso y zona.
+- [Cobertura y tarifas](${s}/#cobertura): precios por tipo de carga, mapa de cobertura y tiempos estimados por trayecto.
 - [Rastrear una encomienda](${s}/seguimiento): estado e historial con el número de guía (\`${s}/seguimiento/{numeroGuia}\`).
-- [Contacto](${s}/#contacto): oficina en Las Gardenias s/n y El Rosal (La Florida), Ibarra · 06 263 2669 · WhatsApp +593 99 518 7551.
+- [Contacto](${s}/#contacto): oficina en Las Gardenias s/n y El Rosal (La Florida), Ibarra · 06 263 2669 · WhatsApp +593 99 801 4093.
 
 ## Información legal
 
@@ -73,8 +75,8 @@ ${RUTAS_LEGALES.map((l) => `- [${l.titulo}](${s}${l.ruta})`).join('\n')}
 
 ## API pública (JSON, sin autenticación, 60 solicitudes/min por IP)
 
-- [Catálogo](${s}/api/publico/catalogo): \`GET\` ciudades activas, rutas operativas (tarifa base y tiempo) y tipos de carga.
-- [Cotizar](${s}/api/publico/cotizar): \`POST\` con \`{ "rutaId": number, "items": [{ "tipoCarga": "SOBRE"|"PAQUETE"|"CARTON"|"VALIJA", "cantidad": number, "pesoKg": number }] }\`.
+- [Catálogo](${s}/api/publico/catalogo): \`GET\` ciudades activas, rutas operativas (tiempo estimado) y tipos de carga (precio, precio rural, mayoreo y peso máximo).
+- [Cotizar](${s}/api/publico/cotizar): \`POST\` con \`{ "rutaId": number, "zona"?: "URBANA"|"RURAL", "items": [{ "tipoCarga": "SOBRE"|"PAQUETE"|"CARTON"|"VALIJA"|"TELA"|"PLUMON_PEQUENO"|"PLUMON_GRANDE", "cantidad": number, "pesoKg": number }] }\`.
 - [Seguimiento](${s}/api/seguimiento/40425): \`GET /api/seguimiento/{numeroGuia}\` devuelve estado, ruta, ítems e historial.
 
 ## Herramientas para agentes (WebMCP)
@@ -127,7 +129,7 @@ export function generarCatalogoAgentes(sitioUrl: string | undefined): string {
       'dónde está mi encomienda con guía 40425',
       'cuánto cuesta enviar un paquete de Ibarra a Quito',
       'a qué ciudades entrega PCargo',
-      'tarifa de un sobre de Otavalo a Atuntaqui',
+      'cuánto cuesta enviar 60 rollos de tela a una zona rural',
     ],
     ...(s ? { url: `${s}/llms.txt` } : { data: { guia: '/llms.txt', herramientasWebMCP: HERRAMIENTAS_WEBMCP } }),
   }

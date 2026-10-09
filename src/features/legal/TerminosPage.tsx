@@ -20,7 +20,7 @@ export function TerminosPage() {
 
       <Apartado id="servicio" titulo="2. El servicio">
         <p>
-          {MARCA.nombre} transporta sobres, paquetes, cartones y valijas y los entrega en el domicilio del destinatario, en las ciudades
+          {MARCA.nombre} transporta sobres, paquetes, cartones, valijas, rollos de tela y plumones y los entrega en el domicilio del destinatario, en las ciudades
           y rutas que se muestran en la sección <a href="/#cobertura">Cobertura y tarifas</a> del sitio. La cobertura puede cambiar;
           la vigente es la que aparece publicada al registrar tu envío.
         </p>
@@ -33,13 +33,19 @@ export function TerminosPage() {
       <Apartado id="precio" titulo="3. Precio y cotización">
         <ul>
           <li>
-            El precio se calcula con las tarifas publicadas: tarifa base del trayecto, multiplicada por el factor del tipo de carga, más
-            un recargo por cada kilo que supere el peso incluido. Todos los valores están en dólares de los Estados Unidos (USD).
+            El precio se calcula <strong>por unidad</strong>, según el tipo de carga, con los precios publicados en la sección{' '}
+            <a href="/#cobertura">Cobertura y tarifas</a>. Es el mismo para cualquier ruta y no tiene recargo por peso; cada tipo
+            tiene un peso máximo por unidad. Todos los valores están en dólares de los Estados Unidos (USD).
           </li>
           <li>
-            El cotizador del sitio es <strong>referencial</strong>: usa el peso y las piezas que tú ingresas. El valor definitivo es el
-            que consta en la guía, calculado con el peso y las piezas verificados al recibir la encomienda. Si difiere de tu cotización,
-            te lo informamos antes de aceptar el envío.
+            El rollo de tela tiene un precio para la zona urbana y otro para la zona rural de entrega, y un precio por volumen: si un
+            mismo envío lleva más de la cantidad publicada (hoy, más de 50 rollos), todos los rollos se cobran al precio por volumen,
+            en cualquier zona.
+          </li>
+          <li>
+            El cotizador del sitio es <strong>referencial</strong>: usa las piezas, el peso y la zona que tú ingresas. El valor
+            definitivo es el que consta en la guía, calculado con las piezas, su tipo y la zona de entrega verificados al recibir la
+            encomienda. Si difiere de tu cotización, te lo informamos antes de aceptar el envío.
           </li>
           <li>
             Formas de pago: pagado al registrar el envío, <Link to="/pago-al-cobro">al cobro</Link> (lo paga el destinatario al

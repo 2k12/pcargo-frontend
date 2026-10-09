@@ -1,4 +1,4 @@
-import { Box, Luggage, Mail, Package, type LucideIcon } from 'lucide-react'
+import { BedDouble, BedSingle, Box, Luggage, Mail, Package, Scroll, type LucideIcon } from 'lucide-react'
 import type { Estado, FormaPago, TipoCargaCodigo } from '@/types/api'
 
 export const TIPO_CARGA_ICON: Record<TipoCargaCodigo, LucideIcon> = {
@@ -6,6 +6,9 @@ export const TIPO_CARGA_ICON: Record<TipoCargaCodigo, LucideIcon> = {
   PAQUETE: Package,
   CARTON: Box,
   VALIJA: Luggage,
+  TELA: Scroll,
+  PLUMON_PEQUENO: BedSingle,
+  PLUMON_GRANDE: BedDouble,
 }
 
 export const ESTADO_TONO: Record<Estado, string> = {

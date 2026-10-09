@@ -201,7 +201,7 @@ export function EnviosPage() {
 
   return (
     <>
-      <PageHeader title="Envíos" description="Sobres, paquetes, cartones y valijas en circulación" actions={<NuevoEnvioDialog />} />
+      <PageHeader title="Envíos" description="Encomiendas en circulación: sobres, paquetes, cartones, valijas, tela y plumones" actions={<NuevoEnvioDialog />} />
 
       {/* Móvil: buscador + botón «Filtros» que abre una hoja inferior. Escritorio: todo en línea. */}
       <div className={esMovil ? 'flex gap-2' : 'grid grid-cols-2 gap-2 sm:grid-cols-3 lg:flex'}>

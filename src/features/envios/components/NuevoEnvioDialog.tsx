@@ -27,15 +27,17 @@ import { rutaLabel, useRutas } from '@/features/rutas/hooks'
 import { useDebounced } from '@/hooks/useDebounced'
 import { errorMessage } from '@/lib/api'
 import type { Cliente, CotizacionRequest } from '@/types/api'
-import { TIPOS_CARGA_DEFAULT } from '../domain'
+import { TIPOS_CARGA_DEFAULT, zonaInfluye } from '../domain'
 import { useCrearEnvio, useTiposCarga } from '../hooks'
 import { crearEnvioSchema, itemsCotizables, itemVacio, toNuevoEnvio, type EnvioFormValues } from '../schema'
 import { CotizacionPanel } from './CotizacionPanel'
 import { FormaPagoPicker } from './FormaPagoPicker'
 import { ItemsEditor } from './ItemsEditor'
+import { ZonaPicker } from './ZonaPicker'
 
 const DEFAULTS = {
   rutaId: '',
+  zona: 'URBANA',
   descripcion: '',
   numeroGuia: '',
   clienteId: '',
@@ -163,13 +165,15 @@ export function NuevoEnvioDialog({
     if (!c.direccion) setFocus('destinatarioDireccion')
   }
 
-  const [rutaId, items] = useWatch({ control, name: ['rutaId', 'items'] })
+  const [rutaId, items, zona] = useWatch({ control, name: ['rutaId', 'items', 'zona'] })
   // JSON estable: useWatch devuelve un array nuevo en cada render del field array.
   const itemsKey = JSON.stringify(itemsCotizables(items, tipos))
   const request = useMemo<CotizacionRequest | null>(() => {
     const validos = JSON.parse(itemsKey) as CotizacionRequest['items'] | null
-    return rutaId && validos ? { rutaId: Number(rutaId), items: validos } : null
-  }, [rutaId, itemsKey])
+    return rutaId && validos ? { rutaId: Number(rutaId), items: validos, zona: zona ?? 'URBANA' } : null
+  }, [rutaId, itemsKey, zona])
+  // La zona solo cambia el precio de algunos tipos (la tela): se avisa cuando el envío los lleva.
+  const hayTipoPorZona = zonaInfluye((items ?? []).filter((i) => i?.tipoCarga), tipos)
   const cotizacionReq = useDebounced(request, 350)
 
   const rutaItems = Object.fromEntries(rutas.map((r) => [String(r.id), rutaLabel({ origen: r.origen.nombre, destino: r.destino.nombre })]))
@@ -280,6 +284,21 @@ export function NuevoEnvioDialog({
                 </Campo>
               </div>
             </div>
+            <div className="space-y-1.5">
+              <Label id="zona-label">Zona de entrega</Label>
+              <Controller
+                control={control}
+                name="zona"
+                render={({ field }) => (
+                  <ZonaPicker value={field.value ?? 'URBANA'} onChange={field.onChange} describedBy="zona-ayuda" />
+                )}
+              />
+              <p id="zona-ayuda" className="text-xs text-muted-foreground">
+                {hayTipoPorZona
+                  ? 'Este envío lleva tela: el rollo cuesta distinto en zona urbana y rural.'
+                  : 'Solo cambia el precio de los rollos de tela.'}
+              </p>
+            </div>
           </Paso>
 
           <Paso n={3} titulo="Carga">
@@ -330,7 +349,7 @@ export function NuevoEnvioDialog({
                 )}
               />
             </Campo>
-            <CotizacionPanel request={cotizacionReq} />
+            <CotizacionPanel request={cotizacionReq} tipos={tipos} />
           </Paso>
         </form>
 

@@ -1,11 +1,11 @@
-import { ESTADO_LABEL, TIPO_CARGA_LABEL } from '@/features/envios/domain'
+import { ESTADO_LABEL, mayoreoTexto, notasMayoreo, TIPO_CARGA_LABEL, ZONA_LABEL, ZONAS } from '@/features/envios/domain'
 import { normalizarGuia } from '@/features/envios/guia'
 import { publicoApi } from '@/features/landing/api'
 import { seguimientoApi } from '@/features/seguimiento/api'
 import { ApiError, errorMessage } from '@/lib/api'
 import { formatCurrency, formatDuracion } from '@/lib/format'
 import { respuesta, type HerramientaAgente } from '@/lib/webmcp'
-import type { CatalogoPublico, TipoCargaCodigo } from '@/types/api'
+import type { CatalogoPublico, TipoCargaCodigo, Zona } from '@/types/api'
 
 /** Compara nombres de ciudad sin tildes ni mayúsculas ("quito" = "Quito", "Atuntaquí" = "Atuntaqui"). */
 const clave = (s: string) =>
@@ -20,7 +20,7 @@ export function buscarRuta(catalogo: CatalogoPublico, origen: string, destino: s
   return catalogo.rutas.find((r) => clave(r.origen.nombre) === clave(origen) && clave(r.destino.nombre) === clave(destino))
 }
 
-const TIPOS: TipoCargaCodigo[] = ['SOBRE', 'PAQUETE', 'CARTON', 'VALIJA']
+const TIPOS: TipoCargaCodigo[] = ['SOBRE', 'PAQUETE', 'CARTON', 'VALIJA', 'TELA', 'PLUMON_PEQUENO', 'PLUMON_GRANDE']
 
 const rastrear: HerramientaAgente = {
   name: 'rastrear_envio',
@@ -57,8 +57,8 @@ const rastrear: HerramientaAgente = {
 const cobertura: HerramientaAgente = {
   name: 'consultar_cobertura',
   description:
-    'Lista las ciudades donde PCargo entrega, las rutas con su tarifa base (USD) y tiempo estimado, ' +
-    'y los tipos de carga con su factor de precio y pesos.',
+    'Lista las ciudades donde PCargo entrega, las rutas con su tiempo estimado y los tipos de carga con su ' +
+    'precio por unidad (USD; urbano, rural y por volumen) y peso máximo. La ruta no influye en el precio.',
   inputSchema: { type: 'object', properties: {} },
   annotations: { readOnlyHint: true },
   async execute() {
@@ -68,17 +68,19 @@ const cobertura: HerramientaAgente = {
       rutas: c.rutas.map((r) => ({
         origen: r.origen.nombre,
         destino: r.destino.nombre,
-        tarifaBase: formatCurrency(r.tarifaBase),
         tiempoEstimado: formatDuracion(r.tiempoEstimadoMin),
       })),
       tiposCarga: c.tiposCarga.map((t) => ({
         codigo: t.codigo,
         nombre: t.nombre,
-        factor: t.factor,
-        pesoIncluidoKg: t.pesoIncluidoKg,
+        precioUrbano: formatCurrency(t.precio),
+        precioRural: formatCurrency(t.precioRural ?? t.precio),
+        ...(t.mayoreo ? { mayoreo: mayoreoTexto(t) } : {}),
         pesoMaxKg: t.pesoMaxKg,
       })),
-      formula: 'tarifa base × factor del tipo + $0,50 por cada kg sobre el peso incluido',
+      regla:
+        'Precio por unidad según el tipo de carga, igual en todas las rutas y sin recargo por peso. ' +
+        'La zona rural solo cambia el precio de los tipos con precio rural distinto (la tela).',
     })
   },
 }
@@ -87,7 +89,8 @@ const cotizar: HerramientaAgente = {
   name: 'cotizar_envio',
   description:
     'Calcula el precio en USD de enviar encomiendas con PCargo entre dos ciudades de cobertura ' +
-    '(Ibarra, Atuntaqui, Otavalo, Quito). Para entregas dentro de la misma ciudad usa el mismo origen y destino.',
+    '(Ibarra, Atuntaqui, Otavalo, Quito). Para entregas dentro de la misma ciudad usa el mismo origen y destino. ' +
+    'El precio es por unidad según el tipo; la zona de entrega (URBANA por defecto, o RURAL) solo cambia el de la tela.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -96,13 +99,16 @@ const cotizar: HerramientaAgente = {
       tipoCarga: { type: 'string', enum: TIPOS, description: 'Tipo de encomienda.' },
       cantidad: { type: 'integer', minimum: 1, maximum: 999, description: 'Número de piezas iguales.' },
       pesoKg: { type: 'number', exclusiveMinimum: 0, description: 'Peso de cada pieza en kg.' },
+      zona: { type: 'string', enum: ZONAS, description: 'Zona de entrega (opcional, URBANA por defecto).' },
     },
     required: ['origen', 'destino', 'tipoCarga', 'cantidad', 'pesoKg'],
   },
   annotations: { readOnlyHint: true },
-  async execute({ origen, destino, tipoCarga, cantidad, pesoKg }) {
+  async execute({ origen, destino, tipoCarga, cantidad, pesoKg, zona: zonaTxt }) {
     const tipo = String(tipoCarga ?? '').toUpperCase() as TipoCargaCodigo
     if (!TIPOS.includes(tipo)) return `tipoCarga debe ser uno de: ${TIPOS.join(', ')}.`
+    const zona = (zonaTxt === undefined || zonaTxt === null || zonaTxt === '' ? 'URBANA' : String(zonaTxt).toUpperCase()) as Zona
+    if (!ZONAS.includes(zona)) return `zona debe ser una de: ${ZONAS.join(', ')}.`
     const catalogo = await publicoApi.catalogo()
     const ruta = buscarRuta(catalogo, String(origen ?? ''), String(destino ?? ''))
     if (!ruta) {
@@ -111,16 +117,20 @@ const cotizar: HerramientaAgente = {
     try {
       const c = await publicoApi.cotizar({
         rutaId: ruta.id,
+        zona,
         items: [{ tipoCarga: tipo, cantidad: Number(cantidad), pesoKg: Number(pesoKg) }],
       })
       return respuesta({
         ruta: `${ruta.origen.nombre} → ${ruta.destino.nombre}`,
         tipoCarga: TIPO_CARGA_LABEL[tipo],
+        zona: ZONA_LABEL[c.zona ?? zona],
         piezas: c.totalPiezas,
         pesoTotalKg: c.pesoTotalKg,
         costoUnitario: formatCurrency(c.items[0]?.costoUnitario ?? c.costo),
         costoTotal: formatCurrency(c.costo),
+        ...(c.items.some((i) => i.mayoreo) ? { precioPorVolumen: notasMayoreo(c, catalogo.tiposCarga).join(' · ') } : {}),
         tiempoEstimado: formatDuracion(ruta.tiempoEstimadoMin),
+        nota: 'Valor referencial; el definitivo es el de la guía, con las piezas y la zona verificadas. El tiempo es estimado.',
       })
     } catch (e) {
       return `No se pudo cotizar: ${errorMessage(e)}`

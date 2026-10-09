@@ -53,7 +53,6 @@ const ruta: Ruta = {
   id: 7,
   origen: { id: 1, nombre: 'Ibarra', activa: true },
   destino: { id: 4, nombre: 'Quito', activa: true },
-  tarifaBase: 4,
   tiempoEstimadoMin: 150,
   activa: true,
   operativa: true,

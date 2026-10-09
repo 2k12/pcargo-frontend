@@ -111,7 +111,7 @@ export function CiudadesCobertura({ rutas, esAdmin }: { rutas: Ruta[]; esAdmin: 
       const ciudad = await crear.mutateAsync(nombre)
       setCreando(false)
       toast.success(`${ciudad.nombre} agregada a la cobertura`, {
-        description: 'Crea sus rutas y tarifas para empezar a recibir envíos.',
+        description: 'Crea sus rutas para empezar a recibir envíos.',
         action: { label: 'Crear ruta', onClick: () => setRutaPara(ciudad) },
       })
     } catch (e) {
@@ -229,7 +229,7 @@ export function CiudadesCobertura({ rutas, esAdmin }: { rutas: Ruta[]; esAdmin: 
           <NombreCiudadDialog
             open={creando}
             titulo="Agregar ciudad"
-            descripcion="La ciudad quedará activa. Luego define sus rutas y tarifas."
+            descripcion="La ciudad quedará activa. Luego define sus rutas."
             inicial=""
             accion="Agregar"
             pendiente={crear.isPending}

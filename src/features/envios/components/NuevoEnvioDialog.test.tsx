@@ -87,6 +87,21 @@ describe('NuevoEnvioDialog — clientes frecuentes', () => {
   })
 })
 
+describe('NuevoEnvioDialog — zona de entrega', () => {
+  it('ofrece Urbana/Rural como grupo de radio, con Urbana por defecto', async () => {
+    const dialogo = await abrir()
+    const grupo = within(dialogo).getByRole('radiogroup', { name: 'Zona de entrega' })
+    const urbana = within(grupo).getByRole('radio', { name: 'Urbana' })
+    const rural = within(grupo).getByRole('radio', { name: 'Rural' })
+    expect(urbana).toHaveAttribute('aria-checked', 'true')
+    expect(rural).toHaveAttribute('aria-checked', 'false')
+    expect(within(dialogo).getByText('Solo cambia el precio de los rollos de tela.')).toBeInTheDocument()
+    await userEvent.click(rural)
+    expect(rural).toHaveAttribute('aria-checked', 'true')
+    expect(urbana).toHaveAttribute('aria-checked', 'false')
+  })
+})
+
 describe('toNuevoEnvio', () => {
   const base = {
     remitenteNombre: 'Ana',
@@ -97,7 +112,13 @@ describe('toNuevoEnvio', () => {
     rutaId: '11',
     items: [{ tipoCarga: 'SOBRE', cantidad: 1, pesoKg: 0.2 }],
     formaPago: 'PAGADO',
+    zona: 'URBANA',
   } as EnvioFormValues
+
+  it('envía la zona de entrega (contrato v8)', () => {
+    expect(toNuevoEnvio(base).zona).toBe('URBANA')
+    expect(toNuevoEnvio({ ...base, zona: 'RURAL' }).zona).toBe('RURAL')
+  })
 
   it('envía el cliente elegido, o pide guardarlo, nunca ambos', () => {
     expect(toNuevoEnvio({ ...base, clienteId: 'c1', guardarCliente: true })).toMatchObject({ clienteId: 'c1' })
