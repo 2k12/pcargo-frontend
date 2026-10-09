@@ -40,6 +40,11 @@ export function datosLegalesPendientes(): CampoLegal[] {
   return (Object.keys(ETIQUETA) as CampoLegal[]).filter((c) => DATOS_LEGALES[c] === null)
 }
 
+/** Línea de pie de página: «© 2026 PCargo · Razón social · RUC 1000000000001» (o los marcadores de pendiente). */
+export function lineaCopyright(anio = new Date().getFullYear()): string {
+  return `© ${anio} ${MARCA.nombre} · ${datoLegal('razonSocial')} · RUC ${datoLegal('ruc')}`
+}
+
 /** Fecha de vigencia en formato largo de Ecuador: «8 de octubre de 2026». */
 export function fechaVigencia(): string {
   const [a, m, d] = DATOS_LEGALES.vigenteDesde.split('-').map(Number)
@@ -50,8 +55,10 @@ export function fechaVigencia(): string {
 
 /** Páginas legales públicas (rutas, pie de página, sitemap). */
 export const PAGINAS_LEGALES = [
-  { ruta: '/privacidad', titulo: 'Política de privacidad' },
-  { ruta: '/terminos', titulo: 'Términos y condiciones' },
-  { ruta: '/pago-al-cobro', titulo: 'Política de pago al cobro' },
-  { ruta: '/cookies', titulo: 'Política de cookies' },
+  { ruta: '/privacidad', titulo: 'Política de privacidad', corto: 'Privacidad' },
+  { ruta: '/terminos', titulo: 'Términos y condiciones', corto: 'Términos' },
+  { ruta: '/pago-al-cobro', titulo: 'Política de pago al cobro', corto: 'Pago al cobro' },
+  { ruta: '/cookies', titulo: 'Política de cookies', corto: 'Cookies' },
 ] as const
+
+export type RutaLegal = (typeof PAGINAS_LEGALES)[number]['ruta']

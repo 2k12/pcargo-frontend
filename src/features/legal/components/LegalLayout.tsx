@@ -7,7 +7,7 @@ import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { Button } from '@/components/ui/button'
 import { MARCA, whatsappUrl } from '@/features/landing/marca'
 import { cn } from '@/lib/utils'
-import { datoLegal, DATOS_LEGALES, fechaVigencia, PAGINAS_LEGALES } from '../datos'
+import { datoLegal, DATOS_LEGALES, fechaVigencia, lineaCopyright, PAGINAS_LEGALES } from '../datos'
 import { EnlacesLegales } from './EnlacesLegales'
 
 const ANIO = new Date().getFullYear()
@@ -74,11 +74,9 @@ export function LegalLayout({ titulo, resumen, children }: { titulo: string; res
       </main>
 
       <footer className="border-t">
-        <div className="mx-auto max-w-3xl space-y-3 px-4 py-8 text-sm text-muted-foreground sm:px-6">
+        <div className="mx-auto flex max-w-3xl flex-col gap-3 px-4 py-5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <p>{lineaCopyright(ANIO)}</p>
           <EnlacesLegales />
-          <p>
-            © {ANIO} {datoLegal('razonSocial')} ({MARCA.nombre}) · RUC {datoLegal('ruc')}
-          </p>
         </div>
       </footer>
     </div>
