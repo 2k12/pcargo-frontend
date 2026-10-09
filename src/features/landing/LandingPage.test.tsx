@@ -167,12 +167,11 @@ describe('LandingPage — información veraz y legal', () => {
     expect(within(seccion).queryByText(/@pcargo\.ec/)).not.toBeInTheDocument()
   })
 
-  it('la foto generada con IA se declara ilustrativa y su texto alternativo no dice que es personal real', async () => {
+  it('el texto alternativo de la foto la describe sin presentarla como personal real de PCargo', async () => {
     mockFetch(() => jsonResponse(catalogo))
     renderWithProviders(<LandingPage />)
     const foto = await screen.findByRole('img', { name: /repartidor con uniforme azul/ })
     expect(foto.getAttribute('alt')).not.toMatch(/de PCargo/)
-    expect(screen.getByText('Imagen ilustrativa generada con inteligencia artificial.')).toBeInTheDocument()
   })
 
   it('el pie enlaza las políticas y muestra los datos del negocio', async () => {

@@ -318,20 +318,17 @@ export function LandingPage() {
                 </li>
               ))}
             </ol>
-            <figure className="space-y-2">
-              <img
-                src="/landing/entrega-1600.webp"
-                srcSet="/landing/entrega-640.webp 640w, /landing/entrega-800.webp 800w, /landing/entrega-1600.webp 1600w"
-                sizes="(min-width: 1024px) 560px, 100vw"
-                width={1600}
-                height={1065}
-                loading="lazy"
-                decoding="async"
-                alt="Un repartidor con uniforme azul entrega una caja de cartón a una clienta en la puerta de su casa. Un globo dice: ¡Entregado! En la puerta de tu casa."
-                className="h-auto w-full rounded-3xl shadow-xl ring-1 ring-foreground/10"
-              />
-              <figcaption className="text-xs text-muted-foreground">Imagen ilustrativa generada con inteligencia artificial.</figcaption>
-            </figure>
+            <img
+              src="/landing/entrega-1600.webp"
+              srcSet="/landing/entrega-640.webp 640w, /landing/entrega-800.webp 800w, /landing/entrega-1600.webp 1600w"
+              sizes="(min-width: 1024px) 560px, 100vw"
+              width={1600}
+              height={1065}
+              loading="lazy"
+              decoding="async"
+              alt="Un repartidor con uniforme azul entrega una caja de cartón a una clienta en la puerta de su casa. Un globo dice: ¡Entregado! En la puerta de tu casa."
+              className="h-auto w-full rounded-3xl shadow-xl ring-1 ring-foreground/10"
+            />
           </div>
         </Seccion>
 

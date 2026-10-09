@@ -32,6 +32,13 @@ describe('mapa de cobertura', () => {
     }
   })
 
+  it('ubica todas las ciudades de cobertura de producción (ninguna queda fuera del mapa)', () => {
+    const nombres = ['Ibarra', 'Atuntaqui', 'Otavalo', 'Quito', 'Cotacachi', 'Tabacundo', 'Cayambe', 'Guayllabamba']
+    const { puntos, sinUbicar } = ubicarCiudades(nombres.map((nombre, i) => ({ id: i + 1, nombre, activa: true })))
+    expect(sinUbicar).toEqual([])
+    expect(puntos).toHaveLength(nombres.length)
+  })
+
   it('sin ciudades conocidas no hay encuadre', () => {
     expect(ubicarCiudades([c(1, 'Nada')]).encuadre).toBeNull()
   })

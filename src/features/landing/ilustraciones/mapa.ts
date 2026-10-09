@@ -17,6 +17,7 @@ export const COORDENADAS: Record<string, [number, number]> = {
   'el angel': [0.6175, -77.9406],
   sangolqui: [-0.3126, -78.4455],
   'mitad del mundo': [-0.0022, -78.4558],
+  guayllabamba: [-0.0569, -78.3383],
 }
 
 /** Volcanes de referencia (decorativos, se dibujan si caen dentro del encuadre). */
