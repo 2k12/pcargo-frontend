@@ -45,7 +45,7 @@ export function CotizadorPublico({ catalogo }: { catalogo: CatalogoPublico }) {
   const sinRuta = origen && destino && !ruta
   const resumen =
     ruta && tipoSel && pesoValido && cantidadValida
-      ? `Hola PCargo, quiero enviar ${cantidad} ${nombreTipo(tipoSel.codigo, cantidad)} de ${pesoKg} kg c/u de ${ruta.origen.nombre} a ${ruta.destino.nombre}${pideZona ? ` (zona ${ZONA_LABEL[zona].toLowerCase()})` : ''}.`
+      ? `Hola PCargo, quiero enviar ${cantidad} ${nombreTipo(tipoSel.codigo, cantidad, tiposCarga)} de ${pesoKg} kg c/u de ${ruta.origen.nombre} a ${ruta.destino.nombre}${pideZona ? ` (zona ${ZONA_LABEL[zona].toLowerCase()})` : ''}.`
       : undefined
 
   return (

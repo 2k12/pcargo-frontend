@@ -1,4 +1,4 @@
-// Tipos espejo de docs/api-contract.md (v10)
+// Tipos espejo de docs/api-contract.md (v11)
 export type Rol = 'ADMIN' | 'OPERADOR'
 export type Estado =
   | 'REGISTRADO'
@@ -10,14 +10,11 @@ export type Estado =
   | 'CANCELADO'
 export type ResultadoEntrega = 'ENTREGADO' | 'NO_ENTREGADO' | 'NOVEDAD'
 export type FormaPago = 'PAGADO' | 'AL_COBRO' | 'CONTRATO' | 'SEGURO'
-export type TipoCargaCodigo =
-  | 'SOBRE'
-  | 'PAQUETE'
-  | 'CARTON'
-  | 'VALIJA'
-  | 'TELA'
-  | 'PLUMON_PEQUENO'
-  | 'PLUMON_GRANDE'
+/**
+ * Código de un tipo de carga (contrato v11): configurable por el ADMIN, `^[A-Z][A-Z0-9_]{1,29}$`.
+ * Semilla: SOBRE, PAQUETE, CARTON, VALIJA, TELA, PLUMON_PEQUENO, PLUMON_GRANDE. Nunca asumir una lista fija.
+ */
+export type TipoCargaCodigo = string
 /** Zona de entrega (contrato v8): solo cambia el precio de los tipos con `precioRural`. */
 export type Zona = 'URBANA' | 'RURAL'
 
@@ -64,8 +61,100 @@ export interface TipoCarga {
   /** Precio por unidad en zona rural; null = mismo precio que en la urbana. */
   precioRural: number | null
   /** Más de `minimoExclusivo` unidades del tipo en el envío → todas a `precio`. */
-  mayoreo: { minimoExclusivo: number; precio: number } | null
+  mayoreo: Mayoreo | null
   pesoMaxKg: number
+  /** Inactivo: no se ofrece ni se acepta en cotizaciones o envíos nuevos (contrato v11). */
+  activo: boolean
+  /** Orden de presentación. */
+  orden: number
+  actualizadoEn: string | null
+  actualizadoPor: string | null
+}
+
+/** Precio por volumen: más de `minimoExclusivo` unidades del tipo en el envío → todas a `precio`. */
+export interface Mayoreo {
+  minimoExclusivo: number
+  precio: number
+}
+
+/** Lo que ven las empresas en `GET /api/v1/integraciones/cobertura` (contrato v11). */
+export type TipoCargaPublico = Pick<TipoCarga, 'codigo' | 'nombre' | 'precio' | 'precioRural' | 'mayoreo' | 'pesoMaxKg'>
+
+/** Alta / edición de un tipo de carga (ADMIN). `codigo` solo al crear: es inmutable. */
+export interface DatosTipoCarga {
+  nombre: string
+  precio: number
+  /** null: mismo precio que en la zona urbana. */
+  precioRural: number | null
+  mayoreo: Mayoreo | null
+  pesoMaxKg: number
+  /** Por defecto true. */
+  activo?: boolean
+}
+
+export type NuevoTipoCarga = DatosTipoCarga & { codigo: TipoCargaCodigo }
+
+export type AccionCambioTipoCarga = 'CREADO' | 'MODIFICADO' | 'ACTIVADO' | 'DESACTIVADO' | 'ELIMINADO'
+
+export interface CambioTipoCarga {
+  id: string
+  codigo: TipoCargaCodigo
+  fecha: string
+  usuario: string | null
+  accion: AccionCambioTipoCarga
+  cambios: { campo: string; antes: unknown; despues: unknown }[]
+}
+
+export interface FiltroHistorialTipos {
+  codigo?: string
+  pagina?: number
+  porPagina?: number
+}
+
+// ---- Artículos restringidos («Qué no transportamos», contrato v11) ----
+export type CategoriaArticulo = 'PROHIBIDO' | 'CONDICIONADO' | 'NOTA'
+export type IconoArticulo =
+  | 'dinero'
+  | 'documento'
+  | 'joya'
+  | 'arma'
+  | 'explosivo'
+  | 'fuego'
+  | 'quimico'
+  | 'droga'
+  | 'animal'
+  | 'prohibido'
+  | 'perecible'
+  | 'liquido'
+  | 'fragil'
+  | 'bateria'
+  | 'planta'
+  | 'medicina'
+  | 'electronico'
+  | 'alerta'
+
+export interface DatosArticulo {
+  categoria: CategoriaArticulo
+  /** 2–80 caracteres. */
+  titulo: string
+  /** 0–300 caracteres. */
+  detalle?: string
+  /** Para NOTA se ignora (se guarda null). */
+  icono?: IconoArticulo | null
+  activo?: boolean
+}
+
+export interface ArticuloRestringido {
+  id: string
+  categoria: CategoriaArticulo
+  titulo: string
+  detalle: string
+  icono: IconoArticulo | null
+  activo: boolean
+  /** Orden dentro de su categoría. */
+  orden: number
+  actualizadoEn: string
+  actualizadoPor: string | null
 }
 
 export interface Ruta {
@@ -186,7 +275,8 @@ export interface CotizacionRequest {
 
 export interface CatalogoPublico {
   ciudades: Ciudad[]
-  tiposCarga: TipoCarga[]
+  /** Solo activos y sin datos internos (contrato v11): codigo, nombre, precios, mayoreo y peso máximo. */
+  tiposCarga: TipoCargaPublico[]
   rutas: Ruta[]
 }
 

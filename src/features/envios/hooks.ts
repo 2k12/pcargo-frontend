@@ -4,7 +4,7 @@ import { dashboardApi } from '@/features/dashboard/api'
 import { useIntegraciones } from '@/features/integraciones/hooks'
 import type { CotizacionRequest, Estado, FiltrosEnvios, NuevoEnvio } from '@/types/api'
 import { enviosApi } from './api'
-import { TIPOS_CARGA_DEFAULT } from './domain'
+import { registrarTiposCarga, TIPOS_CARGA_DEFAULT } from './domain'
 
 export const enviosKeys = {
   all: ['envios'] as const,
@@ -29,11 +29,23 @@ export function useEnvio(id: string | null) {
   })
 }
 
+/** Clave base del catálogo de tipos: invalidarla refresca también la lista completa del ADMIN y el historial. */
+export const TIPOS_CARGA_KEY = ['tipos-carga'] as const
+
+/**
+ * Tipos de carga activos, en su orden (contrato v11). Mientras carga se muestra la semilla como respaldo;
+ * en cuanto llega el catálogo, manda él (incluye tipos nuevos y excluye los inactivos).
+ */
 export function useTiposCarga() {
   return useQuery({
-    queryKey: ['tipos-carga'],
-    queryFn: enviosApi.tiposCarga,
-    staleTime: Infinity,
+    queryKey: TIPOS_CARGA_KEY,
+    queryFn: async () => {
+      const tipos = await enviosApi.tiposCarga()
+      registrarTiposCarga(tipos)
+      // Por defecto el backend ya devuelve solo los activos; se filtra igual por si acaso.
+      return tipos.filter((t) => t.activo !== false).sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
+    },
+    staleTime: 5 * 60_000,
     placeholderData: TIPOS_CARGA_DEFAULT,
   })
 }

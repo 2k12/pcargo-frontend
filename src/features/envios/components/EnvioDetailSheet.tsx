@@ -9,9 +9,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { errorMessage } from '@/lib/api'
 import { formatCurrency, formatDateTime, formatPeso } from '@/lib/format'
 import type { Envio, Estado, Zona } from '@/types/api'
-import { ESTADO_LABEL, piezasLabel, TIPO_CARGA_LABEL, ZONA_LABEL } from '../domain'
+import { ESTADO_LABEL, nombreTipoCarga, piezasLabel, ZONA_LABEL } from '../domain'
 import { useCambiarEstado, useEnvio } from '../hooks'
-import { TIPO_CARGA_ICON } from '../ui'
+import { iconoTipoCarga } from '../ui'
 import { CambioEstadoForm } from './CambioEstadoForm'
 import { EstadoBadge } from './EstadoBadge'
 import { FormaPagoBadge } from './FormaPagoBadge'
@@ -82,13 +82,13 @@ function ItemsTabla({ envio }: { envio: Envio }) {
         </thead>
         <tbody>
           {envio.items.map((i, idx) => {
-            const Icon = TIPO_CARGA_ICON[i.tipoCarga]
+            const Icon = iconoTipoCarga(i.tipoCarga)
             return (
               <tr key={`${i.tipoCarga}-${idx}`} className="border-t">
                 <td className="px-2 py-1.5">
                   <span className="flex items-center gap-1.5">
                     <Icon className="size-3.5 text-muted-foreground" />
-                    {TIPO_CARGA_LABEL[i.tipoCarga]}
+                    {nombreTipoCarga(i.tipoCarga)}
                   </span>
                 </td>
                 <td className="px-2 py-1.5 text-right">{i.cantidad}</td>

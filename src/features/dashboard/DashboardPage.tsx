@@ -26,10 +26,10 @@ import { ClienteBuscador } from '@/features/clientes/components/ClienteBuscador'
 import { EnvioCard } from '@/features/envios/components/EnvioCard'
 import { EnvioDetailSheet } from '@/features/envios/components/EnvioDetailSheet'
 import { NuevoEnvioDialog } from '@/features/envios/components/NuevoEnvioDialog'
-import { ESTADO_LABEL, FORMA_PAGO_LABEL, TIPO_CARGA_LABEL } from '@/features/envios/domain'
+import { ESTADO_LABEL, FORMA_PAGO_LABEL, nombreTipoCarga } from '@/features/envios/domain'
 import { useEnvios, useOpcionesIntegracion } from '@/features/envios/hooks'
 import { useEsMovil } from '@/hooks/useMediaQuery'
-import { ATENCION_TONO, ESTADO_DOT, TIPO_CARGA_ICON } from '@/features/envios/ui'
+import { ATENCION_TONO, ESTADO_DOT, iconoTipoCarga } from '@/features/envios/ui'
 import { errorMessage } from '@/lib/api'
 import { INTERACTIVA, SUPERFICIE } from '@/lib/estilos'
 import { formatCurrency, formatIngreso, formatRelativo } from '@/lib/format'
@@ -450,10 +450,10 @@ function DistribucionCard({ data, sufijo }: { data: Resumen; sufijo: string }) {
             .sort((a, b) => b.piezas - a.piezas)
             .map((t) => ({
               key: t.tipoCarga,
-              label: TIPO_CARGA_LABEL[t.tipoCarga] ?? t.tipoCarga,
+              label: nombreTipoCarga(t.tipoCarga),
               value: t.piezas,
               display: `${t.piezas} pzs`,
-              icon: TIPO_CARGA_ICON[t.tipoCarga],
+              icon: iconoTipoCarga(t.tipoCarga),
             }))
         : [...data.porFormaPago]
             .sort((a, b) => (conMonto ? b.monto - a.monto : b.envios - a.envios))

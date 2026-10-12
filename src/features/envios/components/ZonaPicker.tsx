@@ -13,7 +13,7 @@ interface Props {
 
 /**
  * Control segmentado Urbana / Rural (radiogroup accesible: un solo tab-stop y flechas para cambiar).
- * La zona de entrega solo cambia el precio de los tipos con precio rural (hoy, la tela).
+ * La zona de entrega solo cambia el precio de los tipos con precio rural distinto (según el catálogo).
  */
 export function ZonaPicker({ value, onChange, describedBy, className }: Props) {
   const refs = useRef<(HTMLButtonElement | null)[]>([])

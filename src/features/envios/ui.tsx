@@ -1,7 +1,8 @@
-import { BedDouble, BedSingle, Box, Luggage, Mail, Package, Scroll, type LucideIcon } from 'lucide-react'
+import { BedDouble, BedSingle, Box, Boxes, Luggage, Mail, Package, Scroll, type LucideIcon } from 'lucide-react'
 import type { Estado, EstadoEntregaWebhook, FormaPago, TipoCargaCodigo } from '@/types/api'
 
-export const TIPO_CARGA_ICON: Record<TipoCargaCodigo, LucideIcon> = {
+/** Iconos de los tipos de la semilla; los tipos que cree el ADMIN usan `ICONO_TIPO_GENERICO`. */
+const ICONO_TIPO_SEMILLA: Partial<Record<TipoCargaCodigo, LucideIcon>> = {
   SOBRE: Mail,
   PAQUETE: Package,
   CARTON: Box,
@@ -9,6 +10,13 @@ export const TIPO_CARGA_ICON: Record<TipoCargaCodigo, LucideIcon> = {
   TELA: Scroll,
   PLUMON_PEQUENO: BedSingle,
   PLUMON_GRANDE: BedDouble,
+}
+
+export const ICONO_TIPO_GENERICO: LucideIcon = Boxes
+
+/** Icono de un tipo de carga (contrato v11: los códigos son configurables). */
+export function iconoTipoCarga(codigo: TipoCargaCodigo): LucideIcon {
+  return ICONO_TIPO_SEMILLA[codigo] ?? ICONO_TIPO_GENERICO
 }
 
 export const ESTADO_TONO: Record<Estado, string> = {

@@ -4,13 +4,18 @@ import {
   accionLabel,
   dependeDeZona,
   esEstadoFinal,
+  humanizarCodigo,
   mayoreoTexto,
+  nombreTipo,
+  nombreTipoCarga,
   notasMayoreo,
+  pluralizar,
   precioDesde,
   precioTipoTexto,
   precioUnitario,
   pesoTotal,
   puedeTransicionar,
+  registrarTiposCarga,
   requiereNota,
   resumenItems,
   TIPOS_CARGA_DEFAULT,
@@ -214,5 +219,49 @@ describe('precio por unidad (contrato v8)', () => {
       { tipoCarga: 'PLUMON_PEQUENO', cantidad: 1 },
       { tipoCarga: 'PLUMON_GRANDE', cantidad: 2 },
     ])).toBe('60 rollos de tela · 1 plumón pequeño · 2 plumones grandes')
+  })
+})
+
+describe('tipos de carga configurables (contrato v11)', () => {
+  it('pluraliza en español los nombres de cualquier tipo', () => {
+    expect(pluralizar('Caja grande')).toBe('Cajas grandes')
+    expect(pluralizar('cartón')).toBe('cartones')
+    expect(pluralizar('plumón pequeño')).toBe('plumones pequeños')
+    expect(pluralizar('rollo de tela')).toBe('rollos de tela')
+    expect(pluralizar('luz')).toBe('luces')
+    expect(pluralizar('caja XL')).toBe('cajas XL')
+    expect(pluralizar('saco 20kg')).toBe('sacos 20kg')
+  })
+
+  it('nombra un tipo nuevo con el catálogo, lo registrado o su código legible', () => {
+    expect(humanizarCodigo('CAJA_GRANDE')).toBe('Caja grande')
+    expect(nombreTipoCarga('MALETA_XL')).toBe('Maleta xl')
+    expect(nombreTipoCarga('SOBRE')).toBe('Sobre')
+    expect(nombreTipoCarga('CAJA_GRANDE', [{ codigo: 'CAJA_GRANDE', nombre: 'Caja grande' }])).toBe('Caja grande')
+    registrarTiposCarga([{ codigo: 'NEVERA', nombre: 'Nevera pequeña' }])
+    expect(nombreTipoCarga('NEVERA')).toBe('Nevera pequeña')
+    expect(resumenItems([{ tipoCarga: 'NEVERA', cantidad: 2 }, { tipoCarga: 'SOBRE', cantidad: 1 }])).toBe('2 neveras pequeñas · 1 sobre')
+    expect(nombreTipo('CAJA_GRANDE', 3, [{ codigo: 'CAJA_GRANDE', nombre: 'Caja XL' }])).toBe('cajas XL')
+  })
+
+  it('el formulario de envío acepta cualquier código del catálogo y rechaza uno que no está', () => {
+    const caja = { ...TIPOS_CARGA_DEFAULT[0]!, codigo: 'CAJA_GRANDE', nombre: 'Caja grande', pesoMaxKg: 40 }
+    const schema = crearEnvioSchema([caja])
+    const base = {
+      remitenteNombre: 'Ana',
+      remitenteTelefono: '0991112233',
+      destinatarioNombre: 'Luis',
+      destinatarioTelefono: '0994445566',
+      destinatarioDireccion: 'Av. Siempre Viva 123',
+      rutaId: '1',
+      zona: 'URBANA',
+      formaPago: 'PAGADO',
+    }
+    expect(schema.safeParse({ ...base, items: [{ tipoCarga: 'CAJA_GRANDE', cantidad: 2, pesoKg: 30 }] }).success).toBe(true)
+    const r = schema.safeParse({ ...base, items: [{ tipoCarga: 'SOBRE', cantidad: 1, pesoKg: 0.2 }] })
+    expect(r.success).toBe(false)
+    expect(r.error!.issues[0]!.message).toBe('Ese tipo de carga ya no está disponible')
+    const peso = schema.safeParse({ ...base, items: [{ tipoCarga: 'CAJA_GRANDE', cantidad: 1, pesoKg: 41 }] })
+    expect(peso.error!.issues[0]!.message).toBe('Máx. 40 kg por caja grande')
   })
 })

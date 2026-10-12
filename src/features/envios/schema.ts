@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { ItemSolicitud, NuevoEnvio, TipoCarga } from '@/types/api'
+import { enFrase } from './domain'
 import { MENSAJE_GUIA_INVALIDA, normalizarGuia } from './guia'
 
 export const MAX_ITEMS = 20
@@ -11,9 +12,8 @@ const telefono = z
   .regex(/^[0-9+\s-]{7,15}$/, 'Teléfono inválido')
 
 const itemSchema = z.object({
-  tipoCarga: z.enum(['SOBRE', 'PAQUETE', 'CARTON', 'VALIJA', 'TELA', 'PLUMON_PEQUENO', 'PLUMON_GRANDE'], {
-    message: 'Selecciona el tipo',
-  }),
+  // Contrato v11: los códigos son configurables; que el tipo exista y esté activo lo valida `crearEnvioSchema`.
+  tipoCarga: z.string({ message: 'Selecciona el tipo' }).min(1, 'Selecciona el tipo'),
   cantidad: z
     .number({ message: 'Cantidad' })
     .int('Debe ser entero')
@@ -36,18 +36,22 @@ export function crearEnvioSchema(tipos: TipoCarga[]) {
       .array(
         itemSchema.superRefine((item, ctx) => {
           const tipo = tipos.find((t) => t.codigo === item.tipoCarga)
-          if (tipo && item.pesoKg > tipo.pesoMaxKg) {
+          if (!tipo) {
+            ctx.addIssue({ code: 'custom', path: ['tipoCarga'], message: 'Ese tipo de carga ya no está disponible' })
+            return
+          }
+          if (item.pesoKg > tipo.pesoMaxKg) {
             ctx.addIssue({
               code: 'custom',
               path: ['pesoKg'],
-              message: `Máx. ${tipo.pesoMaxKg} kg por ${tipo.nombre.toLowerCase()}`,
+              message: `Máx. ${tipo.pesoMaxKg} kg por ${enFrase(tipo.nombre)}`,
             })
           }
         }),
       )
       .min(1, 'Agrega al menos un ítem')
       .max(MAX_ITEMS, `Máximo ${MAX_ITEMS} ítems`),
-    // Zona de entrega (contrato v8): solo cambia el precio de la tela.
+    // Zona de entrega (contrato v8): solo cambia el precio de los tipos con precio rural.
     zona: z.enum(['URBANA', 'RURAL'], { message: 'Selecciona la zona' }),
     formaPago: z.enum(['PAGADO', 'AL_COBRO', 'CONTRATO', 'SEGURO'], { message: 'Selecciona la forma de pago' }),
     descripcion: z.string().trim().max(200).optional(),

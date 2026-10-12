@@ -40,7 +40,7 @@ export function CotizacionPanel({
             {data.items.map((i, idx) => (
               <li key={`${i.tipoCarga}-${idx}`} className="flex items-center justify-between gap-2 tabular-nums">
                 <span className="text-muted-foreground">
-                  {i.cantidad} {nombreTipo(i.tipoCarga, i.cantidad)} de {formatPeso(i.pesoKg)} × {formatCurrency(i.costoUnitario)}
+                  {i.cantidad} {nombreTipo(i.tipoCarga, i.cantidad, tipos)} de {formatPeso(i.pesoKg)} × {formatCurrency(i.costoUnitario)}
                   {i.mayoreo && (
                     <>
                       {' '}

@@ -1,8 +1,8 @@
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { jsonResponse, mockFetch, renderWithProviders } from '@/test/utils'
-import type { Cliente } from '@/types/api'
+import { jsonResponse, mockFetch, renderWithProviders, tipoCargaFixture } from '@/test/utils'
+import type { Cliente, TipoCarga } from '@/types/api'
 import { TIPOS_CARGA_DEFAULT } from '../domain'
 import { crearEnvioSchema, MENSAJE_CONSENTIMIENTO, toNuevoEnvio, type EnvioFormValues } from '../schema'
 import { NuevoEnvioDialog } from './NuevoEnvioDialog'
@@ -24,8 +24,10 @@ const tienda: Cliente = {
   ultimoEnvio: null,
 }
 
-async function abrir(props: Parameters<typeof NuevoEnvioDialog>[0] = {}) {
-  mockFetch((url) => (url.includes('/clientes') ? jsonResponse([tienda]) : jsonResponse([])))
+async function abrir(props: Parameters<typeof NuevoEnvioDialog>[0] = {}, tipos: TipoCarga[] = TIPOS_CARGA_DEFAULT) {
+  mockFetch((url) =>
+    url.includes('/clientes') ? jsonResponse([tienda]) : url.endsWith('/tipos-carga') ? jsonResponse(tipos) : jsonResponse([]),
+  )
   renderWithProviders(<NuevoEnvioDialog {...props} />)
   await userEvent.click(screen.getByRole('button', { name: props?.label ?? 'Nuevo envío' }))
   return screen.findByRole('dialog')
@@ -110,10 +112,29 @@ describe('NuevoEnvioDialog — zona de entrega', () => {
     const rural = within(grupo).getByRole('radio', { name: 'Rural' })
     expect(urbana).toHaveAttribute('aria-checked', 'true')
     expect(rural).toHaveAttribute('aria-checked', 'false')
-    expect(within(dialogo).getByText('Solo cambia el precio de los rollos de tela.')).toBeInTheDocument()
+    expect(await within(dialogo).findByText('Solo cambia el precio de: rollos de tela.')).toBeInTheDocument()
     await userEvent.click(rural)
     expect(rural).toHaveAttribute('aria-checked', 'true')
     expect(urbana).toHaveAttribute('aria-checked', 'false')
+  })
+})
+
+describe('NuevoEnvioDialog — catálogo configurable (contrato v11)', () => {
+  const cajaGrande = tipoCargaFixture({ codigo: 'CAJA_GRANDE', nombre: 'Caja grande', precio: 6, pesoMaxKg: 40, orden: 2 })
+  const valijaInactiva = tipoCargaFixture({ codigo: 'VALIJA', nombre: 'Valija', precio: 3, pesoMaxKg: 25, activo: false, orden: 3 })
+  const sobre = tipoCargaFixture({ codigo: 'SOBRE', nombre: 'Sobre', precio: 3, pesoMaxKg: 0.5, orden: 1 })
+
+  it('un tipo nuevo aparece en el selector de ítems y uno inactivo no', async () => {
+    const dialogo = await abrir({}, [sobre, cajaGrande, valijaInactiva])
+    // Espera a que llegue el catálogo real (mientras tanto se muestra la semilla).
+    await within(dialogo).findByText('Hoy ningún tipo de carga cambia de precio según la zona.')
+    await userEvent.click(within(dialogo).getByRole('combobox', { name: 'Tipo del ítem 1' }))
+    const opciones = await screen.findAllByRole('option')
+    const nombres = opciones.map((o) => o.textContent ?? '')
+    expect(nombres.some((n) => n.includes('Caja grande') && n.includes('hasta 40 kg'))).toBe(true)
+    expect(nombres.some((n) => n.includes('Sobre'))).toBe(true)
+    expect(nombres.some((n) => n.includes('Valija'))).toBe(false)
+    expect(nombres.some((n) => n.includes('Rollo de tela'))).toBe(false)
   })
 })
 

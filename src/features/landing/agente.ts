@@ -1,11 +1,11 @@
-import { ESTADO_LABEL, mayoreoTexto, notasMayoreo, TIPO_CARGA_LABEL, ZONA_LABEL, ZONAS } from '@/features/envios/domain'
+import { ESTADO_LABEL, mayoreoTexto, notasMayoreo, ZONA_LABEL, ZONAS } from '@/features/envios/domain'
 import { normalizarGuia } from '@/features/envios/guia'
 import { publicoApi } from '@/features/landing/api'
 import { seguimientoApi } from '@/features/seguimiento/api'
 import { ApiError, errorMessage } from '@/lib/api'
 import { formatCurrency, formatDuracion } from '@/lib/format'
 import { respuesta, type HerramientaAgente } from '@/lib/webmcp'
-import type { CatalogoPublico, TipoCargaCodigo, Zona } from '@/types/api'
+import type { CatalogoPublico, TipoCargaPublico, Zona } from '@/types/api'
 
 /** Compara nombres de ciudad sin tildes ni mayúsculas ("quito" = "Quito", "Atuntaquí" = "Atuntaqui"). */
 const clave = (s: string) =>
@@ -20,7 +20,14 @@ export function buscarRuta(catalogo: CatalogoPublico, origen: string, destino: s
   return catalogo.rutas.find((r) => clave(r.origen.nombre) === clave(origen) && clave(r.destino.nombre) === clave(destino))
 }
 
-const TIPOS: TipoCargaCodigo[] = ['SOBRE', 'PAQUETE', 'CARTON', 'VALIJA', 'TELA', 'PLUMON_PEQUENO', 'PLUMON_GRANDE']
+/**
+ * Tipo de carga del catálogo por código o por nombre, sin tildes ni mayúsculas ("paquete", "Rollo de tela", "CAJA_GRANDE").
+ * Los tipos son configurables (contrato v11): la lista sale del catálogo público, que solo trae los activos.
+ */
+export function buscarTipo(catalogo: CatalogoPublico, texto: string): TipoCargaPublico | undefined {
+  const k = clave(texto).replace(/\s+/g, '_')
+  return catalogo.tiposCarga.find((t) => clave(t.codigo) === k || clave(t.nombre).replace(/\s+/g, '_') === k)
+}
 
 const rastrear: HerramientaAgente = {
   name: 'rastrear_envio',
@@ -80,7 +87,7 @@ const cobertura: HerramientaAgente = {
       })),
       regla:
         'Precio por unidad según el tipo de carga, igual en todas las rutas y sin recargo por peso. ' +
-        'La zona rural solo cambia el precio de los tipos con precio rural distinto (la tela).',
+        'La zona rural solo cambia el precio de los tipos con precio rural distinto.',
     })
   },
 }
@@ -90,13 +97,14 @@ const cotizar: HerramientaAgente = {
   description:
     'Calcula el precio en USD de enviar encomiendas con PCargo entre dos ciudades de cobertura ' +
     '(Ibarra, Atuntaqui, Otavalo, Quito). Para entregas dentro de la misma ciudad usa el mismo origen y destino. ' +
-    'El precio es por unidad según el tipo; la zona de entrega (URBANA por defecto, o RURAL) solo cambia el de la tela.',
+    'El precio es por unidad según el tipo (los tipos disponibles salen de consultar_cobertura); la zona de entrega ' +
+    '(URBANA por defecto, o RURAL) solo cambia el de los tipos con precio rural.',
   inputSchema: {
     type: 'object',
     properties: {
       origen: { type: 'string', description: 'Ciudad de origen, p. ej. "Ibarra".' },
       destino: { type: 'string', description: 'Ciudad de destino, p. ej. "Quito".' },
-      tipoCarga: { type: 'string', enum: TIPOS, description: 'Tipo de encomienda.' },
+      tipoCarga: { type: 'string', description: 'Código o nombre del tipo de encomienda, p. ej. "PAQUETE" o "Sobre" (ver consultar_cobertura).' },
       cantidad: { type: 'integer', minimum: 1, maximum: 999, description: 'Número de piezas iguales.' },
       pesoKg: { type: 'number', exclusiveMinimum: 0, description: 'Peso de cada pieza en kg.' },
       zona: { type: 'string', enum: ZONAS, description: 'Zona de entrega (opcional, URBANA por defecto).' },
@@ -105,8 +113,6 @@ const cotizar: HerramientaAgente = {
   },
   annotations: { readOnlyHint: true },
   async execute({ origen, destino, tipoCarga, cantidad, pesoKg, zona: zonaTxt }) {
-    const tipo = String(tipoCarga ?? '').toUpperCase() as TipoCargaCodigo
-    if (!TIPOS.includes(tipo)) return `tipoCarga debe ser uno de: ${TIPOS.join(', ')}.`
     const zona = (zonaTxt === undefined || zonaTxt === null || zonaTxt === '' ? 'URBANA' : String(zonaTxt).toUpperCase()) as Zona
     if (!ZONAS.includes(zona)) return `zona debe ser una de: ${ZONAS.join(', ')}.`
     const catalogo = await publicoApi.catalogo()
@@ -114,15 +120,17 @@ const cotizar: HerramientaAgente = {
     if (!ruta) {
       return `No operamos la ruta ${origen} → ${destino}. Ciudades disponibles: ${catalogo.ciudades.map((c) => c.nombre).join(', ')}.`
     }
+    const tipo = buscarTipo(catalogo, String(tipoCarga ?? ''))
+    if (!tipo) return `tipoCarga debe ser uno de: ${catalogo.tiposCarga.map((t) => `${t.codigo} (${t.nombre})`).join(', ')}.`
     try {
       const c = await publicoApi.cotizar({
         rutaId: ruta.id,
         zona,
-        items: [{ tipoCarga: tipo, cantidad: Number(cantidad), pesoKg: Number(pesoKg) }],
+        items: [{ tipoCarga: tipo.codigo, cantidad: Number(cantidad), pesoKg: Number(pesoKg) }],
       })
       return respuesta({
         ruta: `${ruta.origen.nombre} → ${ruta.destino.nombre}`,
-        tipoCarga: TIPO_CARGA_LABEL[tipo],
+        tipoCarga: tipo.nombre,
         zona: ZONA_LABEL[c.zona ?? zona],
         piezas: c.totalPiezas,
         pesoTotalKg: c.pesoTotalKg,

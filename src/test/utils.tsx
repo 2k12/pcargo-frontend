@@ -4,6 +4,7 @@ import type { ReactElement } from 'react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { vi } from 'vitest'
 import { AuthProvider } from '@/features/auth/AuthProvider'
+import type { TipoCarga } from '@/types/api'
 
 /** Respuesta JSON simulada para fetch. */
 export function jsonResponse(body: unknown, status = 200): Response {
@@ -52,4 +53,9 @@ export function simularMovil() {
     removeEventListener: () => {},
     dispatchEvent: () => false,
   }))
+}
+
+/** Tipo de carga completo (contrato v11) a partir de lo esencial: activo, sin mayoreo ni precio rural. */
+export function tipoCargaFixture(t: Pick<TipoCarga, 'codigo' | 'nombre' | 'precio' | 'pesoMaxKg'> & Partial<TipoCarga>): TipoCarga {
+  return { precioRural: null, mayoreo: null, activo: true, orden: 0, actualizadoEn: null, actualizadoPor: null, ...t }
 }

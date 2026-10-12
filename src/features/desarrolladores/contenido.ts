@@ -1,4 +1,4 @@
-// Contenido de /desarrolladores (contrato v10, API para empresas). Lógica pura: ejemplos y tablas.
+// Contenido de /desarrolladores (contratos v10–v11, API para empresas). Lógica pura: ejemplos y tablas.
 import { ejemploEventoWebhook } from '@/features/integraciones/domain'
 
 export const SECCIONES = [
@@ -14,7 +14,7 @@ export const SECCIONES = [
 ] as const
 
 export const ENDPOINTS: { metodo: string; ruta: string; alcance: string; descripcion: string }[] = [
-  { metodo: 'GET', ruta: '/cobertura', alcance: 'cualquiera', descripcion: 'Tu ciudad de origen y las ciudades a las que entregamos' },
+  { metodo: 'GET', ruta: '/cobertura', alcance: 'cualquiera', descripcion: 'Tu ciudad de origen, las ciudades a las que entregamos y los tipos de carga vigentes con sus precios' },
   { metodo: 'POST', ruta: '/cotizar', alcance: 'cotizar', descripcion: 'Precio de un envío sin crearlo' },
   { metodo: 'POST', ruta: '/envios', alcance: 'envios:crear', descripcion: 'Crea un envío (201)' },
   { metodo: 'POST', ruta: '/envios/lote', alcance: 'envios:crear', descripcion: 'Crea de 1 a 100 envíos; cada uno con su resultado' },
@@ -32,11 +32,16 @@ export const ERRORES: { status: number; code: string; cuando: string }[] = [
   { status: 409, code: 'CONFLICTO', cuando: 'La referenciaExterna ya se usó; error.envio trae { numeroGuia, referenciaExterna }' },
   { status: 409, code: 'IDEMPOTENCIA_EN_PROCESO', cuando: 'La primera solicitud con esa Idempotency-Key todavía se está procesando' },
   { status: 422, code: 'IDEMPOTENCIA_CONFLICTO', cuando: 'Repetiste una Idempotency-Key con un body distinto' },
+  { status: 422, code: 'TIPO_CARGA_INACTIVO', cuando: 'El tipo de carga existe pero PCargo dejó de ofrecerlo; consulta /cobertura' },
   { status: 422, code: 'RUTA_NO_DISPONIBLE', cuando: 'No entregamos en esa ciudad desde tu origen (ciudad desconocida o ruta no operativa)' },
   { status: 429, code: 'DEMASIADAS_SOLICITUDES', cuando: 'Superaste el límite; espera los segundos de Retry-After' },
 ]
 
-export const TIPOS_CARGA_API = ['SOBRE', 'PAQUETE', 'CARTON', 'VALIJA', 'TELA', 'PLUMON_PEQUENO', 'PLUMON_GRANDE'] as const
+/**
+ * Códigos de ejemplo (semilla). Los tipos de carga son configurables (contrato v11): la lista vigente, con precios y
+ * pesos máximos, la da `GET /cobertura` en `tiposCarga`. No es una lista cerrada.
+ */
+export const TIPOS_CARGA_EJEMPLO = ['SOBRE', 'PAQUETE', 'CARTON', 'VALIJA'] as const
 
 export const EVENTOS_DOC: { evento: string; cuando: string }[] = [
   { evento: 'envio.creado', cuando: 'Se registró un envío de tu empresa' },
@@ -54,6 +59,10 @@ export function ejemploCobertura(): string {
         { ciudad: 'Ibarra', tiempoEstimadoMin: 40 },
         { ciudad: 'Otavalo', tiempoEstimadoMin: 60 },
         { ciudad: 'Quito', tiempoEstimadoMin: 150 },
+      ],
+      tiposCarga: [
+        { codigo: 'SOBRE', nombre: 'Sobre', precio: 3, precioRural: null, mayoreo: null, pesoMaxKg: 0.5 },
+        { codigo: 'TELA', nombre: 'Rollo de tela', precio: 1.25, precioRural: 1.5, mayoreo: { minimoExclusivo: 50, precio: 1 }, pesoMaxKg: 50 },
       ],
     },
     null,

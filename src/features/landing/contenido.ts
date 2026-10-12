@@ -1,19 +1,6 @@
-import {
-  Apple,
-  Ban,
-  Banknote,
-  Bomb,
-  Crosshair,
-  Droplets,
-  Flame,
-  Gem,
-  PawPrint,
-  Pill,
-  ReceiptText,
-  Wine,
-  type LucideIcon,
-} from 'lucide-react'
-import type { CatalogoPublico } from '@/types/api'
+import { dependeDeZona, enFrase, pluralizar } from '@/features/envios/domain'
+import { enumerar } from '@/lib/format'
+import type { ArticuloRestringido, CatalogoPublico, CategoriaArticulo, IconoArticulo, TipoCargaPublico } from '@/types/api'
 import { MARCA, whatsappUrl } from './marca'
 
 /*
@@ -23,38 +10,55 @@ import { MARCA, whatsappUrl } from './marca'
  * («NO TRANSPORTAMOS DINERO EN EFECTIVO»), de los términos y condiciones (apartado 6) y de lo que el sistema hace hoy.
  * La empresa debe confirmarlos antes de publicarlos. Las respuestas no afirman horarios, plazos exactos, seguros
  * ni reembolsos: si se añaden, que sea con datos confirmados (ver `marca.ts`, donde un dato sin confirmar es `null`).
+ *
+ * Desde el contrato v11 «Qué no transportamos» se configura en el panel (`/publico/articulos-restringidos`).
+ * Esta lista es solo el respaldo de la landing mientras carga o si la API falla (misma semilla que el backend).
  */
 
-export interface ArticuloRestringido {
-  icon: LucideIcon
-  titulo: string
-  detalle: string
+let orden = 0
+const base = (categoria: CategoriaArticulo, titulo: string, detalle: string, icono: IconoArticulo | null): ArticuloRestringido => ({
+  id: `base-${++orden}`,
+  categoria,
+  titulo,
+  detalle,
+  icono,
+  activo: true,
+  orden,
+  actualizadoEn: '2026-10-11T00:00:00.000Z',
+  actualizadoPor: null,
+})
+
+/** Lista base (semilla v9): 9 prohibidos, 3 con condiciones y 2 notas, coherente con los términos (apartado 6). */
+export const ARTICULOS_RESTRINGIDOS_BASE: ArticuloRestringido[] = [
+  base('PROHIBIDO', 'Dinero en efectivo', 'Billetes ni monedas, en ninguna cantidad.', 'dinero'),
+  base('PROHIBIDO', 'Cheques y títulos valores', 'Cheques, letras, pagarés y otros documentos de valor negociable.', 'documento'),
+  base('PROHIBIDO', 'Joyas y metales preciosos', 'Oro, plata, piedras preciosas y alhajas.', 'joya'),
+  base('PROHIBIDO', 'Armas y municiones', 'Armas de cualquier tipo, municiones y sus partes.', 'arma'),
+  base('PROHIBIDO', 'Explosivos y pirotecnia', 'Pólvora, fuegos artificiales y material explosivo.', 'explosivo'),
+  base('PROHIBIDO', 'Sustancias peligrosas', 'Líquidos inflamables, gases, corrosivos y tóxicos.', 'fuego'),
+  base('PROHIBIDO', 'Drogas y sustancias fiscalizadas', 'Estupefacientes, psicotrópicos y sustancias sujetas a fiscalización.', 'droga'),
+  base('PROHIBIDO', 'Animales vivos', 'Mascotas, aves ni ningún otro animal.', 'animal'),
+  base('PROHIBIDO', 'Mercadería ilícita', 'Productos falsificados, de contrabando o de comercio prohibido.', 'prohibido'),
+  base('CONDICIONADO', 'Perecibles', 'Solo bien embalados y para entrega en el mismo día.', 'perecible'),
+  base('CONDICIONADO', 'Líquidos no peligrosos', 'Solo en envase sellado.', 'liquido'),
+  base('CONDICIONADO', 'Objetos frágiles', 'Con embalaje adecuado y declarando el contenido.', 'fragil'),
+  base('NOTA', 'Declara siempre el contenido real de tu envío.', 'Podemos pedir revisar un paquete antes de recibirlo.', null),
+  base('NOTA', 'No entregamos en apartados postales.', '', null),
+]
+
+/** Artículos de una categoría, activos y en su orden. */
+export function articulosDe(articulos: ArticuloRestringido[], categoria: CategoriaArticulo): ArticuloRestringido[] {
+  return articulos.filter((a) => a.categoria === categoria && a.activo).sort((a, b) => a.orden - b.orden)
 }
 
-/** Artículos que PCargo no transporta (coherente con los términos y condiciones, apartado 6). */
-export const PROHIBIDOS: ArticuloRestringido[] = [
-  { icon: Banknote, titulo: 'Dinero en efectivo', detalle: 'Billetes ni monedas, en ninguna cantidad.' },
-  { icon: ReceiptText, titulo: 'Cheques y títulos valores', detalle: 'Cheques, letras, pagarés y otros documentos de valor negociable.' },
-  { icon: Gem, titulo: 'Joyas y metales preciosos', detalle: 'Oro, plata, piedras preciosas y alhajas.' },
-  { icon: Crosshair, titulo: 'Armas y municiones', detalle: 'Armas de cualquier tipo, municiones y sus partes.' },
-  { icon: Bomb, titulo: 'Explosivos y pirotecnia', detalle: 'Pólvora, fuegos artificiales y material explosivo.' },
-  { icon: Flame, titulo: 'Sustancias peligrosas', detalle: 'Líquidos inflamables, gases, corrosivos y tóxicos.' },
-  { icon: Pill, titulo: 'Drogas y sustancias fiscalizadas', detalle: 'Estupefacientes, psicotrópicos y sustancias sujetas a fiscalización.' },
-  { icon: PawPrint, titulo: 'Animales vivos', detalle: 'Mascotas, aves ni ningún otro animal.' },
-  { icon: Ban, titulo: 'Mercadería ilícita', detalle: 'Productos falsificados, de contrabando o de comercio prohibido.' },
-]
+/** Artículos que PCargo no transporta (respaldo). */
+export const PROHIBIDOS = articulosDe(ARTICULOS_RESTRINGIDOS_BASE, 'PROHIBIDO')
+/** Artículos que se aceptan solo si cumplen una condición (respaldo). */
+export const CON_CONDICIONES = articulosDe(ARTICULOS_RESTRINGIDOS_BASE, 'CONDICIONADO')
+/** Texto de una nota: título y detalle en una sola frase (contrato v11: el título tiene como máximo 80 caracteres). */
+export const textoNota = (n: Pick<ArticuloRestringido, 'titulo' | 'detalle'>) => (n.detalle.trim() ? `${n.titulo} ${n.detalle.trim()}` : n.titulo)
 
-/** Artículos que se aceptan solo si cumplen una condición. */
-export const CON_CONDICIONES: ArticuloRestringido[] = [
-  { icon: Apple, titulo: 'Perecibles', detalle: 'Solo bien embalados y para entrega en el mismo día.' },
-  { icon: Droplets, titulo: 'Líquidos no peligrosos', detalle: 'Solo en envase sellado.' },
-  { icon: Wine, titulo: 'Objetos frágiles', detalle: 'Con embalaje adecuado y declarando el contenido.' },
-]
-
-export const NOTAS_PROHIBIDOS = [
-  'Declara siempre el contenido real de tu envío. Podemos pedir revisar un paquete antes de recibirlo.',
-  'No entregamos en apartados postales.',
-] as const
+export const NOTAS_PROHIBIDOS = articulosDe(ARTICULOS_RESTRINGIDOS_BASE, 'NOTA').map(textoNota)
 
 /** Fragmento de una respuesta: texto o enlace. El texto plano (JSON-LD) es la concatenación de los fragmentos. */
 export type Fragmento = string | { texto: string; href: string; tipo: 'ancla' | 'ruta' | 'externo' | 'tel' }
@@ -66,32 +70,34 @@ export interface PreguntaFrecuente {
 }
 
 const CIUDADES_BASE = ['Ibarra', 'Atuntaqui', 'Otavalo', 'Quito']
-/** Pesos máximos del contrato de la API (v8), por si el catálogo aún no cargó. */
-const PESOS_BASE: { nombre: string; pesoMaxKg: number }[] = [
-  { nombre: 'Sobre', pesoMaxKg: 0.5 },
-  { nombre: 'Paquete', pesoMaxKg: 50 },
-  { nombre: 'Cartón', pesoMaxKg: 35 },
-  { nombre: 'Valija', pesoMaxKg: 25 },
-  { nombre: 'Rollo de tela', pesoMaxKg: 50 },
-  { nombre: 'Plumón pequeño', pesoMaxKg: 50 },
-  { nombre: 'Plumón grande', pesoMaxKg: 50 },
+/** Tipos de la semilla del contrato (v8), por si el catálogo aún no cargó. */
+const TIPOS_BASE: Pick<TipoCargaPublico, 'nombre' | 'pesoMaxKg' | 'precio' | 'precioRural'>[] = [
+  { nombre: 'Sobre', pesoMaxKg: 0.5, precio: 3, precioRural: null },
+  { nombre: 'Paquete', pesoMaxKg: 50, precio: 3, precioRural: null },
+  { nombre: 'Cartón', pesoMaxKg: 35, precio: 3, precioRural: null },
+  { nombre: 'Valija', pesoMaxKg: 25, precio: 3, precioRural: null },
+  { nombre: 'Rollo de tela', pesoMaxKg: 50, precio: 1.25, precioRural: 1.5 },
+  { nombre: 'Plumón pequeño', pesoMaxKg: 50, precio: 3, precioRural: null },
+  { nombre: 'Plumón grande', pesoMaxKg: 50, precio: 4, precioRural: null },
 ]
 
 const kg = new Intl.NumberFormat('es-EC', { maximumFractionDigits: 2 })
 
-/** «A, B, C y D». */
-export function enumerar(items: string[]): string {
-  if (items.length <= 1) return items.join('')
-  return `${items.slice(0, -1).join(', ')} y ${items.at(-1)}`
-}
+export { enumerar }
 
 /**
  * Preguntas frecuentes. Con el catálogo público, las ciudades y los pesos máximos salen de la configuración real;
  * sin él, se usan los valores del contrato de la API.
  */
-export function preguntasFrecuentes(catalogo?: Pick<CatalogoPublico, 'ciudades' | 'tiposCarga'>): PreguntaFrecuente[] {
+export function preguntasFrecuentes(
+  catalogo?: Pick<CatalogoPublico, 'ciudades' | 'tiposCarga'>,
+  articulos?: ArticuloRestringido[],
+): PreguntaFrecuente[] {
   const ciudades = catalogo?.ciudades.filter((c) => c.activa).map((c) => c.nombre) ?? []
-  const pesos = catalogo?.tiposCarga.length ? catalogo.tiposCarga : PESOS_BASE
+  const tipos = catalogo?.tiposCarga.length ? catalogo.tiposCarga : TIPOS_BASE
+  const conZona = tipos.filter(dependeDeZona).map((t) => pluralizar(enFrase(t.nombre)))
+  const queEnviar = enumerar(tipos.map((t) => pluralizar(enFrase(t.nombre))))
+  const prohibidos = articulos ? articulosDe(articulos, 'PROHIBIDO').map((a) => enFrase(a.titulo)) : []
   const { fijo, celular } = MARCA.telefonos
 
   return [
@@ -108,8 +114,8 @@ export function preguntasFrecuentes(catalogo?: Pick<CatalogoPublico, 'ciudades' 
       id: 'que-enviar',
       pregunta: '¿Qué puedo enviar?',
       respuesta: [
-        `Sobres, paquetes, cartones, valijas, rollos de tela y plumones. Cada unidad tiene un peso máximo: ${pesos
-          .map((t) => `${t.nombre.toLowerCase()}, hasta ${kg.format(t.pesoMaxKg)} kg`)
+        `${queEnviar.charAt(0).toUpperCase()}${queEnviar.slice(1)}. Cada unidad tiene un peso máximo: ${tipos
+          .map((t) => `${enFrase(t.nombre)}, hasta ${kg.format(t.pesoMaxKg)} kg`)
           .join('; ')}. Revisa también `,
         { texto: 'qué no transportamos', href: '#prohibidos', tipo: 'ancla' },
         '.',
@@ -119,7 +125,11 @@ export function preguntasFrecuentes(catalogo?: Pick<CatalogoPublico, 'ciudades' 
       id: 'precio',
       pregunta: '¿Cuánto cuesta enviar?',
       respuesta: [
-        'Pagas por unidad según el tipo de encomienda, con el mismo precio en todas las rutas y sin recargo por peso dentro del máximo de cada tipo. La zona de entrega (urbana o rural) solo cambia el precio del rollo de tela. El valor definitivo es el de tu guía. ',
+        `Pagas por unidad según el tipo de encomienda, con el mismo precio en todas las rutas y sin recargo por peso dentro del máximo de cada tipo. ${
+          conZona.length
+            ? `La zona de entrega (urbana o rural) solo cambia el precio de: ${enumerar(conZona)}. `
+            : 'La zona de entrega (urbana o rural) no cambia el precio. '
+        }El valor definitivo es el de tu guía. `,
         { texto: 'Cotiza tu envío', href: '#cotizar', tipo: 'ancla' },
         '.',
       ],
@@ -162,7 +172,9 @@ export function preguntasFrecuentes(catalogo?: Pick<CatalogoPublico, 'ciudades' 
       id: 'prohibidos',
       pregunta: '¿Qué no transportan?',
       respuesta: [
-        'No transportamos dinero en efectivo, cheques ni títulos valores, joyas, armas, explosivos, sustancias peligrosas o fiscalizadas, animales vivos ni mercadería ilícita. ',
+        prohibidos.length
+          ? `No transportamos ${enumerar(prohibidos)}. `
+          : 'No transportamos dinero en efectivo, cheques ni títulos valores, joyas, armas, explosivos, sustancias peligrosas o fiscalizadas, animales vivos ni mercadería ilícita. ',
         { texto: 'Ver la lista completa', href: '#prohibidos', tipo: 'ancla' },
         '.',
       ],

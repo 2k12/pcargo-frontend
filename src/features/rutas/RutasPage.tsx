@@ -1,16 +1,17 @@
 import { ArrowRight, Clock, Pencil } from 'lucide-react'
 import { useState } from 'react'
+import { Link } from 'react-router'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { SectionLabel } from '@/components/layout/SectionLabel'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
 import { useEsAdmin } from '@/features/auth/hooks'
 import { mayoreoTexto, precioTipoTexto, TIPOS_CARGA_DEFAULT } from '@/features/envios/domain'
-import { TIPO_CARGA_ICON } from '@/features/envios/ui'
+import { iconoTipoCarga } from '@/features/envios/ui'
 import { useTiposCarga } from '@/features/envios/hooks'
 import { errorMessage } from '@/lib/api'
 import { formatDuracion } from '@/lib/format'
@@ -135,11 +136,19 @@ export function RutasPage() {
         <CardHeader>
           <CardTitle>Precios por tipo de carga</CardTitle>
           <CardDescription>Precio por unidad según el tipo; la ruta no influye y no hay recargo por peso.</CardDescription>
+          {esAdmin && (
+            <CardAction>
+              <Button variant="outline" size="sm" nativeButton={false} render={<Link to="/catalogo" />}>
+                <Pencil />
+                Editar tarifas
+              </Button>
+            </CardAction>
+          )}
         </CardHeader>
         <CardContent>
           <ul className="grid gap-x-4 gap-y-4 sm:grid-cols-2 lg:grid-cols-4" aria-label="Precios por tipo de carga">
             {tipos.map((t) => {
-              const Icon = TIPO_CARGA_ICON[t.codigo]
+              const Icon = iconoTipoCarga(t.codigo)
               return (
                 <li key={t.codigo} className="flex items-start gap-3">
                   <span className="rounded-lg bg-accent p-2 text-accent-foreground">

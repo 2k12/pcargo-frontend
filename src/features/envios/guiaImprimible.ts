@@ -1,7 +1,8 @@
 // Guía imprimible (contrato v9): datos ya formateados para dibujar la guía en PDF.
 // Lógica pura, sin jsPDF ni DOM: se testea sola y el dibujo (`guiaPdf.ts`) solo coloca textos.
 import { formatCurrency } from '@/lib/format'
-import type { Envio, FormaPago, TipoCargaCodigo } from '@/types/api'
+import type { Envio, FormaPago, TipoCarga, TipoCargaCodigo } from '@/types/api'
+import { nombreTipo } from './domain'
 
 /** Datos fijos de la guía de imprenta que esta reemplaza. */
 export const EMPRESA_GUIA = {
@@ -32,12 +33,8 @@ export const CASILLAS_PAGO: { formaPago: FormaPago; etiqueta: string }[] = [
   { formaPago: 'SEGURO', etiqueta: 'SEGURO' },
 ]
 
-/** Tipos que no tienen columna propia: van en OTROS con su nombre corto. */
-const NOMBRE_CORTO_OTROS: Partial<Record<TipoCargaCodigo, string>> = {
-  TELA: 'tela',
-  PLUMON_PEQUENO: 'plumón peq.',
-  PLUMON_GRANDE: 'plumón gde.',
-}
+/** Tipos con columna propia en la guía física; cualquier otro (incluidos los que cree el ADMIN) va en OTROS. */
+const COLUMNAS_GUIA = ['SOBRE', 'VALIJA', 'PAQUETE', 'CARTON'] as const
 
 export interface ParteGuia {
   nombre: string
@@ -107,13 +104,14 @@ export function fechaHoraEcuador(iso: string): { fecha: string; hora: string } {
 
 const vacioSi0 = (n: number) => (n > 0 ? String(n) : '')
 
-function contarPiezas(envio: Pick<Envio, 'items'>) {
+/** Cuenta las piezas por columna; OTROS lista «3 rollos de tela, 2 cajas grandes» en el orden del envío. */
+export function contarPiezas(envio: Pick<Envio, 'items'>, tipos?: Pick<TipoCarga, 'codigo' | 'nombre'>[]) {
   const porTipo = new Map<TipoCargaCodigo, number>()
   for (const i of envio.items) porTipo.set(i.tipoCarga, (porTipo.get(i.tipoCarga) ?? 0) + i.cantidad)
   const total = [...porTipo.values()].reduce((s, n) => s + n, 0)
-  const otros = (Object.keys(NOMBRE_CORTO_OTROS) as TipoCargaCodigo[])
-    .filter((t) => (porTipo.get(t) ?? 0) > 0)
-    .map((t) => `${porTipo.get(t)} ${NOMBRE_CORTO_OTROS[t]}`)
+  const otros = [...porTipo]
+    .filter(([t, n]) => n > 0 && !(COLUMNAS_GUIA as readonly string[]).includes(t))
+    .map(([t, n]) => `${n} ${nombreTipo(t, n, tipos)}`)
     .join(', ')
   return {
     total: vacioSi0(total),
@@ -131,7 +129,11 @@ const formatoPeso = (kg: number) => `${kg.toLocaleString('es-EC', { maximumFract
  * Arma todos los textos de la guía imprimible de un envío.
  * `origen` es el origen público del sitio (por defecto, el de la página) para el QR y los términos.
  */
-export function datosGuia(envio: Envio, origen: string = window.location.origin): DatosGuia {
+export function datosGuia(
+  envio: Envio,
+  origen: string = window.location.origin,
+  tipos?: Pick<TipoCarga, 'codigo' | 'nombre'>[],
+): DatosGuia {
   const numero = numeroGuiaImpreso(envio.numeroGuia)
   const base = origen.replace(/\/+$/, '')
   const registro = fechaHoraEcuador(envio.registro.fecha)
@@ -156,7 +158,7 @@ export function datosGuia(envio: Envio, origen: string = window.location.origin)
       ciudad: envio.ruta.destino,
       telefono: envio.destinatario.telefono,
     },
-    piezas: contarPiezas(envio),
+    piezas: contarPiezas(envio, tipos),
     peso: formatoPeso(envio.pesoTotalKg),
     descripcion: envio.descripcion?.trim() ?? '',
     referenciaExterna: envio.referenciaExterna?.trim() ?? '',

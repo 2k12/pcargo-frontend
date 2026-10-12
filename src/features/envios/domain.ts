@@ -1,5 +1,5 @@
 import { formatCurrency } from '@/lib/format'
-import type { Cotizacion, Estado, FormaPago, ItemSolicitud, TipoCarga, TipoCargaCodigo, Zona } from '@/types/api'
+import type { Cotizacion, Estado, FormaPago, ItemSolicitud, TipoCarga, TipoCargaCodigo, TipoCargaPublico, Zona } from '@/types/api'
 
 export const ESTADOS: Estado[] = [
   'REGISTRADO',
@@ -85,42 +85,105 @@ export const FORMA_PAGO_DESCRIPCION: Record<FormaPago, string> = {
   SEGURO: 'Cubierto por seguro',
 }
 
-/** Catálogo por defecto (igual al backend, contrato v8); se usa mientras carga /tipos-carga. */
+const semilla = (
+  orden: number,
+  codigo: string,
+  nombre: string,
+  precio: number,
+  pesoMaxKg: number,
+  extra: Partial<TipoCarga> = {},
+): TipoCarga => ({
+  codigo,
+  nombre,
+  precio,
+  precioRural: null,
+  mayoreo: null,
+  pesoMaxKg,
+  activo: true,
+  orden,
+  actualizadoEn: null,
+  actualizadoPor: null,
+  ...extra,
+})
+
+/**
+ * Semilla del catálogo (contrato v8/v11). Solo es un respaldo mientras carga `/tipos-carga` o si falla:
+ * en cuanto el catálogo del backend llega, manda él (tipos nuevos, inactivos, nombres y precios).
+ */
 export const TIPOS_CARGA_DEFAULT: TipoCarga[] = [
-  { codigo: 'SOBRE', nombre: 'Sobre', precio: 3, precioRural: null, mayoreo: null, pesoMaxKg: 0.5 },
-  { codigo: 'PAQUETE', nombre: 'Paquete', precio: 3, precioRural: null, mayoreo: null, pesoMaxKg: 50 },
-  { codigo: 'CARTON', nombre: 'Cartón', precio: 3, precioRural: null, mayoreo: null, pesoMaxKg: 35 },
-  { codigo: 'VALIJA', nombre: 'Valija', precio: 3, precioRural: null, mayoreo: null, pesoMaxKg: 25 },
-  {
-    codigo: 'TELA',
-    nombre: 'Rollo de tela',
-    precio: 1.25,
-    precioRural: 1.5,
-    mayoreo: { minimoExclusivo: 50, precio: 1 },
-    pesoMaxKg: 50,
-  },
-  { codigo: 'PLUMON_PEQUENO', nombre: 'Plumón pequeño', precio: 3, precioRural: null, mayoreo: null, pesoMaxKg: 50 },
-  { codigo: 'PLUMON_GRANDE', nombre: 'Plumón grande', precio: 4, precioRural: null, mayoreo: null, pesoMaxKg: 50 },
+  semilla(1, 'SOBRE', 'Sobre', 3, 0.5),
+  semilla(2, 'PAQUETE', 'Paquete', 3, 50),
+  semilla(3, 'CARTON', 'Cartón', 3, 35),
+  semilla(4, 'VALIJA', 'Valija', 3, 25),
+  semilla(5, 'TELA', 'Rollo de tela', 1.25, 50, { precioRural: 1.5, mayoreo: { minimoExclusivo: 50, precio: 1 } }),
+  semilla(6, 'PLUMON_PEQUENO', 'Plumón pequeño', 3, 50),
+  semilla(7, 'PLUMON_GRANDE', 'Plumón grande', 4, 50),
 ]
 
-export const TIPO_CARGA_LABEL: Record<TipoCargaCodigo, string> = {
-  SOBRE: 'Sobre',
-  PAQUETE: 'Paquete',
-  CARTON: 'Cartón',
-  VALIJA: 'Valija',
-  TELA: 'Rollo de tela',
-  PLUMON_PEQUENO: 'Plumón pequeño',
-  PLUMON_GRANDE: 'Plumón grande',
+/**
+ * Nombres conocidos de los tipos de carga: los del último catálogo recibido del backend (se registran al
+ * cargarlo) y, como respaldo, los de la semilla. Permite nombrar los ítems de envíos, seguimiento o guías
+ * sin pasar el catálogo por toda la interfaz.
+ */
+const nombresRegistrados = new Map<string, string>()
+
+export function registrarTiposCarga(tipos: Pick<TipoCarga, 'codigo' | 'nombre'>[]): void {
+  for (const t of tipos) nombresRegistrados.set(t.codigo, t.nombre)
 }
 
-const TIPO_CARGA_PLURAL: Record<TipoCargaCodigo, [string, string]> = {
-  SOBRE: ['sobre', 'sobres'],
-  PAQUETE: ['paquete', 'paquetes'],
-  CARTON: ['cartón', 'cartones'],
-  VALIJA: ['valija', 'valijas'],
-  TELA: ['rollo de tela', 'rollos de tela'],
-  PLUMON_PEQUENO: ['plumón pequeño', 'plumones pequeños'],
-  PLUMON_GRANDE: ['plumón grande', 'plumones grandes'],
+/** «CAJA_GRANDE» → «Caja grande»: nombre legible para un código que aún no está en el catálogo cargado. */
+export function humanizarCodigo(codigo: string): string {
+  const texto = codigo.replace(/_+/g, ' ').trim().toLowerCase()
+  return texto.charAt(0).toUpperCase() + texto.slice(1)
+}
+
+/** Nombre de un tipo: el del catálogo dado, el último registrado, el de la semilla o el código legible. */
+export function nombreTipoCarga(codigo: TipoCargaCodigo, tipos?: Pick<TipoCarga, 'codigo' | 'nombre'>[]): string {
+  return (
+    tipos?.find((t) => t.codigo === codigo)?.nombre ??
+    nombresRegistrados.get(codigo) ??
+    TIPOS_CARGA_DEFAULT.find((t) => t.codigo === codigo)?.nombre ??
+    humanizarCodigo(codigo)
+  )
+}
+
+/** Palabras tras las que el resto del nombre no se pluraliza («rollos de tela», «cajas para vino»). */
+const NEXOS = new Set(['de', 'del', 'para', 'con', 'sin', 'en', 'a', 'al', 'por', 'y', 'o'])
+const SIN_TILDE: Record<string, string> = { á: 'a', é: 'e', í: 'i', ó: 'o', ú: 'u' }
+
+function pluralPalabra(p: string): string {
+  if (!p || /\d/.test(p) || (p.length > 1 && p === p.toUpperCase())) return p // siglas y medidas: «XL», «20kg»
+  if (/[sx]$/i.test(p)) return p
+  if (/[aeiouáéó]$/i.test(p)) return `${p}s`
+  if (/z$/i.test(p)) return `${p.slice(0, -1)}ces`
+  // Aguda terminada en n o s con tilde: «cartón» → «cartones», «plumón» → «plumones».
+  const aguda = /([áéíóú])n$/i.exec(p)
+  if (aguda) return `${p.slice(0, -2)}${SIN_TILDE[aguda[1]!.toLowerCase()] ?? aguda[1]}nes`
+  return `${p}es`
+}
+
+/** Plural en español de un nombre: «Plumón pequeño» → «Plumones pequeños», «Rollo de tela» → «Rollos de tela». */
+export function pluralizar(nombre: string): string {
+  const palabras = nombre.trim().split(/\s+/)
+  let enNexo = false
+  return palabras
+    .map((p) => {
+      if (enNexo) return p
+      if (NEXOS.has(p.toLowerCase())) {
+        enNexo = true
+        return p
+      }
+      return pluralPalabra(p)
+    })
+    .join(' ')
+}
+
+/** Minúsculas para usar el nombre dentro de una frase, sin tocar las siglas («Caja XL» → «caja XL»). */
+export function enFrase(nombre: string): string {
+  return nombre
+    .split(/(\s+)/)
+    .map((p) => (p.length > 1 && p === p.toUpperCase() && /[A-ZÁÉÍÓÚÑ]/.test(p) ? p : p.toLowerCase()))
+    .join('')
 }
 
 export const ZONAS: Zona[] = ['URBANA', 'RURAL']
@@ -130,13 +193,13 @@ export const ZONA_LABEL: Record<Zona, string> = {
   RURAL: 'Rural',
 }
 
-/** El tipo cambia de precio según la zona de entrega (hoy, la tela). */
+/** El tipo cambia de precio según la zona de entrega (los que tienen un precio rural distinto). */
 export function dependeDeZona(tipo: Pick<TipoCarga, 'precioRural' | 'precio'>): boolean {
   return tipo.precioRural !== null && tipo.precioRural !== tipo.precio
 }
 
 /** ¿Alguna línea del envío tiene precio distinto según la zona? */
-export function zonaInfluye(items: Pick<ItemSolicitud, 'tipoCarga'>[], tipos: TipoCarga[]): boolean {
+export function zonaInfluye(items: Pick<ItemSolicitud, 'tipoCarga'>[], tipos: TipoCargaPublico[]): boolean {
   return items.some((i) => {
     const t = tipos.find((x) => x.codigo === i.tipoCarga)
     return t ? dependeDeZona(t) : false
@@ -147,31 +210,31 @@ export function zonaInfluye(items: Pick<ItemSolicitud, 'tipoCarga'>[], tipos: Ti
  * Precio por unidad de un tipo (contrato v8, «Precio por línea»): con mayoreo y más de `minimoExclusivo`
  * unidades del tipo en todo el envío, todas valen el precio por volumen; si no, rural/urbano.
  */
-export function precioUnitario(tipo: TipoCarga, zona: Zona, unidadesDelTipo: number): { precio: number; mayoreo: boolean } {
+export function precioUnitario(tipo: TipoCargaPublico, zona: Zona, unidadesDelTipo: number): { precio: number; mayoreo: boolean } {
   if (tipo.mayoreo && unidadesDelTipo > tipo.mayoreo.minimoExclusivo) return { precio: tipo.mayoreo.precio, mayoreo: true }
   return { precio: zona === 'RURAL' && tipo.precioRural !== null ? tipo.precioRural : tipo.precio, mayoreo: false }
 }
 
 /** Menor precio base publicado (sin contar el de mayoreo): la cifra «envíos desde». */
-export function precioDesde(tipos: TipoCarga[]): number | null {
+export function precioDesde(tipos: TipoCargaPublico[]): number | null {
   return tipos.length ? Math.min(...tipos.map((t) => Math.min(t.precio, t.precioRural ?? t.precio))) : null
 }
 
 /** Precio publicado de un tipo: «$3,00» o, si cambia por zona, «$1,25 urbana · $1,50 rural». */
-export function precioTipoTexto(tipo: TipoCarga): string {
+export function precioTipoTexto(tipo: TipoCargaPublico): string {
   if (!dependeDeZona(tipo)) return formatCurrency(tipo.precio)
   return `${formatCurrency(tipo.precio)} urbana · ${formatCurrency(tipo.precioRural!)} rural`
 }
 
 /** Regla por volumen: «más de 50 rollos de tela: $1,00 c/u» (null si el tipo no tiene). */
-export function mayoreoTexto(tipo: TipoCarga): string | null {
+export function mayoreoTexto(tipo: TipoCargaPublico): string | null {
   if (!tipo.mayoreo) return null
   const { minimoExclusivo, precio } = tipo.mayoreo
-  return `más de ${minimoExclusivo} ${nombreTipo(tipo.codigo, minimoExclusivo)}: ${formatCurrency(precio)} c/u`
+  return `más de ${minimoExclusivo} ${nombreTipo(tipo.codigo, minimoExclusivo, [tipo])}: ${formatCurrency(precio)} c/u`
 }
 
 /** «Más de 50 rollos de tela: $1,00 c/u» por cada tipo al que la cotización aplicó el precio por volumen. */
-export function notasMayoreo(cotizacion: Pick<Cotizacion, 'items'>, tipos: TipoCarga[]): string[] {
+export function notasMayoreo(cotizacion: Pick<Cotizacion, 'items'>, tipos: TipoCargaPublico[]): string[] {
   const codigos = [...new Set(cotizacion.items.filter((i) => i.mayoreo).map((i) => i.tipoCarga))]
   return codigos.flatMap((codigo) => {
     const tipo = tipos.find((t) => t.codigo === codigo)
@@ -180,16 +243,20 @@ export function notasMayoreo(cotizacion: Pick<Cotizacion, 'items'>, tipos: TipoC
   })
 }
 
-export function nombreTipo(tipo: TipoCargaCodigo, cantidad: number): string {
-  const [singular, plural] = TIPO_CARGA_PLURAL[tipo]
-  return cantidad === 1 ? singular : plural
+/** Nombre en una frase según la cantidad: «1 cartón», «20 cartones», «2 cajas grandes» (tipos nuevos incluidos). */
+export function nombreTipo(tipo: TipoCargaCodigo, cantidad: number, tipos?: Pick<TipoCarga, 'codigo' | 'nombre'>[]): string {
+  const nombre = enFrase(nombreTipoCarga(tipo, tipos))
+  return cantidad === 1 ? nombre : pluralizar(nombre)
 }
 
 /** "5 paquetes · 20 cartones": agrupa por tipo (suma cantidades) respetando el orden de aparición. */
-export function resumenItems(items: Pick<ItemSolicitud, 'tipoCarga' | 'cantidad'>[]): string {
+export function resumenItems(
+  items: Pick<ItemSolicitud, 'tipoCarga' | 'cantidad'>[],
+  tipos?: Pick<TipoCarga, 'codigo' | 'nombre'>[],
+): string {
   const porTipo = new Map<TipoCargaCodigo, number>()
   for (const i of items) porTipo.set(i.tipoCarga, (porTipo.get(i.tipoCarga) ?? 0) + i.cantidad)
-  return [...porTipo].map(([tipo, n]) => `${n} ${nombreTipo(tipo, n)}`).join(' · ')
+  return [...porTipo].map(([tipo, n]) => `${n} ${nombreTipo(tipo, n, tipos)}`).join(' · ')
 }
 
 export function totalPiezas(items: Pick<ItemSolicitud, 'cantidad'>[]): number {

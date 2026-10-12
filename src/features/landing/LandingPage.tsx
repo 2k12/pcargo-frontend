@@ -26,17 +26,17 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
-import { precioDesde, precioTipoTexto } from '@/features/envios/domain'
-import { TIPO_CARGA_ICON } from '@/features/envios/ui'
+import { pluralizar, precioDesde, precioTipoTexto } from '@/features/envios/domain'
+import { iconoTipoCarga } from '@/features/envios/ui'
 import { formatCurrency, formatDuracion } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { responderAgente, useHerramientasAgente } from '@/lib/webmcp'
-import type { TipoCargaCodigo } from '@/types/api'
+import type { TipoCargaCodigo, TipoCargaPublico } from '@/types/api'
 import { MENSAJE_GUIA_INVALIDA, normalizarGuia } from '@/features/envios/guia'
 import { EnlacesLegales } from '@/features/legal/components/EnlacesLegales'
 import { lineaCopyright } from '@/features/legal/datos'
 import { consultarGuiaParaAgente, HERRAMIENTAS_PUBLICAS } from './agente'
-import { useCatalogoPublico } from './api'
+import { useArticulosPublicos, useCatalogoPublico } from './api'
 import { ArticulosProhibidos } from './components/ArticulosProhibidos'
 import { CarruselCiudades } from './components/CarruselCiudades'
 import { CreditoDesarrollador } from './components/CreditoDesarrollador'
@@ -66,7 +66,8 @@ const NAV = [
 const NAV_PROHIBIDOS = { href: '#prohibidos', label: 'Qué no transportamos' }
 const NAV_MOVIL = [...NAV.slice(0, 4), NAV_PROHIBIDOS, ...NAV.slice(4)]
 
-const DESCRIPCION_CARGA: Record<TipoCargaCodigo, string> = {
+/** Descripciones de los tipos de la semilla; un tipo nuevo usa `descripcionCarga` genérica. */
+const DESCRIPCION_CARGA: Partial<Record<TipoCargaCodigo, string>> = {
   SOBRE: 'Documentos, cartas, contratos y trámites.',
   PAQUETE: 'Compras, ropa, repuestos y pedidos de tu tienda en línea.',
   CARTON: 'Cajas de mercadería, textiles y productos para tu negocio.',
@@ -74,6 +75,10 @@ const DESCRIPCION_CARGA: Record<TipoCargaCodigo, string> = {
   TELA: 'Rollos de tela para talleres, almacenes y confeccionistas.',
   PLUMON_PEQUENO: 'Plumones de tamaño pequeño, empacados para el viaje.',
   PLUMON_GRANDE: 'Plumones de tamaño grande, empacados para el viaje.',
+}
+
+function descripcionCarga(t: TipoCargaPublico): string {
+  return DESCRIPCION_CARGA[t.codigo] ?? `${pluralizar(t.nombre)} de puerta a puerta, con precio por unidad y bien embalados para el viaje.`
 }
 
 const PASOS = [
@@ -183,10 +188,11 @@ function AvisosHero() {
 export function LandingPage() {
   const { data: catalogo, isLoading } = useCatalogoPublico()
   useHerramientasAgente(HERRAMIENTAS_PUBLICAS)
-  // Menor precio base publicado (el de mayoreo no cuenta: exige más de 50 rollos).
+  // Menor precio base publicado (el de mayoreo no cuenta: exige un volumen mínimo).
   const desde = catalogo ? precioDesde(catalogo.tiposCarga) : null
   const ciudadesTexto = catalogo ? resumenCobertura(catalogo.ciudades, catalogo.rutas, MARCA.oficina.ciudad) : ''
-  const preguntas = preguntasFrecuentes(catalogo)
+  const { data: articulos } = useArticulosPublicos()
+  const preguntas = preguntasFrecuentes(catalogo, articulos)
 
   return (
     <div className="min-h-svh bg-background">
@@ -288,7 +294,7 @@ export function LandingPage() {
         <Seccion id="servicios" titulo="Lo que transportamos" subtitulo="Cada tipo de encomienda tiene su precio por unidad y su peso máximo.">
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             {(catalogo?.tiposCarga ?? []).map((t) => {
-              const Icon = TIPO_CARGA_ICON[t.codigo]
+              const Icon = iconoTipoCarga(t.codigo)
               return (
                 <article key={t.codigo} className="space-y-3 rounded-2xl border bg-card p-4 max-lg:last:odd:col-span-2 sm:space-y-4 sm:p-6">
                   <span className="flex size-11 items-center justify-center rounded-xl bg-accent text-accent-foreground">
@@ -296,7 +302,7 @@ export function LandingPage() {
                   </span>
                   <div className="space-y-1.5">
                     <h3 className="font-semibold">{t.nombre}</h3>
-                    <p className="text-xs text-muted-foreground sm:text-sm">{DESCRIPCION_CARGA[t.codigo]}</p>
+                    <p className="text-xs text-muted-foreground sm:text-sm">{descripcionCarga(t)}</p>
                   </div>
                   <p className="text-xs font-medium text-brand-blue-text">
                     {precioTipoTexto(t)} c/u · hasta {t.pesoMaxKg} kg

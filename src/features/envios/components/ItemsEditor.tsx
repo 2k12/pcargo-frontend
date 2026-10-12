@@ -7,7 +7,7 @@ import { formatPeso } from '@/lib/format'
 import type { TipoCarga } from '@/types/api'
 import { pesoTotal, piezasLabel, totalPiezas } from '../domain'
 import { itemVacio, MAX_ITEMS, type EnvioFormValues } from '../schema'
-import { TIPO_CARGA_ICON } from '../ui'
+import { iconoTipoCarga } from '../ui'
 
 interface Props {
   control: Control<EnvioFormValues>
@@ -47,7 +47,7 @@ export function ItemsEditor({ control, register, errors, tipos }: Props) {
                       </SelectTrigger>
                       <SelectContent>
                         {tipos.map((t) => {
-                          const Icon = TIPO_CARGA_ICON[t.codigo]
+                          const Icon = iconoTipoCarga(t.codigo)
                           return (
                             <SelectItem key={t.codigo} value={t.codigo}>
                               <Icon className="size-3.5 text-muted-foreground" />

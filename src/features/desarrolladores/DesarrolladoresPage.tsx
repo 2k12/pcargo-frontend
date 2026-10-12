@@ -26,7 +26,7 @@ import {
   EVENTOS_DOC,
   REINTENTOS,
   SECCIONES,
-  TIPOS_CARGA_API,
+  TIPOS_CARGA_EJEMPLO,
 } from './contenido'
 
 const ANIO = new Date().getFullYear()
@@ -214,14 +214,16 @@ export function DesarrolladoresPage() {
             />
             <p>
               El origen del envío lo define tu integración (nunca el body). La ciudad del destinatario se escribe por su nombre, sin
-              importar mayúsculas ni tildes. El número de guía siempre es automático. Tipos de carga:{' '}
-              {TIPOS_CARGA_API.map((t, i) => (
+              importar mayúsculas ni tildes. El número de guía siempre es automático. Los tipos de carga los configura PCargo
+              y pueden cambiar: consulta los vigentes, con su precio y peso máximo, en <C>tiposCarga</C> de <C>GET /cobertura</C>{' '}
+              (por ejemplo{' '}
+              {TIPOS_CARGA_EJEMPLO.map((t, i) => (
                 <span key={t}>
                   {i > 0 && ', '}
                   <C>{t}</C>
                 </span>
               ))}
-              ; <C>pesoKg</C> es el peso por unidad. <C>formaPago</C> es opcional (por defecto, la de tu integración) y{' '}
+              ). Un tipo desactivado responde <C>422 TIPO_CARGA_INACTIVO</C>; <C>pesoKg</C> es el peso por unidad. <C>formaPago</C> es opcional (por defecto, la de tu integración) y{' '}
               <C>zona</C> puede ser <C>URBANA</C> (por defecto) o <C>RURAL</C>. Los precios son los mismos que en ventanilla.
             </p>
             <p>

@@ -1,14 +1,14 @@
 import { Layers } from 'lucide-react'
 import { nombreTipo } from '@/features/envios/domain'
-import { TIPO_CARGA_ICON } from '@/features/envios/ui'
+import { iconoTipoCarga } from '@/features/envios/ui'
 import { formatCurrency } from '@/lib/format'
-import type { TipoCarga } from '@/types/api'
+import type { TipoCargaPublico } from '@/types/api'
 
 /**
  * Precios publicados por unidad (contrato v8): el precio depende del tipo de carga, no de la ruta.
  * La zona rural solo cambia los tipos con `precioRural`; el mayoreo se indica debajo de la tabla.
  */
-export function TablaPrecios({ tipos }: { tipos: TipoCarga[] }) {
+export function TablaPrecios({ tipos }: { tipos: TipoCargaPublico[] }) {
   const conMayoreo = tipos.filter((t) => t.mayoreo)
 
   return (
@@ -33,7 +33,7 @@ export function TablaPrecios({ tipos }: { tipos: TipoCarga[] }) {
         </thead>
         <tbody>
           {tipos.map((t) => {
-            const Icon = TIPO_CARGA_ICON[t.codigo]
+            const Icon = iconoTipoCarga(t.codigo)
             const rural = t.precioRural ?? t.precio
             return (
               <tr key={t.codigo} className="border-b last:border-0">
@@ -61,7 +61,7 @@ export function TablaPrecios({ tipos }: { tipos: TipoCarga[] }) {
           <Layers aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-brand-blue-text" />
           <span>
             <strong className="font-semibold">
-              Más de {t.mayoreo!.minimoExclusivo} {nombreTipo(t.codigo, t.mayoreo!.minimoExclusivo)}
+              Más de {t.mayoreo!.minimoExclusivo} {nombreTipo(t.codigo, t.mayoreo!.minimoExclusivo, tipos)}
             </strong>{' '}
             en un mismo envío: todos a {formatCurrency(t.mayoreo!.precio)} c/u, en cualquier zona.
           </span>

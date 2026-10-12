@@ -25,6 +25,12 @@ export function formatPeso(kg: number): string {
   return `${kg.toLocaleString('es-EC', { maximumFractionDigits: 2 })} kg`
 }
 
+/** «A, B, C y D». */
+export function enumerar(items: string[]): string {
+  if (items.length <= 1) return items.join('')
+  return `${items.slice(0, -1).join(', ')} y ${items.at(-1)}`
+}
+
 export function formatDuracion(min: number): string {
   if (min < 60) return `${min} min`
   const h = Math.floor(min / 60)

@@ -8,6 +8,7 @@ import {
   Plug,
   Route,
   Package,
+  Tags,
   UserRound,
   Users,
   type LucideIcon,
@@ -64,6 +65,7 @@ const GRUPOS: { titulo: string; items: ItemNav[] }[] = [
     titulo: 'Configuración',
     items: [
       { to: '/rutas', label: 'Cobertura y tarifas', corto: 'Tarifas', icon: Route, end: false },
+      { to: '/catalogo', label: 'Tarifas y tipos de carga', corto: 'Catálogo', icon: Tags, end: false, soloAdmin: true, movil: false },
       { to: '/integraciones', label: 'Integraciones', corto: 'API', icon: Plug, end: false, soloAdmin: true, movil: false },
     ],
   },
@@ -219,11 +221,17 @@ function UserMenu() {
           Mi perfil
         </DropdownMenuItem>
         {usuario.rol === 'ADMIN' && (
-          // En móvil la barra inferior no tiene espacio: las integraciones se abren desde aquí.
-          <DropdownMenuItem className="md:hidden" onClick={() => navigate('/integraciones')}>
-            <Plug />
-            Integraciones
-          </DropdownMenuItem>
+          // En móvil la barra inferior no tiene espacio: el catálogo y las integraciones se abren desde aquí.
+          <>
+            <DropdownMenuItem className="md:hidden" onClick={() => navigate('/catalogo')}>
+              <Tags />
+              Tarifas y tipos de carga
+            </DropdownMenuItem>
+            <DropdownMenuItem className="md:hidden" onClick={() => navigate('/integraciones')}>
+              <Plug />
+              Integraciones
+            </DropdownMenuItem>
+          </>
         )}
         <DropdownMenuItem onClick={logout}>
           <LogOut />

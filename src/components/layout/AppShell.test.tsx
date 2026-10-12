@@ -100,11 +100,24 @@ describe('AppShell — opciones solo para ADMIN', () => {
     expect(await screen.findByRole('menuitem', { name: 'Integraciones' })).toBeInTheDocument()
   })
 
+  it('el ADMIN ve «Tarifas y tipos de carga» en Configuración, entre Cobertura e Integraciones, y en el menú móvil', async () => {
+    sesion('ADMIN')
+    const menu = document.getElementById('menu-lateral')!
+    expect(await within(menu).findByRole('link', { name: 'Tarifas y tipos de carga' })).toHaveAttribute('href', '/catalogo')
+    const nombres = within(menu).getAllByRole('link').map((a) => a.textContent)
+    expect(nombres.indexOf('Tarifas y tipos de carga')).toBe(nombres.indexOf('Cobertura y tarifas') + 1)
+    expect(nombres.indexOf('Integraciones')).toBe(nombres.indexOf('Tarifas y tipos de carga') + 1)
+    await userEvent.click(screen.getByRole('button', { name: /Usuario ADMIN/ }))
+    expect(await screen.findByRole('menuitem', { name: 'Tarifas y tipos de carga' })).toBeInTheDocument()
+  })
+
   it('un OPERADOR no ve «Integraciones»', async () => {
     sesion('OPERADOR')
     await userEvent.click(await screen.findByRole('button', { name: /Usuario OPERADOR/ }))
     await screen.findByRole('menuitem', { name: 'Mi perfil' })
     expect(screen.queryByRole('menuitem', { name: 'Integraciones' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'Tarifas y tipos de carga' })).not.toBeInTheDocument()
+    expect(within(document.getElementById('menu-lateral')!).queryByRole('link', { name: 'Tarifas y tipos de carga' })).not.toBeInTheDocument()
     expect(within(document.getElementById('menu-lateral')!).queryByRole('link', { name: 'Integraciones' })).not.toBeInTheDocument()
   })
 })

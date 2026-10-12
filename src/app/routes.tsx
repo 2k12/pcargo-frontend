@@ -16,6 +16,7 @@ const EnviosPage = lazy(() => import('@/features/envios/EnviosPage').then((m) =>
 const ClientesPage = lazy(() => import('@/features/clientes/ClientesPage').then((m) => ({ default: m.ClientesPage })))
 const PerfilPage = lazy(() => import('@/features/perfil/PerfilPage').then((m) => ({ default: m.PerfilPage })))
 const RutasPage = lazy(() => import('@/features/rutas/RutasPage').then((m) => ({ default: m.RutasPage })))
+const CatalogoPage = lazy(() => import('@/features/catalogo/CatalogoPage').then((m) => ({ default: m.CatalogoPage })))
 const IntegracionesPage = lazy(() =>
   import('@/features/integraciones/IntegracionesPage').then((m) => ({ default: m.IntegracionesPage })),
 )
@@ -63,6 +64,7 @@ export function AppRoutes() {
             <Route path="/rutas" element={<RutasPage />} />
             <Route path="/perfil" element={<PerfilPage />} />
             <Route element={<SoloAdmin />}>
+              <Route path="/catalogo" element={<CatalogoPage />} />
               <Route path="/integraciones" element={<IntegracionesPage />} />
               <Route path="/integraciones/:id" element={<IntegracionDetallePage />} />
             </Route>

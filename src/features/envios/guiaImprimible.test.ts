@@ -68,8 +68,22 @@ describe('datosGuia', () => {
       valijas: '',
       paquetes: '7',
       cartones: '',
-      otros: '3 tela, 2 plumón gde.',
+      otros: '3 rollos de tela, 2 plumones grandes',
     })
+  })
+
+  it('cualquier tipo sin columna propia (incluidos los nuevos) va a OTROS con su nombre del catálogo', () => {
+    const envio = {
+      ...base,
+      items: [
+        { tipoCarga: 'CAJA_GRANDE', cantidad: 2, pesoKg: 10, costoUnitario: 5, subtotal: 10 },
+        { tipoCarga: 'SOBRE', cantidad: 1, pesoKg: 0.2, costoUnitario: 3, subtotal: 3 },
+        { tipoCarga: 'NEVERA', cantidad: 1, pesoKg: 40, costoUnitario: 15, subtotal: 15 },
+      ],
+    }
+    const { piezas } = datosGuia(envio, ORIGEN, [{ codigo: 'CAJA_GRANDE', nombre: 'Caja grande' }])
+    // Sin catálogo para NEVERA: se usa su código legible.
+    expect(piezas).toMatchObject({ total: '4', sobres: '1', otros: '2 cajas grandes, 1 nevera' })
   })
 
   it('deja vacías las columnas sin unidades', () => {

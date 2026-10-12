@@ -4,7 +4,7 @@ import { SeguimientoPage } from '@/features/seguimiento/SeguimientoPage'
 import { LandingPage } from './LandingPage'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useHerramientasAgente, type HerramientaAgente } from '@/lib/webmcp'
-import { jsonResponse, mockFetch, renderWithProviders } from '@/test/utils'
+import { jsonResponse, mockFetch, renderWithProviders, tipoCargaFixture } from '@/test/utils'
 import type { CatalogoPublico } from '@/types/api'
 import { buscarRuta, HERRAMIENTAS_PUBLICAS } from './agente'
 
@@ -17,8 +17,8 @@ const ciudad = (id: number, nombre: string) => ({ id, nombre, activa: true })
 const catalogo: CatalogoPublico = {
   ciudades: [ciudad(1, 'Ibarra'), ciudad(2, 'Atuntaqui'), ciudad(4, 'Quito')],
   tiposCarga: [
-    { codigo: 'PAQUETE', nombre: 'Paquete', precio: 3, precioRural: null, mayoreo: null, pesoMaxKg: 50 },
-    { codigo: 'TELA', nombre: 'Rollo de tela', precio: 1.25, precioRural: 1.5, mayoreo: { minimoExclusivo: 50, precio: 1 }, pesoMaxKg: 50 },
+    tipoCargaFixture({ codigo: 'PAQUETE', nombre: 'Paquete', precio: 3, precioRural: null, mayoreo: null, pesoMaxKg: 50 }),
+    tipoCargaFixture({ codigo: 'TELA', nombre: 'Rollo de tela', precio: 1.25, precioRural: 1.5, mayoreo: { minimoExclusivo: 50, precio: 1 }, pesoMaxKg: 50 }),
   ],
   rutas: [
     { id: 7, origen: ciudad(1, 'Ibarra'), destino: ciudad(4, 'Quito'), tiempoEstimadoMin: 150, activa: true, operativa: true },

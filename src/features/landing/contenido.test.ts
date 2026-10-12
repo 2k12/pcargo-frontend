@@ -1,3 +1,4 @@
+import { tipoCargaFixture } from '@/test/utils'
 import { describe, expect, it } from 'vitest'
 import { CON_CONDICIONES, enumerar, faqJsonLd, jsonParaScript, preguntasFrecuentes, PROHIBIDOS, textoRespuesta } from './contenido'
 
@@ -26,7 +27,7 @@ describe('contenido de la landing', () => {
         { id: 2, nombre: 'Atuntaqui', activa: false },
         { id: 3, nombre: 'Cayambe', activa: true },
       ],
-      tiposCarga: [{ codigo: 'SOBRE', nombre: 'Sobre', precio: 3, precioRural: null, mayoreo: null, pesoMaxKg: 0.75 }],
+      tiposCarga: [tipoCargaFixture({ codigo: 'SOBRE', nombre: 'Sobre', precio: 3, precioRural: null, mayoreo: null, pesoMaxKg: 0.75 })],
     })
     expect(textoRespuesta(ciudades!.respuesta)).toContain('Hoy llegamos a Ibarra y Cayambe.')
     expect(textoRespuesta(enviar!.respuesta)).toContain('sobre, hasta 0,75 kg.')

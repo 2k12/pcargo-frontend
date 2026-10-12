@@ -26,8 +26,9 @@ import { clientePorTelefono, digitos } from '@/features/clientes/domain'
 import { rutaLabel, useRutas } from '@/features/rutas/hooks'
 import { useDebounced } from '@/hooks/useDebounced'
 import { errorMessage } from '@/lib/api'
-import type { Cliente, CotizacionRequest } from '@/types/api'
-import { TIPOS_CARGA_DEFAULT, zonaInfluye } from '../domain'
+import { enumerar } from '@/lib/format'
+import type { Cliente, CotizacionRequest, TipoCarga } from '@/types/api'
+import { dependeDeZona, enFrase, pluralizar, TIPOS_CARGA_DEFAULT, zonaInfluye } from '../domain'
 import { generarGuia, MENSAJE_ERROR_GUIA } from '../guiaPdf'
 import { useCrearEnvio, useTiposCarga } from '../hooks'
 import { crearEnvioSchema, itemsCotizables, itemVacio, toNuevoEnvio, type EnvioFormValues } from '../schema'
@@ -184,6 +185,14 @@ export function NuevoEnvioDialog({
   }, [rutaId, itemsKey, zona])
   // La zona solo cambia el precio de algunos tipos (la tela): se avisa cuando el envío los lleva.
   const hayTipoPorZona = zonaInfluye((items ?? []).filter((i) => i?.tipoCarga), tipos)
+  // Contrato v11: qué tipos cambian de precio por zona sale del catálogo, no de una lista fija.
+  const tiposPorZona = tipos.filter(dependeDeZona)
+  const nombresPorZona = (lista: TipoCarga[]) => enumerar(lista.map((t) => pluralizar(enFrase(t.nombre))))
+  const textoZona = hayTipoPorZona
+    ? `Este envío lleva ${nombresPorZona(tiposPorZona.filter((t) => (items ?? []).some((i) => i?.tipoCarga === t.codigo)))}: cuestan distinto en zona urbana y rural.`
+    : tiposPorZona.length
+      ? `Solo cambia el precio de: ${nombresPorZona(tiposPorZona)}.`
+      : 'Hoy ningún tipo de carga cambia de precio según la zona.'
   const cotizacionReq = useDebounced(request, 350)
 
   const rutaItems = Object.fromEntries(rutas.map((r) => [String(r.id), rutaLabel({ origen: r.origen.nombre, destino: r.destino.nombre })]))
@@ -322,9 +331,7 @@ export function NuevoEnvioDialog({
                 )}
               />
               <p id="zona-ayuda" className="text-xs text-muted-foreground">
-                {hayTipoPorZona
-                  ? 'Este envío lleva tela: el rollo cuesta distinto en zona urbana y rural.'
-                  : 'Solo cambia el precio de los rollos de tela.'}
+                {textoZona}
               </p>
             </div>
           </Paso>

@@ -2,8 +2,8 @@ import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useParams } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { jsonResponse, mockFetch, renderWithProviders } from '@/test/utils'
-import type { CatalogoPublico, Ruta } from '@/types/api'
+import { jsonResponse, mockFetch, renderWithProviders, tipoCargaFixture } from '@/test/utils'
+import type { ArticuloRestringido, CatalogoPublico, Ruta } from '@/types/api'
 import { buscarRuta, matrizRutas, resumenCobertura } from './cobertura'
 import { preguntasFrecuentes } from './contenido'
 import { LandingPage } from './LandingPage'
@@ -23,10 +23,10 @@ const ruta = (id: number, origen = ibarra, destino = quito, tiempoEstimadoMin = 
 const catalogo: CatalogoPublico = {
   ciudades: [ibarra, quito],
   tiposCarga: [
-    { codigo: 'SOBRE', nombre: 'Sobre', precio: 3, precioRural: null, mayoreo: null, pesoMaxKg: 0.5 },
-    { codigo: 'VALIJA', nombre: 'Valija', precio: 3, precioRural: null, mayoreo: null, pesoMaxKg: 25 },
-    { codigo: 'TELA', nombre: 'Rollo de tela', precio: 1.25, precioRural: 1.5, mayoreo: { minimoExclusivo: 50, precio: 1 }, pesoMaxKg: 50 },
-    { codigo: 'PLUMON_GRANDE', nombre: 'Plumón grande', precio: 4, precioRural: null, mayoreo: null, pesoMaxKg: 50 },
+    tipoCargaFixture({ codigo: 'SOBRE', nombre: 'Sobre', precio: 3, precioRural: null, mayoreo: null, pesoMaxKg: 0.5 }),
+    tipoCargaFixture({ codigo: 'VALIJA', nombre: 'Valija', precio: 3, precioRural: null, mayoreo: null, pesoMaxKg: 25 }),
+    tipoCargaFixture({ codigo: 'TELA', nombre: 'Rollo de tela', precio: 1.25, precioRural: 1.5, mayoreo: { minimoExclusivo: 50, precio: 1 }, pesoMaxKg: 50 }),
+    tipoCargaFixture({ codigo: 'PLUMON_GRANDE', nombre: 'Plumón grande', precio: 4, precioRural: null, mayoreo: null, pesoMaxKg: 50 }),
   ],
   rutas: [ruta(1, ibarra, ibarra, 40), ruta(11), ruta(12, quito, ibarra, 150)],
 }
@@ -151,6 +151,29 @@ describe('LandingPage — precios por tipo (contrato v8)', () => {
     expect(seccion).toHaveTextContent(/El valor definitivo es el de tu guía/)
   })
 
+  it('un tipo nuevo aparece en servicios y en la tabla de precios; uno inactivo no', async () => {
+    mockFetch(() =>
+      jsonResponse({
+        ...catalogo,
+        tiposCarga: [
+          ...catalogo.tiposCarga,
+          tipoCargaFixture({ codigo: 'CAJA_GRANDE', nombre: 'Caja grande', precio: 6, pesoMaxKg: 40, mayoreo: { minimoExclusivo: 10, precio: 5 } }),
+          tipoCargaFixture({ codigo: 'NEVERA', nombre: 'Nevera', precio: 20, pesoMaxKg: 80, activo: false }),
+        ],
+      }),
+    )
+    renderWithProviders(<LandingPage />)
+    const tabla = await screen.findByRole('table', { name: /Precios por unidad según el tipo de carga/ })
+    const fila = within(tabla).getByRole('rowheader', { name: /Caja grande/ }).closest('tr')!
+    expect(within(fila).getAllByText('$6,00')).toHaveLength(2)
+    expect(within(tabla).queryByRole('rowheader', { name: /Nevera/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Caja grande' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Nevera' })).not.toBeInTheDocument()
+    expect(screen.getAllByTestId('regla-mayoreo').map((p) => p.textContent)).toContain(
+      'Más de 10 cajas grandes en un mismo envío: todos a $5,00 c/u, en cualquier zona.',
+    )
+  })
+
   it('«Envíos desde» usa el menor precio base publicado ($1,25), no el de mayoreo', async () => {
     mockFetch(() => jsonResponse(catalogo))
     renderWithProviders(<LandingPage />)
@@ -227,7 +250,7 @@ describe('LandingPage — pie de página y mapa', () => {
 })
 
 describe('LandingPage — qué no transportamos y preguntas frecuentes', () => {
-  it('muestra los artículos prohibidos, los condicionados y las notas', async () => {
+  it('muestra los artículos prohibidos, los condicionados y las notas (lista base si la API no responde una lista)', async () => {
     mockFetch(() => jsonResponse(catalogo))
     renderWithProviders(<LandingPage />)
     const seccion = screen.getByRole('heading', { level: 2, name: 'Qué no transportamos' }).closest('section')!
@@ -238,6 +261,54 @@ describe('LandingPage — qué no transportamos y preguntas frecuentes', () => {
     const condiciones = within(seccion).getByRole('list', { name: 'Artículos aceptados con condiciones' })
     expect(within(condiciones).getAllByRole('listitem')).toHaveLength(3)
     expect(within(seccion).getByText(/Podemos pedir revisar un paquete antes de recibirlo/)).toBeInTheDocument()
+    expect(within(seccion).getByText('No entregamos en apartados postales.')).toBeInTheDocument()
+  })
+
+  it('pinta los artículos que publica la API, en su orden y sin los inactivos', async () => {
+    const art = (id: string, categoria: ArticuloRestringido['categoria'], titulo: string, orden: number, extra: Partial<ArticuloRestringido> = {}): ArticuloRestringido => ({
+      id, categoria, titulo, detalle: '', icono: categoria === 'NOTA' ? null : 'bateria', activo: true, orden,
+      actualizadoEn: '2026-10-12T00:00:00.000Z', actualizadoPor: 'Admin', ...extra,
+    })
+    const fetchMock = mockFetch((url) =>
+      url.endsWith('/publico/articulos-restringidos')
+        ? jsonResponse([
+            art('a2', 'PROHIBIDO', 'Baterías de litio sueltas', 2, { detalle: 'Solo dentro del equipo.' }),
+            art('a1', 'PROHIBIDO', 'Dinero en efectivo', 1),
+            art('a3', 'PROHIBIDO', 'Oculto por el ADMIN', 3, { activo: false }),
+            art('c1', 'CONDICIONADO', 'Plantas', 1, { icono: 'planta' }),
+            art('n1', 'NOTA', 'Embala bien tus envíos.', 1),
+          ])
+        : jsonResponse(catalogo),
+    )
+    renderWithProviders(<LandingPage />)
+    const seccion = document.getElementById('prohibidos')!
+    const prohibidos = within(seccion).getByRole('list', { name: 'Artículos prohibidos' })
+    await within(prohibidos).findByText('Baterías de litio sueltas')
+    expect(within(prohibidos).getAllByRole('listitem').map((li) => li.querySelector('p')!.textContent)).toEqual([
+      'Dinero en efectivo',
+      'Baterías de litio sueltas',
+    ])
+    expect(within(seccion).queryByText('Animales vivos')).not.toBeInTheDocument()
+    expect(within(seccion).queryByText('Oculto por el ADMIN')).not.toBeInTheDocument()
+    expect(within(within(seccion).getByRole('list', { name: 'Artículos aceptados con condiciones' })).getAllByRole('listitem')).toHaveLength(1)
+    expect(within(seccion).getByText('Embala bien tus envíos.')).toBeInTheDocument()
+    // Pública: sin token.
+    const [, init] = fetchMock.mock.calls.find(([u]) => String(u).endsWith('/publico/articulos-restringidos'))!
+    expect((init!.headers as Record<string, string>).Authorization).toBeUndefined()
+  })
+
+  it('si la API de artículos falla, muestra la lista base', async () => {
+    mockFetch((url) =>
+      url.endsWith('/publico/articulos-restringidos')
+        ? jsonResponse({ error: { code: 'ERROR', message: 'caído' } }, 500)
+        : jsonResponse(catalogo),
+    )
+    renderWithProviders(<LandingPage />)
+    await screen.findByRole('heading', { name: 'Valija' })
+    const seccion = document.getElementById('prohibidos')!
+    const prohibidos = within(seccion).getByRole('list', { name: 'Artículos prohibidos' })
+    expect(within(prohibidos).getAllByRole('listitem')).toHaveLength(9)
+    expect(within(prohibidos).getByText('Dinero en efectivo')).toBeInTheDocument()
     expect(within(seccion).getByText('No entregamos en apartados postales.')).toBeInTheDocument()
   })
 
