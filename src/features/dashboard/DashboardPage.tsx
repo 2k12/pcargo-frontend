@@ -7,6 +7,7 @@ import {
   RefreshCw,
   TrendingUp,
   Truck,
+  Plug,
   UserRound,
   X,
   type LucideIcon,
@@ -26,15 +27,16 @@ import { EnvioCard } from '@/features/envios/components/EnvioCard'
 import { EnvioDetailSheet } from '@/features/envios/components/EnvioDetailSheet'
 import { NuevoEnvioDialog } from '@/features/envios/components/NuevoEnvioDialog'
 import { ESTADO_LABEL, FORMA_PAGO_LABEL, TIPO_CARGA_LABEL } from '@/features/envios/domain'
-import { useEnvios } from '@/features/envios/hooks'
+import { useEnvios, useOpcionesIntegracion } from '@/features/envios/hooks'
 import { useEsMovil } from '@/hooks/useMediaQuery'
 import { ATENCION_TONO, ESTADO_DOT, TIPO_CARGA_ICON } from '@/features/envios/ui'
 import { errorMessage } from '@/lib/api'
 import { INTERACTIVA, SUPERFICIE } from '@/lib/estilos'
 import { formatCurrency, formatIngreso, formatRelativo } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import type { Estado, FiltroResumen, Resumen } from '@/types/api'
+import type { Canal, Estado, FiltroResumen, Resumen } from '@/types/api'
 import { useResumen } from './api'
+import { CanalesCard } from './components/CanalesCard'
 import { ClienteFiltradoCard, ClientesCard } from './components/ClientesCard'
 import { RangoFechas } from './components/RangoFechas'
 import { TendenciaCard } from './components/TendenciaCard'
@@ -62,6 +64,14 @@ const PERIODO_INICIAL: Periodo = '30d'
 const RANGO = 'rango'
 type OpcionPeriodo = Periodo | typeof RANGO
 const OPCIONES_PERIODO: { value: OpcionPeriodo; label: string }[] = [...PERIODOS, { value: RANGO, label: 'Rango' }]
+/** Filtro de canal (contrato v10). */
+const TODO_CANAL = 'TODO'
+type OpcionCanal = Canal | typeof TODO_CANAL
+const OPCIONES_CANAL: { value: OpcionCanal; label: string }[] = [
+  { value: TODO_CANAL, label: 'Todo origen' },
+  { value: 'PANEL', label: 'Panel' },
+  { value: 'API', label: 'API' },
+]
 
 /** Re-renderiza cada `ms` para mantener vigentes los textos relativos ("hace 2 minutos"). */
 function useAhora(ms = 30_000) {
@@ -94,6 +104,11 @@ function useFiltrosResumen() {
   const diaUrl = params.get('dia')
   const dia = esFecha(diaUrl) ? diaUrl : undefined
   const clienteId = params.get('cliente') ?? undefined
+  // Canal (contrato v10): ?canal=PANEL|API y, para una integración concreta, ?integracion=<id>.
+  const integracionId = params.get('integracion') ?? undefined
+  const canalUrl = params.get('canal')
+  const canal: Canal | undefined = canalUrl === 'PANEL' || canalUrl === 'API' ? canalUrl : integracionId ? 'API' : undefined
+  const porCanal = { canal, integracionId: canal === 'API' ? integracionId : undefined }
 
   const actualizar = (cambios: Record<string, string | null>, { historial = false } = {}) =>
     setParams(
@@ -109,12 +124,14 @@ function useFiltrosResumen() {
 
   return {
     /** Lo que muestra el panel: el día elegido o, si no hay, todo el periodo. */
-    filtro: (dia ? { desde: dia, hasta: dia, clienteId } : { ...rango, clienteId }) satisfies FiltroResumen,
+    filtro: (dia ? { desde: dia, hasta: dia, clienteId, ...porCanal } : { ...rango, clienteId, ...porCanal }) satisfies FiltroResumen,
     /** Lo que muestra la tendencia diaria: siempre el periodo completo. */
-    filtroSerie: { ...rango, clienteId } satisfies FiltroResumen,
+    filtroSerie: { ...rango, clienteId, ...porCanal } satisfies FiltroResumen,
     periodo,
     dia,
     clienteId,
+    canal,
+    integracionId: porCanal.integracionId,
     setPeriodo: (v: Periodo) =>
       actualizar({ periodo: v === PERIODO_INICIAL ? null : v, desde: null, hasta: null, dia: null }),
     /** Tocar el día ya elegido lo quita (alternar). */
@@ -125,8 +142,12 @@ function useFiltrosResumen() {
     setRango: (desde: string, hasta: string) =>
       actualizar({ periodo: null, desde, hasta, dia: null }, { historial: true }),
     /** Vuelve a la vista por defecto: últimos 30 días, todos los clientes. */
-    limpiarTodo: () => actualizar({ periodo: null, desde: null, hasta: null, dia: null, cliente: null }),
+    limpiarTodo: () =>
+      actualizar({ periodo: null, desde: null, hasta: null, dia: null, cliente: null, canal: null, integracion: null }),
     setCliente: (id: string | null) => actualizar({ cliente: id }),
+    /** Canal y, opcionalmente, la integración (solo con API). */
+    setCanal: (c: Canal | null, integracion: string | null = null) =>
+      actualizar({ canal: c, integracion: c === 'API' ? integracion : null }),
   }
 }
 
@@ -178,6 +199,24 @@ function FiltrosBar({ f }: { f: ReturnType<typeof useFiltrosResumen> }) {
   const { data: clientes = [] } = useClientes()
   const cliente = f.clienteId ? clientes.find((c) => c.id === f.clienteId) : undefined
   const esMovil = useEsMovil()
+  const integraciones = useOpcionesIntegracion(!!f.integracionId)
+  const integracion = f.integracionId ? integraciones.find((i) => i.id === f.integracionId) : undefined
+  const canalSel: OpcionCanal = f.canal ?? TODO_CANAL
+  const elegirCanal = (v: OpcionCanal) => f.setCanal(v === TODO_CANAL ? null : v)
+  const chipIntegracion = f.integracionId && (
+    <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-lg bg-accent px-2.5 py-1 text-xs font-medium text-accent-foreground ring-1 ring-primary/30">
+      <Plug className="size-3.5 shrink-0 text-primary" />
+      <span className="truncate">API · {integracion?.nombre ?? 'Integración'}</span>
+      <button
+        type="button"
+        aria-label="Quitar filtro de integración"
+        onClick={() => f.setCanal('API')}
+        className="-m-1 rounded p-1 hover:text-foreground"
+      >
+        <X className="size-3.5" />
+      </button>
+    </span>
+  )
 
   const chipRango = !f.periodo && f.filtroSerie.desde && (
     <span className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-2.5 py-1 text-xs font-medium text-accent-foreground">
@@ -235,20 +274,27 @@ function FiltrosBar({ f }: { f: ReturnType<typeof useFiltrosResumen> }) {
 
   // Móvil: un botón «Filtros» (periodo y cliente en una hoja inferior) y, a su lado, lo que está aplicado.
   if (esMovil) {
-    const activos = (f.periodo === PERIODO_INICIAL ? 0 : 1) + (f.clienteId ? 1 : 0)
+    const activos = (f.periodo === PERIODO_INICIAL ? 0 : 1) + (f.clienteId ? 1 : 0) + (f.canal ? 1 : 0)
     const periodo = PERIODOS.find((p) => p.value === f.periodo)
     return (
       <div className="flex flex-wrap items-center gap-2">
-        <FiltrosMovil activos={activos} onLimpiar={f.limpiarTodo} descripcion="Periodo y cliente del resumen">
+        <FiltrosMovil activos={activos} onLimpiar={f.limpiarTodo} descripcion="Periodo, origen y cliente del resumen">
           <CampoFiltro label="Periodo">
             <OpcionesFiltro label="Periodo" value={seleccion} onChange={elegir} options={OPCIONES_PERIODO} />
             {editorRango && <div className="pt-3">{editorRango}</div>}
+          </CampoFiltro>
+          <CampoFiltro label="Origen">
+            <OpcionesFiltro label="Origen" value={canalSel} onChange={elegirCanal} options={OPCIONES_CANAL} />
           </CampoFiltro>
           <CampoFiltro label="Cliente">{controlCliente}</CampoFiltro>
         </FiltrosMovil>
         {periodo && <span className="text-xs text-muted-foreground">{periodo.label}</span>}
         {chipRango}
         {chipDia}
+        {f.canal && !f.integracionId && (
+          <span className="text-xs text-muted-foreground">{f.canal === 'API' ? 'Solo API' : 'Solo panel'}</span>
+        )}
+        {chipIntegracion}
         {f.clienteId && (
           <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-lg bg-accent px-2.5 py-1 text-xs font-medium text-accent-foreground ring-1 ring-primary/30">
             <UserRound className="size-3.5 shrink-0 text-primary" />
@@ -272,8 +318,10 @@ function FiltrosBar({ f }: { f: ReturnType<typeof useFiltrosResumen> }) {
           options={OPCIONES_PERIODO}
           className="overflow-x-auto"
         />
+        <Segmented label="Origen" value={canalSel} onChange={elegirCanal} options={OPCIONES_CANAL} />
         {chipRango}
         {chipDia}
+        {chipIntegracion}
       </div>
       <div className="lg:ml-auto lg:w-80">{controlCliente}</div>
       {editorRango && <div className="w-full lg:order-last lg:basis-full">{editorRango}</div>}
@@ -501,9 +549,9 @@ function DistribucionCard({ data, sufijo }: { data: Resumen; sufijo: string }) {
   )
 }
 
-function RecientesCard({ clienteId }: { clienteId?: string }) {
+function RecientesCard({ clienteId, canal, integracionId, sufijo }: { clienteId?: string; canal?: Canal; integracionId?: string; sufijo: string }) {
   // Solo la primera página de 5: el servidor no envía el resto.
-  const { data: envios, isLoading } = useEnvios({ porPagina: 5, clienteId })
+  const { data: envios, isLoading } = useEnvios({ porPagina: 5, clienteId, canal, integracionId })
   const [seleccionado, setSeleccionado] = useState<string | null>(null)
   const recientes = envios?.datos ?? []
 
@@ -511,7 +559,7 @@ function RecientesCard({ clienteId }: { clienteId?: string }) {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Recientes</CardTitle>
-        <Link to={clienteId ? `/envios?clienteId=${clienteId}` : '/envios'} className="text-xs text-muted-foreground hover:text-foreground">
+        <Link to={sufijo ? `/envios?${sufijo.slice(1)}` : '/envios'} className="text-xs text-muted-foreground hover:text-foreground">
           Ver todos
         </Link>
       </CardHeader>
@@ -539,7 +587,10 @@ export function DashboardPage() {
   const tasa = data ? tasaEntrega(data) : null
   const cliente = f.clienteId ? clientes.find((c) => c.id === f.clienteId) : undefined
   // Los enlaces al listado de envíos conservan el filtro de cliente.
-  const sufijo = f.clienteId ? `&clienteId=${f.clienteId}` : ''
+  const sufijo =
+    (f.clienteId ? `&clienteId=${f.clienteId}` : '') +
+    (f.canal ? `&canal=${f.canal}` : '') +
+    (f.integracionId ? `&integracionId=${f.integracionId}` : '')
 
   return (
     <>
@@ -574,7 +625,7 @@ export function DashboardPage() {
               value={String(data.totalEnvios)}
               hint={`${data.totalPiezas} piezas`}
               icon={Package}
-              to={f.clienteId ? `/envios?clienteId=${f.clienteId}` : '/envios'}
+              to={sufijo ? `/envios?${sufijo.slice(1)}` : '/envios'}
             />
             <Kpi
               label="En camino"
@@ -631,7 +682,8 @@ export function DashboardPage() {
               ) : (
                 <ClientesCard data={data} onSelect={f.setCliente} />
               )}
-              <RecientesCard clienteId={f.clienteId} />
+              <CanalesCard data={data} onSelect={f.setCanal} />
+              <RecientesCard clienteId={f.clienteId} canal={f.canal} integracionId={f.integracionId} sufijo={sufijo} />
             </div>
           </div>
         </div>

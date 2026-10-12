@@ -1,4 +1,4 @@
-// Tipos espejo de docs/api-contract.md (v9)
+// Tipos espejo de docs/api-contract.md (v10)
 export type Rol = 'ADMIN' | 'OPERADOR'
 export type Estado =
   | 'REGISTRADO'
@@ -148,6 +148,10 @@ export interface Envio {
   entrega: GestionEntrega | null
   /** Foto de la guía firmada (solo en ENTREGADO); null si aún no se sube. */
   evidencia: EvidenciaEntrega | null
+  /** Canal por el que ingresó (contrato v10): PANEL o API (+ integración). */
+  origen: OrigenEnvio
+  /** Número de pedido de la empresa (solo canal API). */
+  referenciaExterna: string | null
   creadoEn: string
   actualizadoEn: string
   historial?: EventoHistorial[]
@@ -206,6 +210,10 @@ export interface FiltrosEnvios {
   rutaId?: number
   formaPago?: FormaPago
   clienteId?: string
+  /** Canal de ingreso (contrato v10). */
+  canal?: Canal
+  /** Solo envíos de esa integración. */
+  integracionId?: string
   q?: string
   /** Paginación en el servidor (contrato v5): página desde 1, 1–100 por página (20 por defecto). */
   pagina?: number
@@ -264,6 +272,9 @@ export type CambiosCliente = Partial<DatosCliente> & { consentimiento?: true }
 
 export interface FiltroResumen {
   clienteId?: string
+  /** Canal de ingreso (contrato v10). */
+  canal?: Canal
+  integracionId?: string
   /** Fecha local `YYYY-MM-DD`, inclusive. */
   desde?: string
   hasta?: string
@@ -283,4 +294,130 @@ export interface Resumen {
   porDia: { fecha: string; envios: number; ingresos: number }[]
   /** `clienteId: null` agrupa los envíos sin cliente registrado. */
   porCliente: { clienteId: string | null; nombre: string; envios: number; monto: number }[]
+  /** Envíos por canal (contrato v10): una fila para el panel y una por integración. */
+  porCanal: { canal: Canal; integracionId: string | null; nombre: string; envios: number; monto: number }[]
+}
+
+// ---- Integraciones (contrato v10) ----
+export type Canal = 'PANEL' | 'API'
+
+export interface OrigenEnvio {
+  canal: Canal
+  integracionId: string | null
+  /** Nombre de la integración (null en el panel). */
+  integracion: string | null
+}
+
+export type Alcance = 'envios:crear' | 'envios:leer' | 'cotizar'
+export type EventoWebhook = 'envio.creado' | 'envio.estado_actualizado' | 'envio.evidencia_registrada'
+export type ModoApiKey = 'live' | 'test'
+
+export interface RemitenteIntegracion {
+  nombre: string
+  telefono: string
+  direccion: string
+}
+
+export interface DatosIntegracion {
+  nombre: string
+  activa?: boolean
+  remitente: RemitenteIntegracion
+  ciudadOrigenId: number
+  /** Por defecto CONTRATO. */
+  formaPagoPorDefecto?: FormaPago
+  clienteId?: string | null
+  /** IPv4/IPv6 o CIDR; vacía = cualquier IP. */
+  ipsPermitidas?: string[]
+}
+
+export interface ApiKey {
+  id: string
+  nombre: string
+  modo: ModoApiKey
+  /** p. ej. "pc_live_Ab3dE6gH" */
+  prefijo: string
+  alcances: Alcance[]
+  creadaEn: string
+  ultimoUsoEn: string | null
+  revocadaEn: string | null
+}
+
+export interface WebhookIntegracion {
+  url: string
+  eventos: EventoWebhook[]
+  activo: boolean
+  /** "whsec_ab12": solo para reconocerlo; el secreto completo se muestra una vez. */
+  secretoPrefijo: string
+}
+
+export interface Integracion {
+  id: string
+  nombre: string
+  activa: boolean
+  remitente: RemitenteIntegracion
+  ciudadOrigenId: number
+  ciudadOrigen: string
+  formaPagoPorDefecto: FormaPago
+  clienteId: string | null
+  ipsPermitidas: string[]
+  /** Incluye las revocadas (revocadaEn != null). */
+  keys: ApiKey[]
+  webhook: WebhookIntegracion | null
+  envios: number
+  ultimoEnvio: string | null
+  creadaEn: string
+}
+
+export interface NuevaApiKey {
+  nombre: string
+  modo: ModoApiKey
+  alcances: Alcance[]
+}
+
+/** La key completa solo llega en esta respuesta. */
+export interface ApiKeyCreada {
+  key: string
+  apiKey: ApiKey
+}
+
+export interface DatosWebhook {
+  url: string
+  eventos: EventoWebhook[]
+  activo: boolean
+}
+
+export interface WebhookGuardado {
+  /** Solo si se creó ahora (primera configuración); si no, null. */
+  secreto: string | null
+  integracion: Integracion
+}
+
+export type EstadoEntregaWebhook = 'PENDIENTE' | 'ENTREGADO' | 'FALLIDO'
+
+export interface EntregaWebhook {
+  id: string
+  evento: EventoWebhook
+  envioId: string | null
+  numeroGuia: number | null
+  estado: EstadoEntregaWebhook
+  intentos: number
+  ultimoStatus: number | null
+  ultimoError: string | null
+  proximoIntentoEn: string | null
+  creadoEn: string
+  entregadoEn: string | null
+}
+
+export interface SolicitudApi {
+  id: string
+  fecha: string
+  metodo: string
+  ruta: string
+  status: number
+  ip: string
+  keyPrefijo: string | null
+  idempotencyKey: string | null
+  referenciaExterna: string | null
+  duracionMs: number
+  requestId: string
 }

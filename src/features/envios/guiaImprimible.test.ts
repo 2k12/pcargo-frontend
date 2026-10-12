@@ -29,6 +29,8 @@ const base: Envio = {
   registro: { fecha: '2026-10-08T03:24:55.786Z', operador: 'Operador Ibarra' },
   entrega: null,
   evidencia: null,
+  origen: { canal: 'PANEL', integracionId: null, integracion: null },
+  referenciaExterna: null,
   creadoEn: '2026-10-08T03:24:55.786Z',
   actualizadoEn: '2026-10-08T03:24:55.786Z',
 }
@@ -158,5 +160,15 @@ describe('datosGuia', () => {
       operador: '',
     })
     expect(fechaHoraEcuador('no-es-fecha')).toEqual({ fecha: '', hora: '' })
+  })
+
+  it('incluye la referencia del pedido (Ref. pedido) de los envíos por API, vacía en los del panel', () => {
+    expect(datosGuia(base, ORIGEN).referenciaExterna).toBe('')
+    const porApi: Envio = {
+      ...base,
+      origen: { canal: 'API', integracionId: 'i1', integracion: 'Tienda Kichwa' },
+      referenciaExterna: ' PED-1001 ',
+    }
+    expect(datosGuia(porApi, ORIGEN).referenciaExterna).toBe('PED-1001')
   })
 })

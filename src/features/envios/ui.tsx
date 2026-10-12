@@ -1,5 +1,5 @@
 import { BedDouble, BedSingle, Box, Luggage, Mail, Package, Scroll, type LucideIcon } from 'lucide-react'
-import type { Estado, FormaPago, TipoCargaCodigo } from '@/types/api'
+import type { Estado, EstadoEntregaWebhook, FormaPago, TipoCargaCodigo } from '@/types/api'
 
 export const TIPO_CARGA_ICON: Record<TipoCargaCodigo, LucideIcon> = {
   SOBRE: Mail,
@@ -40,3 +40,19 @@ export const FORMA_PAGO_TONO: Record<FormaPago, string> = {
 
 /** Aviso de envíos que requieren gestión (no entregados / con novedad). */
 export const ATENCION_TONO = 'bg-amber-500/10 text-amber-800 dark:text-amber-200'
+
+/** Estado de una entrega de webhook (contrato v10). */
+export const ENTREGA_WEBHOOK_TONO: Record<EstadoEntregaWebhook, string> = {
+  PENDIENTE: 'bg-amber-500/10 text-amber-800 dark:text-amber-200',
+  ENTREGADO: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
+  FALLIDO: 'bg-rose-500/10 text-rose-700 dark:text-rose-300',
+}
+
+/** Color del status HTTP en la auditoría: 2xx verde, 4xx ámbar, 5xx rojo, el resto neutro. */
+export function tonoStatusHttp(status: number | null): string {
+  if (status === null) return 'bg-muted text-muted-foreground'
+  if (status >= 200 && status < 300) return ENTREGA_WEBHOOK_TONO.ENTREGADO
+  if (status >= 400 && status < 500) return ENTREGA_WEBHOOK_TONO.PENDIENTE
+  if (status >= 500) return ENTREGA_WEBHOOK_TONO.FALLIDO
+  return 'bg-muted text-foreground'
+}

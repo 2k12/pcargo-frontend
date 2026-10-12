@@ -5,6 +5,7 @@ import {
   PackageSearch,
   PanelLeftClose,
   PanelLeftOpen,
+  Plug,
   Route,
   Package,
   UserRound,
@@ -27,7 +28,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { useAuth } from '@/features/auth/hooks'
+import { useAuth, useEsAdmin } from '@/features/auth/hooks'
 import { useMenuMinimizado } from '@/hooks/useMenuMinimizado'
 import { iniciales } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -44,6 +45,10 @@ interface ItemNav {
   icon: LucideIcon
   end: boolean
   externo?: boolean
+  /** Solo para ADMIN: a un OPERADOR no se le muestra (el servidor también lo bloquea). */
+  soloAdmin?: boolean
+  /** false: no va en la barra inferior del móvil (cinco pestañas); en móvil se llega desde el menú del usuario. */
+  movil?: boolean
 }
 
 const GRUPOS: { titulo: string; items: ItemNav[] }[] = [
@@ -57,7 +62,10 @@ const GRUPOS: { titulo: string; items: ItemNav[] }[] = [
   },
   {
     titulo: 'Configuración',
-    items: [{ to: '/rutas', label: 'Cobertura y tarifas', corto: 'Tarifas', icon: Route, end: false }],
+    items: [
+      { to: '/rutas', label: 'Cobertura y tarifas', corto: 'Tarifas', icon: Route, end: false },
+      { to: '/integraciones', label: 'Integraciones', corto: 'API', icon: Plug, end: false, soloAdmin: true, movil: false },
+    ],
   },
   {
     titulo: 'Público',
@@ -65,7 +73,13 @@ const GRUPOS: { titulo: string; items: ItemNav[] }[] = [
   },
 ]
 
-const NAV = GRUPOS.flatMap((g) => g.items)
+const NAV_MOVIL = GRUPOS.flatMap((g) => g.items).filter((i) => i.movil !== false)
+
+/** Grupos visibles según el rol (un grupo sin opciones visibles desaparece). */
+function useGrupos() {
+  const esAdmin = useEsAdmin()
+  return GRUPOS.map((g) => ({ ...g, items: g.items.filter((i) => !i.soloAdmin || esAdmin) })).filter((g) => g.items.length > 0)
+}
 
 /** Estado activo idéntico en barra lateral y pestañas (similitud). */
 const ACTIVO = 'bg-accent font-medium text-accent-foreground'
@@ -77,7 +91,7 @@ function BottomNav() {
       aria-label="Navegación principal"
       className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t bg-background/90 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
     >
-      {NAV.map(({ to, corto, icon: Icon, end }) => (
+      {NAV_MOVIL.map(({ to, corto, icon: Icon, end }) => (
         <NavLink
           key={to}
           to={to}
@@ -112,9 +126,10 @@ function Brand({ minimizado }: { minimizado: boolean }) {
 }
 
 function NavItems({ minimizado }: { minimizado: boolean }) {
+  const grupos = useGrupos()
   return (
     <nav className="flex flex-col gap-5" aria-label="Navegación principal">
-      {GRUPOS.map((g, i) => (
+      {grupos.map((g, i) => (
         <div key={g.titulo} className="space-y-1">
           {minimizado ? (
             // Sin espacio para el título del grupo: una línea mantiene la separación (proximidad).
@@ -203,6 +218,13 @@ function UserMenu() {
           <UserRound />
           Mi perfil
         </DropdownMenuItem>
+        {usuario.rol === 'ADMIN' && (
+          // En móvil la barra inferior no tiene espacio: las integraciones se abren desde aquí.
+          <DropdownMenuItem className="md:hidden" onClick={() => navigate('/integraciones')}>
+            <Plug />
+            Integraciones
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem onClick={logout}>
           <LogOut />
           Cerrar sesión

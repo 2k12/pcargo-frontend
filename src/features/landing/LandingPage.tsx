@@ -539,6 +539,7 @@ export function LandingPage() {
               <Link to="/seguimiento" className="hover:text-foreground">Rastrear envío</Link>
               <a href="#preguntas" className="hover:text-foreground">Preguntas frecuentes</a>
               <a href="#prohibidos" className="hover:text-foreground">Qué no transportamos</a>
+              <Link to="/desarrolladores" className="hover:text-foreground">API para empresas</Link>
               <Link to="/login" className="hover:text-foreground">Acceso del personal</Link>
             </div>
           </div>

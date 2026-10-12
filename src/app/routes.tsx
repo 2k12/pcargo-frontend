@@ -2,6 +2,7 @@ import { Loader2 } from 'lucide-react'
 import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router'
 import { ProtectedRoute } from '@/features/auth/ProtectedRoute'
+import { SoloAdmin } from '@/features/auth/SoloAdmin'
 // La landing es la entrada más visitada: se carga en el bundle inicial para pintarla sin un viaje extra.
 import { LandingPage } from '@/features/landing/LandingPage'
 
@@ -15,6 +16,15 @@ const EnviosPage = lazy(() => import('@/features/envios/EnviosPage').then((m) =>
 const ClientesPage = lazy(() => import('@/features/clientes/ClientesPage').then((m) => ({ default: m.ClientesPage })))
 const PerfilPage = lazy(() => import('@/features/perfil/PerfilPage').then((m) => ({ default: m.PerfilPage })))
 const RutasPage = lazy(() => import('@/features/rutas/RutasPage').then((m) => ({ default: m.RutasPage })))
+const IntegracionesPage = lazy(() =>
+  import('@/features/integraciones/IntegracionesPage').then((m) => ({ default: m.IntegracionesPage })),
+)
+const IntegracionDetallePage = lazy(() =>
+  import('@/features/integraciones/IntegracionDetallePage').then((m) => ({ default: m.IntegracionDetallePage })),
+)
+const DesarrolladoresPage = lazy(() =>
+  import('@/features/desarrolladores/DesarrolladoresPage').then((m) => ({ default: m.DesarrolladoresPage })),
+)
 const legal = () => import('@/features/legal/paginas')
 const PrivacidadPage = lazy(() => legal().then((m) => ({ default: m.PrivacidadPage })))
 const TerminosPage = lazy(() => legal().then((m) => ({ default: m.TerminosPage })))
@@ -44,6 +54,7 @@ export function AppRoutes() {
         <Route path="/terminos" element={<TerminosPage />} />
         <Route path="/cookies" element={<CookiesPage />} />
         <Route path="/pago-al-cobro" element={<PagoAlCobroPage />} />
+        <Route path="/desarrolladores" element={<DesarrolladoresPage />} />
         <Route element={<ProtectedRoute />}>
           <Route element={<AppShell />}>
             <Route path="/panel" element={<DashboardPage />} />
@@ -51,6 +62,10 @@ export function AppRoutes() {
             <Route path="/clientes" element={<ClientesPage />} />
             <Route path="/rutas" element={<RutasPage />} />
             <Route path="/perfil" element={<PerfilPage />} />
+            <Route element={<SoloAdmin />}>
+              <Route path="/integraciones" element={<IntegracionesPage />} />
+              <Route path="/integraciones/:id" element={<IntegracionDetallePage />} />
+            </Route>
             {/* Rastreo dentro del panel: misma consulta que la pública, sin salir del menú */}
             <Route path="/panel/seguimiento" element={<SeguimientoPage embebido />} />
             <Route path="/panel/seguimiento/:numeroGuia" element={<SeguimientoPage embebido />} />

@@ -65,6 +65,8 @@ export interface DatosGuia {
   piezas: { total: string; sobres: string; valijas: string; paquetes: string; cartones: string; otros: string }
   peso: string
   descripcion: string
+  /** Número de pedido de la empresa (envíos por API, contrato v10); vacío si no hay. */
+  referenciaExterna: string
   pago: { etiqueta: string; marcada: boolean }[]
   valor: string
   /** «ZONA RURAL» o vacío. */
@@ -157,6 +159,7 @@ export function datosGuia(envio: Envio, origen: string = window.location.origin)
     piezas: contarPiezas(envio),
     peso: formatoPeso(envio.pesoTotalKg),
     descripcion: envio.descripcion?.trim() ?? '',
+    referenciaExterna: envio.referenciaExterna?.trim() ?? '',
     pago: CASILLAS_PAGO.map((c) => ({ etiqueta: c.etiqueta, marcada: c.formaPago === envio.formaPago })),
     valor: formatCurrency(envio.costo),
     zona: envio.zona === 'RURAL' ? 'ZONA RURAL' : '',

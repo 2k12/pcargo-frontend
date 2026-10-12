@@ -35,6 +35,8 @@ const envio: Envio = {
     nota: 'Local cerrado',
   },
   evidencia: null,
+  origen: { canal: 'PANEL', integracionId: null, integracion: null },
+  referenciaExterna: null,
   creadoEn: '2026-10-08T03:24:55.786Z',
   actualizadoEn: '2026-10-08T05:00:00.000Z',
   historial: [],
@@ -85,5 +87,30 @@ describe('EnvioDetailSheet', () => {
     const seccion = await screen.findByRole('region', { name: 'Prueba de entrega' })
     expect(within(seccion).getByLabelText('Nombre de quien recibió')).toHaveFocus()
     expect(within(seccion).getByLabelText('Foto de la guía firmada')).toHaveAttribute('capture', 'environment')
+  })
+
+  it('envío por API: destaca la integración y muestra la referencia del pedido copiable (contrato v10)', async () => {
+    const user = userEvent.setup()
+    const porApi: Envio = {
+      ...envio,
+      origen: { canal: 'API', integracionId: 'i1', integracion: 'Tienda Kichwa' },
+      referenciaExterna: 'PED-1001',
+    }
+    mockFetch((url) => (url.endsWith(`/envios/${envio.id}`) ? jsonResponse(porApi) : jsonResponse({}, 404)))
+    renderWithProviders(<EnvioDetailSheet envioId={envio.id} onClose={vi.fn()} />)
+
+    expect(await screen.findByTestId('origen-badge')).toHaveTextContent('API · Tienda Kichwa')
+    const ref = screen.getByTestId('referencia-externa')
+    expect(ref).toHaveTextContent('Ref. pedido · Tienda Kichwa')
+    expect(ref).toHaveTextContent('PED-1001')
+    await user.click(within(ref).getByRole('button', { name: 'Copiar referencia del pedido' }))
+    expect(await navigator.clipboard.readText()).toBe('PED-1001')
+  })
+
+  it('envío del panel: insignia «Panel» y sin referencia externa', async () => {
+    mockFetch((url) => (url.endsWith(`/envios/${envio.id}`) ? jsonResponse(envio) : jsonResponse({}, 404)))
+    renderWithProviders(<EnvioDetailSheet envioId={envio.id} onClose={vi.fn()} />)
+    expect(await screen.findByTestId('origen-badge')).toHaveTextContent('Panel')
+    expect(screen.queryByTestId('referencia-externa')).not.toBeInTheDocument()
   })
 })

@@ -1,6 +1,7 @@
 import { Copy } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { BotonCopiar } from '@/components/BotonCopiar'
 import { Button } from '@/components/ui/button'
 import { SectionLabel } from '@/components/layout/SectionLabel'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
@@ -16,6 +17,7 @@ import { EstadoBadge } from './EstadoBadge'
 import { FormaPagoBadge } from './FormaPagoBadge'
 import { GuiaAcciones } from './GuiaAcciones'
 import { HistorialTimeline } from './HistorialTimeline'
+import { OrigenBadge } from './OrigenBadge'
 import { PruebaEntrega } from './PruebaEntrega'
 
 /**
@@ -164,12 +166,25 @@ export function EnvioDetailSheet({ envioId, onClose }: { envioId: string | null;
           <div className="space-y-6 p-4">
             {/* Figura principal: estado, pago y monto juntos */}
             <div className="flex items-center justify-between gap-2">
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <EstadoBadge estado={envio.estado} />
                 <FormaPagoBadge formaPago={envio.formaPago} />
+                <OrigenBadge origen={envio.origen} />
               </div>
               <span className="text-xl font-semibold tabular-nums">{formatCurrency(envio.costo)}</span>
             </div>
+
+            {envio.referenciaExterna && (
+              <div className="flex items-center justify-between gap-2 rounded-xl bg-muted/40 px-3 py-2" data-testid="referencia-externa">
+                <p className="min-w-0 text-sm">
+                  <span className="block text-xs text-muted-foreground">
+                    Ref. pedido{envio.origen?.integracion ? ` · ${envio.origen.integracion}` : ''}
+                  </span>
+                  <span className="block truncate font-mono">{envio.referenciaExterna}</span>
+                </p>
+                <BotonCopiar valor={envio.referenciaExterna} etiqueta="Copiar referencia del pedido" />
+              </div>
+            )}
 
             <GuiaAcciones envio={envio} />
 

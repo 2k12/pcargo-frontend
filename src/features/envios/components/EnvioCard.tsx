@@ -6,6 +6,7 @@ import type { Envio } from '@/types/api'
 import { piezasLabel, resumenItems } from '../domain'
 import { ConEvidencia } from './ConEvidencia'
 import { EstadoBadge } from './EstadoBadge'
+import { OrigenBadge } from './OrigenBadge'
 
 /** Tarjeta compacta de un envío; toda la tarjeta es un botón que abre el detalle. */
 export function EnvioCard({ envio: e, onSelect, className }: { envio: Envio; onSelect: (id: string) => void; className?: string }) {
@@ -21,7 +22,10 @@ export function EnvioCard({ envio: e, onSelect, className }: { envio: Envio; onS
       )}
     >
       <span className="flex items-center justify-between gap-2">
-        <span className="font-mono text-xs text-muted-foreground">Guía {e.numeroGuia}</span>
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="shrink-0 font-mono text-xs text-muted-foreground">Guía {e.numeroGuia}</span>
+          <OrigenBadge origen={e.origen} className="max-w-40" />
+        </span>
         <span className="flex items-center gap-1.5">
           <ConEvidencia envio={e} />
           <EstadoBadge estado={e.estado} />

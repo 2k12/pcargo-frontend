@@ -257,6 +257,15 @@ function dibujarCopia(doc: JsPdf, d: DatosGuia, indice: 0 | 1, logo: Logo | null
   const iw = 124
   caja(doc, M, iy, iw, 12)
   etiqueta(doc, 'OBSERVACIONES', M + 1.5, iy + 3)
+  if (d.referenciaExterna) {
+    // Envíos por API: el número de pedido de la empresa, para que lo reconozcan al recibir.
+    const rotulo = 'REF. PEDIDO:'
+    const x0 = M + iw - 56
+    etiqueta(doc, rotulo, x0, iy + 3)
+    const xValor = x0 + doc.getTextWidth(rotulo) + 1.5
+    fuente(doc, 7, 'bold')
+    doc.text(ajustar(doc, d.referenciaExterna, M + iw - 2 - xValor), xValor, iy + 3)
+  }
   lineaEscritura(doc, M + 2, M + iw - 2, iy + 7)
   lineaEscritura(doc, M + 2, M + iw - 2, iy + 10.8)
 

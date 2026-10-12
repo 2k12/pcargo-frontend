@@ -4,7 +4,13 @@ import type { FiltroResumen, Resumen } from '@/types/api'
 
 export const dashboardApi = {
   resumen: (f: FiltroResumen = {}) =>
-    api.get<Resumen>('/dashboard/resumen', { clienteId: f.clienteId, desde: f.desde, hasta: f.hasta }),
+    api.get<Resumen>('/dashboard/resumen', {
+      clienteId: f.clienteId,
+      canal: f.canal,
+      integracionId: f.integracionId,
+      desde: f.desde,
+      hasta: f.hasta,
+    }),
 }
 
 export function useResumen(filtro: FiltroResumen = {}) {

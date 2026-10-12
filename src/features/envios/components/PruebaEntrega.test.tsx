@@ -49,6 +49,8 @@ const entregado: Envio = {
   registro: { fecha: '2026-10-08T03:00:00.000Z', operador: 'Operador' },
   entrega: { resultado: 'ENTREGADO', fecha: '2026-10-08T15:05:00.000Z', operador: 'Repartidor Quito', nota: null },
   evidencia: null,
+  origen: { canal: 'PANEL', integracionId: null, integracion: null },
+  referenciaExterna: null,
   creadoEn: '2026-10-08T03:00:00.000Z',
   actualizadoEn: '2026-10-08T15:05:00.000Z',
 }

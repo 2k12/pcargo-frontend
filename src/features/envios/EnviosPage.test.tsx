@@ -94,6 +94,58 @@ describe('EnviosPage', () => {
     expect(await screen.findByText('41–45 de 45')).toBeInTheDocument()
   })
 
+  describe('origen (contrato v10)', () => {
+    const porApi = {
+      ...(envio(1) as object),
+      id: 'api1',
+      origen: { canal: 'API', integracionId: 'i1', integracion: 'Tienda Kichwa' },
+      referenciaExterna: 'PED-1001',
+    } as unknown as Envio
+    const porPanel = { ...(envio(2) as object), origen: { canal: 'PANEL', integracionId: null, integracion: null }, referenciaExterna: null } as unknown as Envio
+    const resumenCanal = {
+      porCanal: [
+        { canal: 'PANEL', integracionId: null, nombre: 'Panel', envios: 9, monto: 30 },
+        { canal: 'API', integracionId: 'i1', nombre: 'Tienda Kichwa', envios: 3, monto: 9 },
+        { canal: 'API', integracionId: 'i2', nombre: 'Distribuidora Norte', envios: 1, monto: 3 },
+      ],
+    }
+    const servidor = () =>
+      mockFetch((url) => {
+        if (url.includes('/dashboard/resumen')) return jsonResponse(resumenCanal)
+        if (url.includes('/envios')) return jsonResponse({ datos: [porApi, porPanel], pagina: 1, porPagina: 20, total: 2, totalPaginas: 1 })
+        return jsonResponse([])
+      })
+
+    it('marca cada envío con su origen: «Panel» discreto y «API · integración» destacado', async () => {
+      servidor()
+      renderWithProviders(<EnviosPage />, { route: '/envios', path: '/envios' })
+      const tabla = await screen.findByRole('table')
+      const filas = within(tabla).getAllByRole('row')
+      expect(within(filas[1]!).getByTestId('origen-badge')).toHaveTextContent('API · Tienda Kichwa')
+      expect(within(filas[2]!).getByTestId('origen-badge')).toHaveTextContent('Panel')
+    })
+
+    it('filtra por canal e integración (en la URL) y, sin acceso a /integraciones, toma las opciones del resumen', async () => {
+      const fetch = servidor()
+      renderWithProviders(<EnviosPage />, { route: '/envios?canal=API', path: '/envios' })
+      await vi.waitFor(() => expect(urlsEnvios(fetch).at(-1)).toContain('canal=API'))
+      // Sin sesión de ADMIN no se consulta GET /integraciones (403 para un OPERADOR).
+      expect(fetch.mock.calls.some(([u]) => /\/api\/integraciones/.test(String(u)))).toBe(false)
+
+      await userEvent.click(await screen.findByRole('combobox', { name: 'Filtrar por integración' }))
+      await userEvent.click(await screen.findByRole('option', { name: 'Tienda Kichwa' }))
+      await vi.waitFor(() => expect(urlsEnvios(fetch).at(-1)).toContain('integracionId=i1'))
+      expect(urlsEnvios(fetch).at(-1)).toContain('canal=API')
+
+      // Volver a «Panel» quita la integración.
+      await userEvent.click(screen.getByRole('combobox', { name: 'Filtrar por origen' }))
+      await userEvent.click(await screen.findByRole('option', { name: 'Panel' }))
+      await vi.waitFor(() => expect(urlsEnvios(fetch).at(-1)).toContain('canal=PANEL'))
+      expect(urlsEnvios(fetch).at(-1)).not.toContain('integracionId')
+      expect(screen.queryByRole('combobox', { name: 'Filtrar por integración' })).not.toBeInTheDocument()
+    })
+  })
+
   describe('en móvil', () => {
     it('muestra solo el buscador y un botón «Filtros»; los filtros van en una hoja inferior', async () => {
       simularMovil()

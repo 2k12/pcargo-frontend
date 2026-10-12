@@ -57,6 +57,8 @@ describe('LandingPage (pública)', () => {
     expect(within(carrusel).getByText('Ibarra', { ignore: '[aria-hidden="true"] *' })).toBeInTheDocument()
     expect(within(carrusel).getByText('Quito', { ignore: '[aria-hidden="true"] *' })).toBeInTheDocument()
     expect(within(footer).getByRole('link', { name: 'Rastrear envío' })).toBeInTheDocument()
+    // API para empresas (contrato v10): guía pública para desarrolladores.
+    expect(within(footer).getByRole('link', { name: 'API para empresas' })).toHaveAttribute('href', '/desarrolladores')
   })
 
   it('muestra servicios, precios reales y enlaza al login', async () => {

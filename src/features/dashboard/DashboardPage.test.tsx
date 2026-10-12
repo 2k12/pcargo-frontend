@@ -34,6 +34,10 @@ const resumen: Resumen = {
     { clienteId: 'c1', nombre: 'Textiles Atuntaqui', envios: 6, monto: 30 },
     { clienteId: null, nombre: 'Sin cliente registrado', envios: 4, monto: 6 },
   ],
+  porCanal: [
+    { canal: 'PANEL', integracionId: null, nombre: 'Panel', envios: 7, monto: 24 },
+    { canal: 'API', integracionId: 'i1', nombre: 'Tienda Kichwa', envios: 3, monto: 12 },
+  ],
 }
 
 const cliente: Cliente = {
@@ -275,6 +279,33 @@ describe('DashboardPage', () => {
     const cerrados = await screen.findByRole('region', { name: 'Cerrados' })
     await userEvent.click(within(cerrados).getByText('Entregado'))
     expect(screen.getByTestId('ubicacion')).toHaveTextContent('/envios?estado=ENTREGADO&clienteId=c1')
+  })
+
+  it('«Envíos por canal» muestra el panel y cada integración; tocar una filtra el resumen por ella (contrato v10)', async () => {
+    const fetch = setup()
+    const lista = await screen.findByRole('list', { name: 'Envíos por canal' })
+    expect(within(lista).getByText('Panel')).toBeInTheDocument()
+    expect(within(lista).getByText('API · Tienda Kichwa')).toBeInTheDocument()
+    expect(within(lista).getByText('+$12,00')).toBeInTheDocument()
+    expect(screen.getByText('30% de los envíos llegó por API.')).toBeInTheDocument()
+
+    await userEvent.click(within(lista).getByRole('button', { name: 'Filtrar el resumen por API · Tienda Kichwa' }))
+    await vi.waitFor(() => expect(ultimoResumen(fetch).get('integracionId')).toBe('i1'))
+    expect(ultimoResumen(fetch).get('canal')).toBe('API')
+    // Los enlaces al listado conservan el canal y la integración.
+    const cerrados = await screen.findByRole('region', { name: 'Cerrados' })
+    await userEvent.click(within(cerrados).getByText('Entregado'))
+    expect(screen.getByTestId('ubicacion')).toHaveTextContent('/envios?estado=ENTREGADO&canal=API&integracionId=i1')
+  })
+
+  it('el filtro de origen (Panel / API) llega al resumen', async () => {
+    const fetch = setup()
+    await screen.findByRole('list', { name: 'Envíos por canal' })
+    await userEvent.click(screen.getByRole('tab', { name: 'Panel' }))
+    await vi.waitFor(() => expect(ultimoResumen(fetch).get('canal')).toBe('PANEL'))
+    expect(ultimoResumen(fetch).get('integracionId')).toBeNull()
+    await userEvent.click(screen.getByRole('tab', { name: 'Todo origen' }))
+    await vi.waitFor(() => expect(ultimoResumen(fetch).get('canal')).toBeNull())
   })
 
   it('abre el resumen ya filtrado desde un enlace (?cliente=)', async () => {

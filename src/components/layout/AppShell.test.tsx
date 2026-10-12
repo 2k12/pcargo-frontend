@@ -79,3 +79,32 @@ describe('AppShell — menú del usuario', () => {
     expect(await screen.findByText('Página de perfil')).toBeInTheDocument()
   })
 })
+
+describe('AppShell — opciones solo para ADMIN', () => {
+  const sesion = (rol: 'ADMIN' | 'OPERADOR') => {
+    tokenStorage.set('tok')
+    mockFetch((url) =>
+      url.endsWith('/auth/me') ? jsonResponse({ id: 'u1', nombre: `Usuario ${rol}`, email: 'x@pcargo.ec', rol }) : jsonResponse([]),
+    )
+    renderWithProviders(<AppShell />, { route: '/panel', path: '/panel' })
+  }
+
+  it('el ADMIN ve «Integraciones» junto a la configuración (no en las cinco pestañas del móvil)', async () => {
+    sesion('ADMIN')
+    const menu = document.getElementById('menu-lateral')!
+    expect(await within(menu).findByRole('link', { name: 'Integraciones' })).toHaveAttribute('href', '/integraciones')
+    const inferior = screen.getAllByRole('navigation', { name: 'Navegación principal' }).find((n) => n.className.includes('bottom-0'))!
+    expect(within(inferior).getAllByRole('link')).toHaveLength(5)
+    // En móvil se llega desde el menú del usuario.
+    await userEvent.click(screen.getByRole('button', { name: /Usuario ADMIN/ }))
+    expect(await screen.findByRole('menuitem', { name: 'Integraciones' })).toBeInTheDocument()
+  })
+
+  it('un OPERADOR no ve «Integraciones»', async () => {
+    sesion('OPERADOR')
+    await userEvent.click(await screen.findByRole('button', { name: /Usuario OPERADOR/ }))
+    await screen.findByRole('menuitem', { name: 'Mi perfil' })
+    expect(screen.queryByRole('menuitem', { name: 'Integraciones' })).not.toBeInTheDocument()
+    expect(within(document.getElementById('menu-lateral')!).queryByRole('link', { name: 'Integraciones' })).not.toBeInTheDocument()
+  })
+})

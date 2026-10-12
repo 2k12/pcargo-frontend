@@ -24,8 +24,9 @@ import { EnvioDetailSheet } from './components/EnvioDetailSheet'
 import { EstadoBadge } from './components/EstadoBadge'
 import { FormaPagoBadge } from './components/FormaPagoBadge'
 import { NuevoEnvioDialog } from './components/NuevoEnvioDialog'
+import { OrigenBadge } from './components/OrigenBadge'
 import { ESTADO_LABEL, ESTADOS, FORMA_PAGO_LABEL, FORMAS_PAGO, piezasLabel, resumenItems } from './domain'
-import { useEnvios } from './hooks'
+import { useEnvios, useOpcionesIntegracion } from './hooks'
 
 const TODOS = 'TODOS'
 const POR_PAGINA_DEFECTO = 20
@@ -79,22 +80,50 @@ export function EnviosPage() {
   const setEstado = setFiltro('estado')
   const setRutaId = setFiltro('rutaId')
   const setFormaPago = setFiltro('formaPago')
+  // Origen (contrato v10): Panel o API; con API se puede elegir además una integración.
+  const integracionId = params.get('integracionId') ?? undefined
+  const canalUrl = params.get('canal')
+  const canal = canalUrl === 'PANEL' || canalUrl === 'API' ? canalUrl : integracionId ? 'API' : TODOS
+  const setCanal = (v: string | null) =>
+    setParams(
+      (p) => {
+        if (!v || v === TODOS) p.delete('canal')
+        else p.set('canal', v)
+        if (v !== 'API') p.delete('integracionId')
+        p.delete('pagina')
+        return p
+      },
+      { replace: true },
+    )
+  const setIntegracion = (v: string | null) =>
+    setParams(
+      (p) => {
+        if (!v || v === TODOS) p.delete('integracionId')
+        else p.set('integracionId', v)
+        p.set('canal', 'API')
+        p.delete('pagina')
+        return p
+      },
+      { replace: true },
+    )
+  const opcionesIntegracion = useOpcionesIntegracion(canal === 'API')
   // Filtro por cliente: llega desde el resumen o la ficha del cliente (?clienteId=).
   const clienteId = params.get('clienteId') ?? undefined
   const { data: clientes = [] } = useClientes()
   const clienteFiltro = clienteId ? clientes.find((c) => c.id === clienteId) : undefined
   const [busqueda, setBusqueda] = useState('')
-  const hayFiltros = estado !== TODOS || rutaId !== TODOS || formaPago !== TODOS || !!clienteId || busqueda !== ''
+  const hayFiltros =
+    estado !== TODOS || rutaId !== TODOS || formaPago !== TODOS || canal !== TODOS || !!clienteId || busqueda !== ''
   const limpiar = () => {
     setBusqueda('')
     setParams({}, { replace: true })
   }
-  // Filtros de la hoja móvil: estado, pago y ruta (la búsqueda y el cliente tienen su propio control).
-  const filtrosHoja = [estado, formaPago, rutaId].filter((v) => v !== TODOS).length
+  // Filtros de la hoja móvil: estado, pago, ruta y origen (la búsqueda y el cliente tienen su propio control).
+  const filtrosHoja = [estado, formaPago, rutaId, canal].filter((v) => v !== TODOS).length + (integracionId ? 1 : 0)
   const limpiarHoja = () =>
     setParams(
       (p) => {
-        for (const clave of ['estado', 'formaPago', 'rutaId', 'pagina']) p.delete(clave)
+        for (const clave of ['estado', 'formaPago', 'rutaId', 'canal', 'integracionId', 'pagina']) p.delete(clave)
         return p
       },
       { replace: true },
@@ -116,6 +145,8 @@ export function EnviosPage() {
     rutaId: rutaId === TODOS ? undefined : Number(rutaId),
     formaPago: formaPago === TODOS ? undefined : (formaPago as FormaPago),
     clienteId,
+    canal: canal === TODOS ? undefined : canal,
+    integracionId: canal === 'API' ? integracionId : undefined,
     q: q || undefined,
     pagina,
     porPagina,
@@ -145,6 +176,17 @@ export function EnviosPage() {
   const rutaItems: Record<string, string> = {
     [TODOS]: 'Todas las rutas',
     ...Object.fromEntries(opcionesRuta.map((o) => [o.value, o.label])),
+  }
+
+  const canalItems: Record<string, string> = { [TODOS]: 'Todo origen', PANEL: 'Panel', API: 'API' }
+  // La integración de la URL se conserva aunque aún no estén las opciones (o un OPERADOR no la vea en la lista).
+  const integracionesFiltro =
+    integracionId && !opcionesIntegracion.some((o) => o.id === integracionId)
+      ? [...opcionesIntegracion, { id: integracionId, nombre: 'Integración seleccionada' }]
+      : opcionesIntegracion
+  const integracionItems: Record<string, string> = {
+    [TODOS]: 'Todas las integraciones',
+    ...Object.fromEntries(integracionesFiltro.map((o) => [o.id, o.nombre])),
   }
 
   const controles = (
@@ -197,6 +239,36 @@ export function EnviosPage() {
           </SelectContent>
         </Select>,
       )}
+      {campo(
+        'Origen',
+        <Select items={canalItems} value={canal} onValueChange={(v) => setCanal(v)}>
+          <SelectTrigger className="w-full lg:w-32" aria-label="Filtrar por origen">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={TODOS}>Todo origen</SelectItem>
+            <SelectItem value="PANEL">Panel</SelectItem>
+            <SelectItem value="API">API</SelectItem>
+          </SelectContent>
+        </Select>,
+      )}
+      {canal === 'API' &&
+        campo(
+          'Integración',
+          <Select items={integracionItems} value={integracionId ?? TODOS} onValueChange={(v) => setIntegracion(v)}>
+            <SelectTrigger className="w-full lg:w-48" aria-label="Filtrar por integración">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={TODOS}>Todas las integraciones</SelectItem>
+              {integracionesFiltro.map((o) => (
+                <SelectItem key={o.id} value={o.id}>
+                  {o.nombre}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>,
+        )}
     </>
   )
 
@@ -210,7 +282,7 @@ export function EnviosPage() {
           <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             className="pl-8"
-            placeholder="Buscar por N.º de guía, remitente o destinatario"
+            placeholder="Buscar por N.º de guía, remitente, destinatario o pedido"
             value={busqueda}
             onChange={(e) => {
               setBusqueda(e.target.value)
@@ -221,7 +293,7 @@ export function EnviosPage() {
           />
         </div>
         {esMovil ? (
-          <FiltrosMovil activos={filtrosHoja} onLimpiar={limpiarHoja} descripcion="Estado, forma de pago y ruta">
+          <FiltrosMovil activos={filtrosHoja} onLimpiar={limpiarHoja} descripcion="Estado, forma de pago, ruta y origen">
             {controles}
           </FiltrosMovil>
         ) : (
@@ -297,7 +369,10 @@ export function EnviosPage() {
               <TableBody>
                 {envios.map((e) => (
                   <TableRow key={e.id} className="cursor-pointer" onClick={() => setSeleccionado(e.id)}>
-                    <TableCell className="pl-4 font-mono text-xs">{e.numeroGuia}</TableCell>
+                    <TableCell className="pl-4">
+                      <span className="block font-mono text-xs">{e.numeroGuia}</span>
+                      <OrigenBadge origen={e.origen} className="mt-1 max-w-36" />
+                    </TableCell>
                     <TableCell>
                       <span className="block font-medium">{e.destinatario.nombre}</span>
                       <span className="block text-xs text-muted-foreground">de {e.remitente.nombre}</span>

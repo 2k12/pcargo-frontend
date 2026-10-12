@@ -1,4 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEsAdmin } from '@/features/auth/hooks'
+import { dashboardApi } from '@/features/dashboard/api'
+import { useIntegraciones } from '@/features/integraciones/hooks'
 import type { CotizacionRequest, Estado, FiltrosEnvios, NuevoEnvio } from '@/types/api'
 import { enviosApi } from './api'
 import { TIPOS_CARGA_DEFAULT } from './domain'
@@ -93,4 +96,26 @@ export function useEvidenciaFoto(id: string, version: string | null) {
     staleTime: Infinity,
     gcTime: 0,
   })
+}
+
+/**
+ * Integraciones para el filtro "Origen: API" (contrato v10). El ADMIN las lee de `GET /integraciones`;
+ * un OPERADOR no tiene acceso (403), así que se derivan de `Resumen.porCanal` (sin filtros: todas las que
+ * tienen envíos), que sí puede consultar. Solo se pide cuando el filtro de API está abierto.
+ */
+export function useOpcionesIntegracion(habilitado: boolean): { id: string; nombre: string }[] {
+  const esAdmin = useEsAdmin()
+  const { data: integraciones } = useIntegraciones(habilitado && esAdmin)
+  const { data: resumen } = useQuery({
+    queryKey: ['dashboard', 'resumen', {}],
+    queryFn: () => dashboardApi.resumen({}),
+    enabled: habilitado && !esAdmin,
+    staleTime: 60_000,
+  })
+  const opciones = esAdmin
+    ? (integraciones ?? []).map((i) => ({ id: i.id, nombre: i.nombre }))
+    : (resumen?.porCanal ?? [])
+        .filter((c) => c.canal === 'API' && c.integracionId)
+        .map((c) => ({ id: c.integracionId!, nombre: c.nombre }))
+  return opciones.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
 }
