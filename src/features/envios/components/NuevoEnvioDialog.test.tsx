@@ -87,6 +87,21 @@ describe('NuevoEnvioDialog — clientes frecuentes', () => {
   })
 })
 
+describe('NuevoEnvioDialog — dirección del remitente (contrato v9)', () => {
+  it('ofrece el campo opcional y lo autocompleta con la dirección del cliente frecuente', async () => {
+    const dialogo = await abrir()
+    const campo = within(dialogo).getByLabelText('Dirección del remitente (opcional)')
+    expect(campo).toHaveValue('')
+    await userEvent.type(campo, 'Sucre 5-12')
+    expect(campo).toHaveValue('Sucre 5-12')
+
+    await userEvent.clear(campo)
+    await userEvent.type(await within(dialogo).findByRole('combobox', { name: 'Buscar cliente remitente' }), 'esq')
+    await userEvent.click(await within(dialogo).findByRole('option', { name: /Tienda La Esquina/ }))
+    expect(within(dialogo).getByLabelText('Dirección del remitente (opcional)')).toHaveValue('Bolívar 3-20, Ibarra')
+  })
+})
+
 describe('NuevoEnvioDialog — zona de entrega', () => {
   it('ofrece Urbana/Rural como grupo de radio, con Urbana por defecto', async () => {
     const dialogo = await abrir()
@@ -114,6 +129,21 @@ describe('toNuevoEnvio', () => {
     formaPago: 'PAGADO',
     zona: 'URBANA',
   } as EnvioFormValues
+
+  it('incluye la dirección del remitente solo si se escribió (contrato v9)', () => {
+    expect(toNuevoEnvio({ ...base, remitenteDireccion: ' Sucre 5-12 ' }).remitente).toEqual({
+      nombre: 'Ana',
+      telefono: '0991112233',
+      direccion: 'Sucre 5-12',
+    })
+    expect(toNuevoEnvio({ ...base, remitenteDireccion: '   ' }).remitente).not.toHaveProperty('direccion')
+    expect(toNuevoEnvio(base).remitente).not.toHaveProperty('direccion')
+    const schema = crearEnvioSchema(TIPOS_CARGA_DEFAULT)
+    const error = schema.safeParse({ ...base, remitenteDireccion: 'x'.repeat(201) }).error?.issues.find(
+      (i) => i.path[0] === 'remitenteDireccion',
+    )
+    expect(error?.message).toBe('Máximo 200 caracteres')
+  })
 
   it('envía la zona de entrega (contrato v8)', () => {
     expect(toNuevoEnvio(base).zona).toBe('URBANA')

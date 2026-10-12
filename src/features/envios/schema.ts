@@ -26,6 +26,8 @@ export function crearEnvioSchema(tipos: TipoCarga[]) {
   return z.object({
     remitenteNombre: z.string().trim().min(2, 'Requerido'),
     remitenteTelefono: telefono,
+    // Contrato v9: opcional (0–200); se imprime en la guía.
+    remitenteDireccion: z.string().trim().max(200, 'Máximo 200 caracteres').optional(),
     destinatarioNombre: z.string().trim().min(2, 'Requerido'),
     destinatarioTelefono: telefono,
     destinatarioDireccion: z.string().trim().min(5, 'Ingresa una dirección de entrega'),
@@ -90,7 +92,11 @@ export function itemsCotizables(items: Partial<ItemSolicitud>[] | undefined, tip
 
 export function toNuevoEnvio(v: EnvioFormValues): NuevoEnvio {
   return {
-    remitente: { nombre: v.remitenteNombre, telefono: v.remitenteTelefono },
+    remitente: {
+      nombre: v.remitenteNombre,
+      telefono: v.remitenteTelefono,
+      ...(v.remitenteDireccion?.trim() ? { direccion: v.remitenteDireccion.trim() } : {}),
+    },
     destinatario: {
       nombre: v.destinatarioNombre,
       telefono: v.destinatarioTelefono,

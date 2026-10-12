@@ -25,6 +25,7 @@ type Method = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'
 
 interface RequestOptions {
   method?: Method
+  /** JSON; con `FormData` se envía como multipart (el navegador pone el boundary). */
   body?: unknown
   query?: Record<string, string | number | boolean | undefined | null>
 }
@@ -40,10 +41,12 @@ function buildUrl(path: string, query?: RequestOptions['query']): string {
   return qs ? `${url}?${qs}` : url
 }
 
-export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
+/** Hace la petición con el token y convierte los errores del contrato en `ApiError`. */
+async function request(path: string, options: RequestOptions, accept: string): Promise<Response> {
   const { method = 'GET', body, query } = options
-  const headers: Record<string, string> = { Accept: 'application/json' }
-  if (body !== undefined) headers['Content-Type'] = 'application/json'
+  const headers: Record<string, string> = { Accept: accept }
+  const esFormData = typeof FormData !== 'undefined' && body instanceof FormData
+  if (body !== undefined && !esFormData) headers['Content-Type'] = 'application/json'
   const token = tokenStorage.get()
   if (token) headers.Authorization = `Bearer ${token}`
 
@@ -52,21 +55,19 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
     response = await fetch(buildUrl(path, query), {
       method,
       headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: body === undefined ? undefined : esFormData ? (body as FormData) : JSON.stringify(body),
     })
   } catch {
     throw new ApiError(0, 'RED', 'No se pudo conectar con el servidor')
   }
 
-  if (response.status === 204) return undefined as T
-
-  const data: unknown = await response.json().catch(() => null)
-
   if (!response.ok) {
+    // Solo el 401 cierra la sesión; 403/409/422 (p. ej. CONTRASENA_INCORRECTA) se muestran sin salir.
     if (response.status === 401 && token) {
       tokenStorage.clear()
       window.dispatchEvent(new Event(UNAUTHORIZED_EVENT))
     }
+    const data: unknown = await response.json().catch(() => null)
     const err = (data as { error?: { code?: string; message?: string } } | null)?.error
     throw new ApiError(
       response.status,
@@ -74,14 +75,26 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
       err?.message ?? `Error inesperado (${response.status})`,
     )
   }
+  return response
+}
 
-  return data as T
+export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const response = await request(path, options, 'application/json')
+  if (response.status === 204) return undefined as T
+  return (await response.json().catch(() => null)) as T
+}
+
+/** Descarga binaria autenticada (p. ej. la foto de evidencia) para mostrarla como `blob:`. */
+export async function apiBlob(path: string): Promise<Blob> {
+  const response = await request(path, {}, '*/*')
+  return response.blob()
 }
 
 export const api = {
   get: <T>(path: string, query?: RequestOptions['query']) => apiFetch<T>(path, { query }),
   post: <T>(path: string, body?: unknown) => apiFetch<T>(path, { method: 'POST', body }),
   patch: <T>(path: string, body?: unknown) => apiFetch<T>(path, { method: 'PATCH', body }),
+  put: <T = void>(path: string, body?: unknown) => apiFetch<T>(path, { method: 'PUT', body }),
   delete: <T = void>(path: string) => apiFetch<T>(path, { method: 'DELETE' }),
 }
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { tokenStorage, UNAUTHORIZED_EVENT } from '@/lib/api'
-import type { Usuario } from '@/types/api'
+import type { LoginResponse, Usuario } from '@/types/api'
 import { authApi } from './api'
 import { AuthContext, type AuthStatus } from './context'
 
@@ -51,7 +51,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus('anonymous')
   }, [])
 
-  const value = useMemo(() => ({ usuario, status, login, logout }), [usuario, status, login, logout])
+  const actualizarSesion = useCallback(({ token, usuario: u }: LoginResponse) => {
+    tokenStorage.set(token)
+    setUsuario(u)
+    setStatus('authenticated')
+  }, [])
+
+  const value = useMemo(
+    () => ({ usuario, status, login, logout, actualizarSesion }),
+    [usuario, status, login, logout, actualizarSesion],
+  )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

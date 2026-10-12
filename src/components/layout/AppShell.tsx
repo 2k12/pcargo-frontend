@@ -7,11 +7,12 @@ import {
   PanelLeftOpen,
   Route,
   Package,
+  UserRound,
   Users,
   type LucideIcon,
 } from 'lucide-react'
 import { Suspense } from 'react'
-import { Link, NavLink, Outlet } from 'react-router'
+import { Link, NavLink, Outlet, useNavigate } from 'react-router'
 import { Logo, LogoMark } from '@/components/brand/PCargoLogo'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -176,6 +177,7 @@ function BotonMinimizar({ minimizado, onAlternar }: { minimizado: boolean; onAlt
 
 function UserMenu() {
   const { usuario, logout } = useAuth()
+  const navigate = useNavigate()
   if (!usuario) return null
   return (
     <DropdownMenu>
@@ -197,6 +199,10 @@ function UserMenu() {
           </DropdownMenuLabel>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => navigate('/perfil')}>
+          <UserRound />
+          Mi perfil
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={logout}>
           <LogOut />
           Cerrar sesión

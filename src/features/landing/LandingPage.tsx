@@ -37,10 +37,13 @@ import { EnlacesLegales } from '@/features/legal/components/EnlacesLegales'
 import { lineaCopyright } from '@/features/legal/datos'
 import { consultarGuiaParaAgente, HERRAMIENTAS_PUBLICAS } from './agente'
 import { useCatalogoPublico } from './api'
+import { ArticulosProhibidos } from './components/ArticulosProhibidos'
 import { CarruselCiudades } from './components/CarruselCiudades'
 import { CreditoDesarrollador } from './components/CreditoDesarrollador'
 import { matrizRutas, resumenCobertura } from './cobertura'
+import { preguntasFrecuentes } from './contenido'
 import { MenuMovil, WhatsAppFlotante } from './components/MenuMovil'
+import { PreguntasFrecuentes } from './components/PreguntasFrecuentes'
 import { TablaPrecios } from './components/TablaPrecios'
 import { HeroPaisaje } from './ilustraciones/HeroPaisaje'
 import { MapaCobertura } from './ilustraciones/MapaCobertura'
@@ -51,13 +54,17 @@ const CotizadorPublico = lazy(() => import('./components/CotizadorPublico').then
 
 const ANIO = new Date().getFullYear()
 
+// Secciones de la cabecera (escritorio). El menú móvil y el pie suman «Qué no transportamos».
 const NAV = [
   { href: '#servicios', label: 'Servicios' },
   { href: '#como-funciona', label: 'Cómo funciona' },
   { href: '#cobertura', label: 'Cobertura' },
   { href: '#cotizar', label: 'Cotizar' },
+  { href: '#preguntas', label: 'Preguntas' },
   { href: '#contacto', label: 'Contacto' },
 ]
+const NAV_PROHIBIDOS = { href: '#prohibidos', label: 'Qué no transportamos' }
+const NAV_MOVIL = [...NAV.slice(0, 4), NAV_PROHIBIDOS, ...NAV.slice(4)]
 
 const DESCRIPCION_CARGA: Record<TipoCargaCodigo, string> = {
   SOBRE: 'Documentos, cartas, contratos y trámites.',
@@ -179,6 +186,7 @@ export function LandingPage() {
   // Menor precio base publicado (el de mayoreo no cuenta: exige más de 50 rollos).
   const desde = catalogo ? precioDesde(catalogo.tiposCarga) : null
   const ciudadesTexto = catalogo ? resumenCobertura(catalogo.ciudades, catalogo.rutas, MARCA.oficina.ciudad) : ''
+  const preguntas = preguntasFrecuentes(catalogo)
 
   return (
     <div className="min-h-svh bg-background">
@@ -187,7 +195,7 @@ export function LandingPage() {
           <a href="#inicio" aria-label={`${MARCA.nombre} — inicio`}>
             <Logo className="text-lg" markClassName="size-9" />
           </a>
-          <nav className="hidden items-center gap-1 md:flex" aria-label="Secciones">
+          <nav className="hidden items-center gap-1 lg:flex" aria-label="Secciones">
             {NAV.map((n) => (
               <a key={n.href} href={n.href} className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground">
                 {n.label}
@@ -199,7 +207,7 @@ export function LandingPage() {
             <Button className="hidden sm:inline-flex" nativeButton={false} render={<Link to="/login" />}>
               <LogIn /> Acceso del personal
             </Button>
-            <MenuMovil secciones={NAV} />
+            <MenuMovil secciones={NAV_MOVIL} />
           </div>
         </div>
       </header>
@@ -427,6 +435,23 @@ export function LandingPage() {
           </div>
         </Seccion>
 
+        {/* Qué no transportamos */}
+        <Seccion
+          id="prohibidos"
+          titulo="Qué no transportamos"
+          subtitulo="Por seguridad y por ley, hay envíos que no aceptamos y otros que solo recibimos con condiciones."
+          className="bg-muted/30"
+        >
+          <ArticulosProhibidos />
+        </Seccion>
+
+        {/* Preguntas frecuentes */}
+        <Seccion id="preguntas" titulo="Preguntas frecuentes" subtitulo="Lo que más nos preguntan sobre envíos, pagos y entregas.">
+          <div className="max-w-3xl">
+            <PreguntasFrecuentes preguntas={preguntas} />
+          </div>
+        </Seccion>
+
         {/* Contacto */}
         <Seccion id="contacto" titulo="Contáctanos" subtitulo={`Visítanos en nuestra oficina principal en ${MARCA.oficina.ciudad}.`} className="bg-muted/30">
           <div className={cn('grid gap-4 sm:grid-cols-2', MARCA.oficina.horario && MARCA.email && 'lg:grid-cols-4')}>
@@ -510,8 +535,10 @@ export function LandingPage() {
               {' · '}
               <a href={`tel:${MARCA.telefonos.celular.tel}`} className="hover:text-foreground">{MARCA.telefonos.celular.texto}</a>
             </p>
-            <div className="flex gap-4">
+            <div className="flex flex-wrap gap-x-4 gap-y-2">
               <Link to="/seguimiento" className="hover:text-foreground">Rastrear envío</Link>
+              <a href="#preguntas" className="hover:text-foreground">Preguntas frecuentes</a>
+              <a href="#prohibidos" className="hover:text-foreground">Qué no transportamos</a>
               <Link to="/login" className="hover:text-foreground">Acceso del personal</Link>
             </div>
           </div>

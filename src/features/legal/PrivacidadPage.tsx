@@ -1,5 +1,6 @@
 import { Link } from 'react-router'
 import { Apartado, DatosResponsable, LegalLayout } from './components/LegalLayout'
+import { datoLegal } from './datos'
 
 /**
  * Política de privacidad conforme a la Ley Orgánica de Protección de Datos Personales (LOPDP, Registro Oficial
@@ -29,6 +30,9 @@ export function PrivacidadPage() {
           <li>
             <strong>Del envío:</strong> número de guía, ruta, tipo, cantidad y peso de las piezas, descripción del contenido,
             forma de pago, costo y el historial de estados con las notas de entrega.
+          </li>
+          <li>
+            <strong>Prueba de entrega:</strong> foto de la guía firmada y nombre de quien recibe la encomienda.
           </li>
         </ul>
         <h3>Si aceptas ser cliente frecuente</h3>
@@ -65,6 +69,10 @@ export function PrivacidadPage() {
             del contrato de transporte que celebras con nosotros.
           </li>
           <li>
+            <strong>Demostrar la entrega y atender reclamos</strong> con la prueba de entrega (foto de la guía firmada y nombre de
+            quien recibe). Base legal: la ejecución del contrato de transporte.
+          </li>
+          <li>
             <strong>Recordar tus datos como cliente frecuente.</strong> Base legal: tu consentimiento, que puedes retirar en cualquier
             momento sin que afecte a los envíos ya hechos.
           </li>
@@ -92,6 +100,10 @@ export function PrivacidadPage() {
             Los proveedores que alojan nuestro sistema, como encargados del tratamiento, con obligación de confidencialidad y solo
             para prestarnos ese servicio.
           </li>
+          <li>
+            El proveedor de almacenamiento en la nube donde guardamos las fotos de prueba de entrega (Cloudflare R2), como encargado
+            del tratamiento. Las fotos se guardan con acceso restringido al personal de PCargo y nunca se publican.
+          </li>
           <li>Las autoridades que los requieran conforme a la ley (por ejemplo, el SRI o un juez).</li>
         </ul>
         <p>
@@ -105,6 +117,10 @@ export function PrivacidadPage() {
           <li>
             <strong>Datos de los envíos:</strong> mientras dure el servicio y, después, durante los plazos que exige la normativa
             tributaria y para atender posibles reclamos.
+          </li>
+          <li>
+            <strong>Prueba de entrega</strong> (foto de la guía firmada y nombre de quien recibe):{' '}
+            <mark className="rounded bg-muted px-1 font-medium text-foreground">{datoLegal('conservacionPruebaEntrega')}</mark>
           </li>
           <li>
             <strong>Datos de cliente frecuente:</strong> hasta que retires tu consentimiento o pidas eliminarlos.
@@ -154,6 +170,10 @@ export function PrivacidadPage() {
           <li>Las contraseñas se guardan cifradas con un algoritmo de un solo sentido.</li>
           <li>El sistema registra quién y cuándo cambió el estado de cada envío.</li>
           <li>El seguimiento público no muestra datos personales.</li>
+          <li>
+            Las fotos de prueba de entrega se guardan en un almacenamiento privado, sin enlaces públicos, y solo las ve el personal de
+            PCargo desde el panel.
+          </li>
         </ul>
         <p>
           Si ocurriera una vulneración de seguridad que afecte tus datos, lo notificaremos a la autoridad y, cuando corresponda, a ti,

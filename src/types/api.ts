@@ -1,4 +1,4 @@
-// Tipos espejo de docs/api-contract.md (v8)
+// Tipos espejo de docs/api-contract.md (v9)
 export type Rol = 'ADMIN' | 'OPERADOR'
 export type Estado =
   | 'REGISTRADO'
@@ -31,6 +31,17 @@ export interface Usuario {
 export interface LoginResponse {
   token: string
   usuario: Usuario
+}
+
+/** Perfil propio (contrato v9): al menos un campo. Responde como el login (`{ token, usuario }`). */
+export interface CambiosPerfil {
+  nombre?: string
+  email?: string
+}
+
+export interface CambioContrasena {
+  actual: string
+  nueva: string
 }
 
 export interface Ciudad {
@@ -104,13 +115,24 @@ export interface GestionEntrega extends Gestion {
   nota: string | null
 }
 
+/** Foto de la guía firmada + nombre de quien recibió (contrato v9). */
+export interface EvidenciaEntrega {
+  recibidoPor: string
+  tipo: 'image/jpeg' | 'image/png' | 'image/webp'
+  bytes: number
+  /** ISO */
+  subidaEn: string
+  /** Operador que la subió. */
+  subidaPor: string | null
+}
+
 export interface Envio {
   id: string
   /** Cliente frecuente que envía; null si es ocasional. */
   clienteId: string | null
   /** Número de la guía física (contrato v4). */
   numeroGuia: number
-  remitente: { nombre: string; telefono: string }
+  remitente: { nombre: string; telefono: string; direccion: string | null }
   destinatario: { nombre: string; telefono: string; direccion: string }
   ruta: { id: number; origen: string; destino: string }
   items: ItemEnvio[]
@@ -124,13 +146,16 @@ export interface Envio {
   estado: Estado
   registro: Gestion
   entrega: GestionEntrega | null
+  /** Foto de la guía firmada (solo en ENTREGADO); null si aún no se sube. */
+  evidencia: EvidenciaEntrega | null
   creadoEn: string
   actualizadoEn: string
   historial?: EventoHistorial[]
 }
 
 export interface NuevoEnvio {
-  remitente: { nombre: string; telefono: string }
+  /** `direccion` opcional (0–200), se imprime en la guía. */
+  remitente: { nombre: string; telefono: string; direccion?: string | null }
   destinatario: { nombre: string; telefono: string; direccion: string }
   rutaId: number
   items: ItemSolicitud[]

@@ -28,6 +28,7 @@ import { useDebounced } from '@/hooks/useDebounced'
 import { errorMessage } from '@/lib/api'
 import type { Cliente, CotizacionRequest } from '@/types/api'
 import { TIPOS_CARGA_DEFAULT, zonaInfluye } from '../domain'
+import { generarGuia, MENSAJE_ERROR_GUIA } from '../guiaPdf'
 import { useCrearEnvio, useTiposCarga } from '../hooks'
 import { crearEnvioSchema, itemsCotizables, itemVacio, toNuevoEnvio, type EnvioFormValues } from '../schema'
 import { CotizacionPanel } from './CotizacionPanel'
@@ -39,6 +40,7 @@ const DEFAULTS = {
   rutaId: '',
   zona: 'URBANA',
   descripcion: '',
+  remitenteDireccion: '',
   numeroGuia: '',
   clienteId: '',
   guardarCliente: false,
@@ -47,7 +49,13 @@ const DEFAULTS = {
 } as unknown as Partial<EnvioFormValues>
 
 const conCliente = (c: Cliente) =>
-  ({ ...DEFAULTS, clienteId: c.id, remitenteNombre: c.nombre, remitenteTelefono: c.telefono }) as Partial<EnvioFormValues>
+  ({
+    ...DEFAULTS,
+    clienteId: c.id,
+    remitenteNombre: c.nombre,
+    remitenteTelefono: c.telefono,
+    remitenteDireccion: c.direccion ?? '',
+  }) as Partial<EnvioFormValues>
 
 /** Cliente frecuente elegido como remitente: se muestra como ficha para poder cambiarlo con un toque. */
 function FichaCliente({ cliente, onQuitar }: { cliente: Cliente; onQuitar: () => void }) {
@@ -145,6 +153,7 @@ export function NuevoEnvioDialog({
     setValue('consentimientoCliente', false)
     setValue('remitenteNombre', c.nombre, { shouldValidate: !!errors.remitenteNombre })
     setValue('remitenteTelefono', c.telefono, { shouldValidate: !!errors.remitenteTelefono })
+    if (c.direccion) setValue('remitenteDireccion', c.direccion)
   }
   const registrarRemitente = (texto: string) => {
     // Lo escrito puede ser el nombre o el teléfono del cliente nuevo.
@@ -157,6 +166,7 @@ export function NuevoEnvioDialog({
     setValue('clienteId', '')
     setValue('remitenteNombre', '')
     setValue('remitenteTelefono', '')
+    setValue('remitenteDireccion', '')
   }
   const elegirDestinatario = (c: Cliente) => {
     setValue('destinatarioNombre', c.nombre)
@@ -181,7 +191,14 @@ export function NuevoEnvioDialog({
   const onSubmit = async (values: EnvioFormValues) => {
     try {
       const envio = await crear.mutateAsync(toNuevoEnvio(values))
-      toast.success(`Guía ${envio.numeroGuia} registrada`)
+      toast.success(`Guía ${envio.numeroGuia} registrada`, {
+        description: 'Imprime la guía para pegarla en el paquete.',
+        duration: 10_000,
+        action: {
+          label: 'Imprimir guía',
+          onClick: () => void generarGuia(envio, 'imprimir').catch(() => toast.error(MENSAJE_ERROR_GUIA)),
+        },
+      })
       if (values.guardarCliente && !values.clienteId) toast.success(`${values.remitenteNombre} quedó guardado como cliente`)
       qc.invalidateQueries({ queryKey: ['clientes'] })
       reset(DEFAULTS)
@@ -228,6 +245,17 @@ export function NuevoEnvioDialog({
               <Campo label="Teléfono" htmlFor="remitenteTelefono" error={errors.remitenteTelefono?.message}>
                 <Input id="remitenteTelefono" inputMode="tel" placeholder="0991234567" {...register('remitenteTelefono')} />
               </Campo>
+              <div className="sm:col-span-2">
+                <Campo label="Dirección del remitente (opcional)" htmlFor="remitenteDireccion" error={errors.remitenteDireccion?.message}>
+                  <Input
+                    id="remitenteDireccion"
+                    autoComplete="street-address"
+                    placeholder="Se imprime en la guía"
+                    maxLength={200}
+                    {...register('remitenteDireccion')}
+                  />
+                </Campo>
+              </div>
             </div>
             {!elegido &&
               (reconocido ? (

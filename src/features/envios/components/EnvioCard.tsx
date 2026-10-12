@@ -4,6 +4,7 @@ import { formatCurrency, formatDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { Envio } from '@/types/api'
 import { piezasLabel, resumenItems } from '../domain'
+import { ConEvidencia } from './ConEvidencia'
 import { EstadoBadge } from './EstadoBadge'
 
 /** Tarjeta compacta de un envío; toda la tarjeta es un botón que abre el detalle. */
@@ -21,7 +22,10 @@ export function EnvioCard({ envio: e, onSelect, className }: { envio: Envio; onS
     >
       <span className="flex items-center justify-between gap-2">
         <span className="font-mono text-xs text-muted-foreground">Guía {e.numeroGuia}</span>
-        <EstadoBadge estado={e.estado} />
+        <span className="flex items-center gap-1.5">
+          <ConEvidencia envio={e} />
+          <EstadoBadge estado={e.estado} />
+        </span>
       </span>
       <span className="flex items-end justify-between gap-3">
         <span className="min-w-0">

@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { jsonResponse, mockFetch, renderWithProviders } from '@/test/utils'
 import type { CatalogoPublico, Ruta } from '@/types/api'
 import { buscarRuta, matrizRutas, resumenCobertura } from './cobertura'
+import { preguntasFrecuentes } from './contenido'
 import { LandingPage } from './LandingPage'
 
 vi.mock('next-themes', () => ({ useTheme: () => ({ resolvedTheme: 'light', setTheme: vi.fn() }) }))
@@ -220,5 +221,106 @@ describe('LandingPage — pie de página y mapa', () => {
     renderWithProviders(<LandingPage />)
     await screen.findByRole('img', { name: /Mapa de cobertura/ })
     expect(screen.queryByText(/Mapa esquemático/)).not.toBeInTheDocument()
+  })
+})
+
+describe('LandingPage — qué no transportamos y preguntas frecuentes', () => {
+  it('muestra los artículos prohibidos, los condicionados y las notas', async () => {
+    mockFetch(() => jsonResponse(catalogo))
+    renderWithProviders(<LandingPage />)
+    const seccion = screen.getByRole('heading', { level: 2, name: 'Qué no transportamos' }).closest('section')!
+    expect(seccion).toHaveAttribute('id', 'prohibidos')
+    const prohibidos = within(seccion).getByRole('list', { name: 'Artículos prohibidos' })
+    expect(within(prohibidos).getByText('Dinero en efectivo')).toBeInTheDocument()
+    expect(within(prohibidos).getByText('Animales vivos')).toBeInTheDocument()
+    const condiciones = within(seccion).getByRole('list', { name: 'Artículos aceptados con condiciones' })
+    expect(within(condiciones).getAllByRole('listitem')).toHaveLength(3)
+    expect(within(seccion).getByText(/Podemos pedir revisar un paquete antes de recibirlo/)).toBeInTheDocument()
+    expect(within(seccion).getByText('No entregamos en apartados postales.')).toBeInTheDocument()
+  })
+
+  it('el acordeón abre y cierra con teclado y mueve el foco con las flechas', async () => {
+    mockFetch(() => jsonResponse(catalogo))
+    const user = userEvent.setup()
+    renderWithProviders(<LandingPage />)
+    const seccion = document.getElementById('preguntas')!
+    expect(within(seccion).getByRole('heading', { level: 2, name: 'Preguntas frecuentes' })).toBeInTheDocument()
+
+    const botones = within(seccion).getAllByRole('button')
+    expect(botones).toHaveLength(preguntasFrecuentes().length)
+    const rastreo = within(seccion).getByRole('button', { name: '¿Cómo rastreo mi envío?' })
+    expect(rastreo.closest('h3')).not.toBeNull()
+    const panel = document.getElementById(rastreo.getAttribute('aria-controls')!)!
+    expect(rastreo).toHaveAttribute('aria-expanded', 'false')
+    expect(panel).not.toBeVisible()
+
+    rastreo.focus()
+    await user.keyboard('{Enter}')
+    expect(rastreo).toHaveAttribute('aria-expanded', 'true')
+    expect(panel).toBeVisible()
+    expect(within(panel).getByRole('link', { name: 'seguimiento' })).toHaveAttribute('href', '/seguimiento')
+    expect(panel).toHaveTextContent('Los ceros de adelante no importan')
+
+    await user.keyboard(' ')
+    expect(rastreo).toHaveAttribute('aria-expanded', 'false')
+    expect(panel).not.toBeVisible()
+
+    await user.keyboard('{ArrowDown}')
+    expect(botones[botones.indexOf(rastreo) + 1]).toHaveFocus()
+    await user.keyboard('{Home}')
+    expect(botones[0]).toHaveFocus()
+    await user.keyboard('{ArrowUp}')
+    expect(botones.at(-1)).toHaveFocus()
+  })
+
+  it('las respuestas enlazan al cotizador, al pago al cobro, a prohibidos y a WhatsApp', async () => {
+    mockFetch(() => jsonResponse(catalogo))
+    const user = userEvent.setup()
+    renderWithProviders(<LandingPage />)
+    await screen.findByRole('heading', { name: 'Valija' })
+    const seccion = document.getElementById('preguntas')!
+    for (const b of within(seccion).getAllByRole('button')) await user.click(b)
+    expect(within(seccion).getByRole('link', { name: 'Cotiza tu envío' })).toHaveAttribute('href', '#cotizar')
+    expect(within(seccion).getByRole('link', { name: 'política de pago al cobro' })).toHaveAttribute('href', '/pago-al-cobro')
+    expect(within(seccion).getByRole('link', { name: 'Ver la lista completa' })).toHaveAttribute('href', '#prohibidos')
+    const whatsapp = within(seccion).getAllByRole('link', { name: /WhatsApp/ })
+    expect(whatsapp.length).toBeGreaterThan(0)
+    for (const w of whatsapp) expect(w.getAttribute('href')).toMatch(/^https:\/\/wa\.me\/593998014093\?text=/)
+    // La cobertura sale del catálogo: solo Ibarra y Quito en este caso.
+    expect(seccion).toHaveTextContent('Hoy llegamos a Ibarra y Quito.')
+  })
+
+  it('publica el JSON-LD FAQPage con todas las preguntas visibles', async () => {
+    mockFetch(() => jsonResponse(catalogo))
+    renderWithProviders(<LandingPage />)
+    await screen.findByRole('heading', { name: 'Valija' })
+    const script = document.querySelector('script[type="application/ld+json"]')!
+    const ld = JSON.parse(script.textContent!)
+    expect(ld['@type']).toBe('FAQPage')
+    const visibles = within(document.getElementById('preguntas')!)
+      .getAllByRole('button')
+      .map((b) => b.textContent)
+    expect(ld.mainEntity.map((q: { name: string }) => q.name)).toEqual(visibles)
+    for (const q of ld.mainEntity) expect(q.acceptedAnswer.text.length).toBeGreaterThan(20)
+  })
+
+  it('la cabecera y el pie enlazan a las nuevas secciones', () => {
+    mockFetch(() => jsonResponse(catalogo))
+    renderWithProviders(<LandingPage />)
+    const nav = within(screen.getByRole('banner')).getByRole('navigation', { name: 'Secciones' })
+    expect(within(nav).getByRole('link', { name: 'Preguntas' })).toHaveAttribute('href', '#preguntas')
+    const footer = screen.getByRole('contentinfo')
+    expect(within(footer).getByRole('link', { name: 'Preguntas frecuentes' })).toHaveAttribute('href', '#preguntas')
+    expect(within(footer).getByRole('link', { name: 'Qué no transportamos' })).toHaveAttribute('href', '#prohibidos')
+  })
+
+  it('el menú móvil incluye Preguntas y Qué no transportamos', async () => {
+    mockFetch(() => jsonResponse(catalogo))
+    const user = userEvent.setup()
+    renderWithProviders(<LandingPage />)
+    await user.click(screen.getByRole('button', { name: 'Abrir menú' }))
+    const menu = await screen.findByRole('dialog')
+    expect(within(menu).getByRole('link', { name: 'Preguntas' })).toHaveAttribute('href', '#preguntas')
+    expect(within(menu).getByRole('link', { name: 'Qué no transportamos' })).toHaveAttribute('href', '#prohibidos')
   })
 })

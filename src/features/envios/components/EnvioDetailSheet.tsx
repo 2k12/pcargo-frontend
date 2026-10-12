@@ -1,4 +1,5 @@
 import { Copy } from 'lucide-react'
+import { useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { SectionLabel } from '@/components/layout/SectionLabel'
@@ -13,7 +14,9 @@ import { TIPO_CARGA_ICON } from '../ui'
 import { CambioEstadoForm } from './CambioEstadoForm'
 import { EstadoBadge } from './EstadoBadge'
 import { FormaPagoBadge } from './FormaPagoBadge'
+import { GuiaAcciones } from './GuiaAcciones'
 import { HistorialTimeline } from './HistorialTimeline'
+import { PruebaEntrega } from './PruebaEntrega'
 
 /**
  * Un extremo del trayecto. Las dos paradas se unen con una línea vertical (continuidad):
@@ -32,7 +35,7 @@ function Parada({
   rol: string
   nombre: string
   telefono: string
-  direccion?: string
+  direccion?: string | null
   zona?: Zona
   destino?: boolean
 }) {
@@ -111,11 +114,20 @@ function ItemsTabla({ envio }: { envio: Envio }) {
 export function EnvioDetailSheet({ envioId, onClose }: { envioId: string | null; onClose: () => void }) {
   const { data: envio, isLoading } = useEnvio(envioId)
   const cambiar = useCambiarEstado(envioId ?? '')
+  // Tras marcar ENTREGADO se lleva al usuario a subir la foto de la guía firmada.
+  const [pedirEvidencia, setPedirEvidencia] = useState<string | null>(null)
 
   const transicionar = async (estado: Estado, nota: string) => {
     try {
       const actualizado = await cambiar.mutateAsync({ estado, nota })
-      toast.success(`Guía ${actualizado.numeroGuia}: ${ESTADO_LABEL[estado].toLowerCase()}`)
+      if (estado === 'ENTREGADO' && !actualizado.evidencia) {
+        toast.success(`Guía ${actualizado.numeroGuia}: entregado`, {
+          description: 'Ahora sube la foto de la guía firmada como prueba de entrega.',
+        })
+        setPedirEvidencia(actualizado.id)
+      } else {
+        toast.success(`Guía ${actualizado.numeroGuia}: ${ESTADO_LABEL[estado].toLowerCase()}`)
+      }
     } catch (e) {
       toast.error(errorMessage(e))
       throw e
@@ -159,6 +171,8 @@ export function EnvioDetailSheet({ envioId, onClose }: { envioId: string | null;
               <span className="text-xl font-semibold tabular-nums">{formatCurrency(envio.costo)}</span>
             </div>
 
+            <GuiaAcciones envio={envio} />
+
             <section className="space-y-2" aria-label="Trayecto">
               <SectionLabel>Trayecto</SectionLabel>
               <ol className="space-y-4 rounded-xl bg-muted/40 p-3">
@@ -167,6 +181,7 @@ export function EnvioDetailSheet({ envioId, onClose }: { envioId: string | null;
                   rol="Remitente"
                   nombre={envio.remitente.nombre}
                   telefono={envio.remitente.telefono}
+                  direccion={envio.remitente.direccion}
                 />
                 <Parada
                   destino
@@ -211,6 +226,8 @@ export function EnvioDetailSheet({ envioId, onClose }: { envioId: string | null;
                 </div>
               </div>
             </section>
+
+            <PruebaEntrega key={envio.id} envio={envio} resaltar={pedirEvidencia === envio.id} />
 
             {/* key: reinicia el formulario (nota/motivo) al cambiar de envío o de estado */}
             <CambioEstadoForm

@@ -14,17 +14,20 @@ export const DATOS_LEGALES = {
   emailDatos: null as string | null,
   /** Título habilitante como operador postal, si aplica (Ley General de los Servicios Postales). */
   registroPostal: null as string | null,
+  /** Plazo de conservación de la prueba de entrega (foto de la guía firmada y nombre de quien recibe). */
+  conservacionPruebaEntrega: null as string | null,
   direccion: MARCA.oficina.direccion,
   /** Fecha desde la que rigen los textos legales (AAAA-MM-DD). Cámbiala cada vez que los modifiques. */
   vigenteDesde: '2026-10-08',
 } as const
 
-export type CampoLegal = 'razonSocial' | 'emailDatos' | 'registroPostal'
+export type CampoLegal = 'razonSocial' | 'emailDatos' | 'registroPostal' | 'conservacionPruebaEntrega'
 
 const ETIQUETA: Record<CampoLegal, string> = {
   razonSocial: 'razón social',
   emailDatos: 'correo de contacto',
   registroPostal: 'registro de operador postal',
+  conservacionPruebaEntrega: 'plazo de conservación de la prueba de entrega, a definir por PCargo',
 }
 
 /** Valor del campo o el marcador visible de dato pendiente. */

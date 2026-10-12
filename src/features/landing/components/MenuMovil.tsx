@@ -13,7 +13,7 @@ export function MenuMovil({ secciones }: { secciones: { href: string; label: str
   const cerrar = () => setAbierto(false)
   return (
     <Sheet open={abierto} onOpenChange={setAbierto}>
-      <SheetTrigger render={<Button variant="ghost" size="icon" className="md:hidden" aria-label="Abrir menú" />}>
+      <SheetTrigger render={<Button variant="ghost" size="icon" className="lg:hidden" aria-label="Abrir menú" />}>
         <Menu />
       </SheetTrigger>
       <SheetContent side="right" className="w-[85%] max-w-xs">

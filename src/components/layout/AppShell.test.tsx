@@ -2,6 +2,7 @@ import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CLAVE_MENU } from '@/hooks/useMenuMinimizado'
+import { tokenStorage } from '@/lib/api'
 import { jsonResponse, mockFetch, renderWithProviders } from '@/test/utils'
 import { AppShell } from './AppShell'
 
@@ -57,5 +58,24 @@ describe('AppShell — navegación móvil', () => {
     const navs = screen.getAllByRole('navigation', { name: 'Navegación principal' })
     const inferior = navs.find((n) => n.className.includes('bottom-0'))!
     expect(within(inferior).getAllByRole('link')).toHaveLength(5)
+  })
+})
+
+describe('AppShell — menú del usuario', () => {
+  it('ofrece «Mi perfil» y lleva a /perfil', async () => {
+    tokenStorage.set('tok')
+    mockFetch((url) =>
+      url.endsWith('/auth/me')
+        ? jsonResponse({ id: 'u2', nombre: 'Operador Ibarra', email: 'operador@pcargo.ec', rol: 'OPERADOR' })
+        : jsonResponse([]),
+    )
+    renderWithProviders(<AppShell />, {
+      route: '/panel',
+      path: '/panel',
+      extraRoutes: [{ path: '/perfil', element: <p>Página de perfil</p> }],
+    })
+    await userEvent.click(await screen.findByRole('button', { name: /Operador Ibarra/ }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Mi perfil' }))
+    expect(await screen.findByText('Página de perfil')).toBeInTheDocument()
   })
 })

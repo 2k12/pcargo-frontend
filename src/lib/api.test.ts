@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { jsonResponse, mockFetch } from '@/test/utils'
-import { api, ApiError, apiFetch, tokenStorage, UNAUTHORIZED_EVENT } from './api'
+import { api, ApiError, apiBlob, apiFetch, tokenStorage, UNAUTHORIZED_EVENT } from './api'
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -73,5 +73,41 @@ describe('apiFetch', () => {
   it('traduce fallos de red a ApiError status 0', async () => {
     vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new TypeError('Failed to fetch'))))
     await expect(apiFetch('/health')).rejects.toMatchObject({ status: 0, code: 'RED' })
+  })
+
+  it('422 (p. ej. CONTRASENA_INCORRECTA) no cierra la sesión', async () => {
+    tokenStorage.set('vigente')
+    const listener = vi.fn()
+    window.addEventListener(UNAUTHORIZED_EVENT, listener)
+    mockFetch(() => jsonResponse({ error: { code: 'CONTRASENA_INCORRECTA', message: 'La contraseña actual no es correcta' } }, 422))
+
+    await expect(api.put('/auth/me/password', { actual: 'x', nueva: 'y' })).rejects.toMatchObject({
+      status: 422,
+      code: 'CONTRASENA_INCORRECTA',
+    })
+    expect(tokenStorage.get()).toBe('vigente')
+    expect(listener).not.toHaveBeenCalled()
+    window.removeEventListener(UNAUTHORIZED_EVENT, listener)
+  })
+
+  it('envía FormData como multipart: sin Content-Type propio y con el token', async () => {
+    tokenStorage.set('abc123')
+    const fetchMock = mockFetch(() => jsonResponse({ id: 'e1' }))
+    const fd = new FormData()
+    fd.append('recibidoPor', 'Ana')
+    await api.post('/envios/e1/evidencia', fd)
+    const [, init] = fetchMock.mock.calls[0]!
+    const headers = init!.headers as Record<string, string>
+    expect(headers['Content-Type']).toBeUndefined()
+    expect(headers.Authorization).toBe('Bearer abc123')
+    expect(init!.body).toBe(fd)
+  })
+
+  it('apiBlob descarga binarios con el token', async () => {
+    tokenStorage.set('abc123')
+    const fetchMock = mockFetch(() => new Response(new Uint8Array([0xff, 0xd8, 0xff, 0xe0]), { status: 200, headers: { 'Content-Type': 'image/jpeg' } }))
+    const blob = await apiBlob('/envios/e1/evidencia')
+    expect(blob.size).toBe(4)
+    expect((fetchMock.mock.calls[0]![1]!.headers as Record<string, string>).Authorization).toBe('Bearer abc123')
   })
 })

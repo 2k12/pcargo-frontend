@@ -63,6 +63,14 @@ describe('páginas legales', () => {
     expect(screen.queryByText(/RUC/)).not.toBeInTheDocument()
   })
 
+  it('la política de privacidad declara la prueba de entrega sin inventar su plazo de conservación', () => {
+    renderWithProviders(<PrivacidadPage />, { route: '/privacidad', path: '/privacidad' })
+    expect(screen.getAllByText(/foto de la guía firmada y nombre de quien recibe/).length).toBeGreaterThan(0)
+    expect(screen.getByText(/Cloudflare R2/)).toBeInTheDocument()
+    expect(datosLegalesPendientes()).toContain('conservacionPruebaEntrega')
+    expect(screen.getByText('[pendiente: plazo de conservación de la prueba de entrega, a definir por PCargo]')).toBeInTheDocument()
+  })
+
   it('la política de pago al cobro aclara que solo se cobra el envío', () => {
     renderWithProviders(<PagoAlCobroPage />, { route: '/pago-al-cobro', path: '/pago-al-cobro' })
     expect(screen.getByText(/No recaudamos el precio de la mercadería/)).toBeInTheDocument()

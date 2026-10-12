@@ -7,6 +7,7 @@ export const enviosKeys = {
   all: ['envios'] as const,
   list: (f: FiltrosEnvios) => ['envios', 'list', f] as const,
   detail: (id: string) => ['envios', 'detail', id] as const,
+  evidencia: (id: string, version: string) => ['envios', 'evidencia', id, version] as const,
 }
 
 export function useEnvios(filtros: FiltrosEnvios) {
@@ -65,5 +66,31 @@ export function useCambiarEstado(id: string) {
       qc.invalidateQueries({ queryKey: ['envios', 'list'] })
       qc.invalidateQueries({ queryKey: ['dashboard'] })
     },
+  })
+}
+
+export function useSubirEvidencia(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ foto, nombreArchivo, recibidoPor }: { foto: Blob; nombreArchivo: string; recibidoPor: string }) =>
+      enviosApi.subirEvidencia(id, foto, nombreArchivo, recibidoPor),
+    onSuccess: (envio) => {
+      qc.setQueryData(enviosKeys.detail(id), envio)
+      qc.invalidateQueries({ queryKey: ['envios', 'list'] })
+    },
+  })
+}
+
+/**
+ * Foto de evidencia descargada con el token (Blob). `version` (fecha de subida) evita mostrar
+ * la foto anterior tras reemplazarla. Se muestra con `<BlobImagen>`, que crea y revoca la URL `blob:`.
+ */
+export function useEvidenciaFoto(id: string, version: string | null) {
+  return useQuery({
+    queryKey: enviosKeys.evidencia(id, version ?? ''),
+    queryFn: () => enviosApi.evidenciaFoto(id),
+    enabled: !!version,
+    staleTime: Infinity,
+    gcTime: 0,
   })
 }

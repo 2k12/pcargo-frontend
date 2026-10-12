@@ -18,6 +18,7 @@ import { errorMessage } from '@/lib/api'
 import { OPCIONES_POR_PAGINA } from '@/lib/paginacion'
 import { formatCurrency, formatDate } from '@/lib/format'
 import type { Estado, FormaPago } from '@/types/api'
+import { ConEvidencia } from './components/ConEvidencia'
 import { EnvioCard } from './components/EnvioCard'
 import { EnvioDetailSheet } from './components/EnvioDetailSheet'
 import { EstadoBadge } from './components/EstadoBadge'
@@ -310,7 +311,10 @@ export function EnviosPage() {
                       <span className="block text-xs text-muted-foreground">{piezasLabel(e.totalPiezas)}</span>
                     </TableCell>
                     <TableCell>
-                      <EstadoBadge estado={e.estado} />
+                      <span className="flex items-center gap-1.5">
+                        <EstadoBadge estado={e.estado} />
+                        <ConEvidencia envio={e} />
+                      </span>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
                       <FormaPagoBadge formaPago={e.formaPago} />
