@@ -6,10 +6,9 @@ import { nombreTipo } from './domain'
 
 /** Datos fijos de la guía de imprenta que esta reemplaza. */
 export const EMPRESA_GUIA = {
-  banda: 'TRANSPORTE ENTRE - IBARRA - ATUNTAQUI - OTAVALO - QUITO',
   servicio: 'SERVICIO A DOMICILIO DE ENCOMIENDAS',
   direccion: 'Dirección: Las Gardenias y El Rosal (La Florida)',
-  telefonos: 'Telf.: 06 263 2669 / 099 389 3803 / 099 801 4093',
+  telefonos: 'Telf.: 06 263 2669 / 099 801 4093',
   ciudad: 'Ibarra - Ecuador',
 } as const
 
@@ -53,6 +52,8 @@ export interface DatosGuia {
   numeroGuia: number
   /** 7 dígitos con ceros a la izquierda (o más si el número es mayor). */
   numero: string
+  /** Ruta del envío para la banda superior: «IBARRA - QUITO» (urbano: solo la ciudad). */
+  ruta: string
   nombreArchivo: string
   urlSeguimiento: string
   urlTerminos: string
@@ -123,6 +124,13 @@ export function contarPiezas(envio: Pick<Envio, 'items'>, tipos?: Pick<TipoCarga
   }
 }
 
+/** «IBARRA - QUITO»; si es urbano (misma ciudad), solo «IBARRA». */
+export function rutaGuia(ruta: Pick<Envio['ruta'], 'origen' | 'destino'>): string {
+  const origen = ruta.origen.toLocaleUpperCase('es-EC')
+  const destino = ruta.destino.toLocaleUpperCase('es-EC')
+  return origen === destino ? origen : `${origen} - ${destino}`
+}
+
 const formatoPeso = (kg: number) => `${kg.toLocaleString('es-EC', { maximumFractionDigits: 2 })} kg`
 
 /**
@@ -143,6 +151,7 @@ export function datosGuia(
   return {
     numeroGuia: envio.numeroGuia,
     numero,
+    ruta: rutaGuia(envio.ruta),
     nombreArchivo: `guia-${numero}.pdf`,
     urlSeguimiento: `${base}/seguimiento/${envio.numeroGuia}`,
     urlTerminos: `${base}/terminos`,

@@ -5,7 +5,7 @@ import { CampoFiltro, FiltrosMovil } from '@/components/FiltrosMovil'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Paginacion } from '@/components/Paginacion'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -17,14 +17,14 @@ import { useEsMovil } from '@/hooks/useMediaQuery'
 import { errorMessage } from '@/lib/api'
 import { OPCIONES_POR_PAGINA } from '@/lib/paginacion'
 import { formatCurrency, formatDate } from '@/lib/format'
-import type { Estado, FormaPago } from '@/types/api'
+import { cn } from '@/lib/utils'
+import type { Envio, Estado, FormaPago } from '@/types/api'
 import { ConEvidencia } from './components/ConEvidencia'
-import { EnvioCard } from './components/EnvioCard'
 import { EnvioDetailSheet } from './components/EnvioDetailSheet'
-import { EstadoBadge } from './components/EstadoBadge'
-import { FormaPagoBadge } from './components/FormaPagoBadge'
+import { EstadoPunto } from './components/EstadoBadge'
 import { NuevoEnvioDialog } from './components/NuevoEnvioDialog'
 import { OrigenBadge } from './components/OrigenBadge'
+import { SeleccionGuias } from './components/SeleccionGuias'
 import { ESTADO_LABEL, ESTADOS, FORMA_PAGO_LABEL, FORMAS_PAGO, piezasLabel, resumenItems } from './domain'
 import { useEnvios, useOpcionesIntegracion } from './hooks'
 
@@ -132,6 +132,15 @@ export function EnviosPage() {
   /** En móvil cada control va con su etiqueta dentro de la hoja; en escritorio, en línea. */
   const campo = (label: string, control: ReactNode) => (esMovil ? <CampoFiltro label={label}>{control}</CampoFiltro> : control)
   const [seleccionado, setSeleccionado] = useState<string | null>(null)
+  // Envíos marcados para imprimir sus guías juntas; se conservan al cambiar de página o de filtro.
+  const [marcados, setMarcados] = useState<Map<string, Envio>>(() => new Map())
+  const alternarMarcado = (e: Envio) =>
+    setMarcados((prev) => {
+      const sig = new Map(prev)
+      if (sig.has(e.id)) sig.delete(e.id)
+      else sig.set(e.id, e)
+      return sig
+    })
   const q = useDebounced(busqueda.trim(), 300)
 
   const { data: rutas = [] } = useRutas()
@@ -152,6 +161,17 @@ export function EnviosPage() {
     porPagina,
   })
   const envios = resultado?.datos
+  const marcadosEnPagina = envios?.filter((e) => marcados.has(e.id)).length ?? 0
+  const paginaMarcada = !!envios?.length && marcadosEnPagina === envios.length
+  const marcarPagina = (marcar: boolean) =>
+    setMarcados((prev) => {
+      const sig = new Map(prev)
+      for (const e of envios ?? []) {
+        if (marcar) sig.set(e.id, e)
+        else sig.delete(e.id)
+      }
+      return sig
+    })
 
   // Si la página pedida ya no existe (p. ej. se cancelaron envíos o la URL es vieja), ir a la última.
   const totalPaginas = resultado?.totalPaginas ?? 0
@@ -168,49 +188,61 @@ export function EnviosPage() {
   }, [isPlaceholderData, totalPaginas, pagina, setParams])
 
   const estadoItems = { [TODOS]: 'Todos los estados', ...ESTADO_LABEL }
-  const pagoItems = { [TODOS]: 'Todo pago', ...FORMA_PAGO_LABEL }
+  const pagoItems = { [TODOS]: 'Pago', ...FORMA_PAGO_LABEL }
   // Arreglo ordenado: un objeto pondría las claves numéricas ("1", "2"…) antes de TODOS.
   const opcionesRuta = rutas
     .map((r) => ({ value: String(r.id), label: rutaLabel({ origen: r.origen.nombre, destino: r.destino.nombre }) }))
     .sort((a, b) => a.label.localeCompare(b.label, 'es'))
   const rutaItems: Record<string, string> = {
-    [TODOS]: 'Todas las rutas',
+    [TODOS]: 'Ruta',
     ...Object.fromEntries(opcionesRuta.map((o) => [o.value, o.label])),
   }
 
-  const canalItems: Record<string, string> = { [TODOS]: 'Todo origen', PANEL: 'Panel', API: 'API' }
+  const canalItems: Record<string, string> = { [TODOS]: 'Origen', PANEL: 'Panel', API: 'API' }
   // La integración de la URL se conserva aunque aún no estén las opciones (o un OPERADOR no la vea en la lista).
   const integracionesFiltro =
     integracionId && !opcionesIntegracion.some((o) => o.id === integracionId)
       ? [...opcionesIntegracion, { id: integracionId, nombre: 'Integración seleccionada' }]
       : opcionesIntegracion
   const integracionItems: Record<string, string> = {
-    [TODOS]: 'Todas las integraciones',
+    [TODOS]: 'Integración',
     ...Object.fromEntries(integracionesFiltro.map((o) => [o.id, o.nombre])),
   }
 
-  const controles = (
+  /**
+   * En escritorio los filtros secundarios son texto silencioso (sin borde) que solo toma peso cuando
+   * filtra algo; en la hoja móvil, controles normales a ancho completo.
+   */
+  const trigger = (activo: boolean) =>
+    esMovil
+      ? 'w-full'
+      : cn(
+          'h-8 border-transparent bg-transparent px-2.5 shadow-none hover:bg-muted dark:bg-transparent',
+          activo ? 'bg-muted font-medium text-foreground' : 'text-muted-foreground',
+        )
+
+  const filtroEstado = (
+    <Select items={estadoItems} value={estado} onValueChange={(v) => setEstado(v)}>
+      <SelectTrigger className="w-full" aria-label="Filtrar por estado">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value={TODOS}>Todos los estados</SelectItem>
+        {ESTADOS.map((e) => (
+          <SelectItem key={e} value={e}>
+            {ESTADO_LABEL[e]}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  )
+
+  const filtrosSecundarios = (
     <>
-      {campo(
-        'Estado',
-        <Select items={estadoItems} value={estado} onValueChange={(v) => setEstado(v)}>
-          <SelectTrigger className="w-full lg:w-40" aria-label="Filtrar por estado">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={TODOS}>Todos los estados</SelectItem>
-            {ESTADOS.map((e) => (
-              <SelectItem key={e} value={e}>
-                {ESTADO_LABEL[e]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>,
-      )}
       {campo(
         'Forma de pago',
         <Select items={pagoItems} value={formaPago} onValueChange={(v) => setFormaPago(v)}>
-          <SelectTrigger className="w-full lg:w-36" aria-label="Filtrar por forma de pago">
+          <SelectTrigger className={trigger(formaPago !== TODOS)} aria-label="Filtrar por forma de pago">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -226,7 +258,7 @@ export function EnviosPage() {
       {campo(
         'Ruta',
         <Select items={rutaItems} value={rutaId} onValueChange={(v) => setRutaId(v)}>
-          <SelectTrigger className="col-span-2 w-full sm:col-span-1 lg:w-52" aria-label="Filtrar por ruta">
+          <SelectTrigger className={trigger(rutaId !== TODOS)} aria-label="Filtrar por ruta">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -242,7 +274,7 @@ export function EnviosPage() {
       {campo(
         'Origen',
         <Select items={canalItems} value={canal} onValueChange={(v) => setCanal(v)}>
-          <SelectTrigger className="w-full lg:w-32" aria-label="Filtrar por origen">
+          <SelectTrigger className={trigger(canal !== TODOS)} aria-label="Filtrar por origen">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -256,7 +288,7 @@ export function EnviosPage() {
         campo(
           'Integración',
           <Select items={integracionItems} value={integracionId ?? TODOS} onValueChange={(v) => setIntegracion(v)}>
-            <SelectTrigger className="w-full lg:w-48" aria-label="Filtrar por integración">
+            <SelectTrigger className={trigger(!!integracionId)} aria-label="Filtrar por integración">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -272,141 +304,226 @@ export function EnviosPage() {
     </>
   )
 
+  const hayMarcados = marcados.size > 0
+  /** Casillas discretas: aparecen al pasar sobre la fila y quedan fijas en cuanto hay una selección. */
+  const casilla = cn(
+    'transition-opacity focus-visible:opacity-100',
+    hayMarcados ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-hover/tabla:opacity-100',
+  )
+  const total = resultado?.total
+
   return (
     <>
-      <PageHeader title="Envíos" description="Encomiendas en circulación: sobres, paquetes, cartones, valijas, tela y plumones" actions={<NuevoEnvioDialog />} />
+      <PageHeader title="Envíos" actions={<NuevoEnvioDialog />} />
 
-      {/* Móvil: buscador + botón «Filtros» que abre una hoja inferior. Escritorio: todo en línea. */}
-      <div className={esMovil ? 'flex gap-2' : 'grid grid-cols-2 gap-2 sm:grid-cols-3 lg:flex'}>
-        <div className={esMovil ? 'relative min-w-0 flex-1' : 'relative col-span-2 sm:col-span-3 lg:flex-1'}>
-          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            className="pl-8"
-            placeholder="Buscar por N.º de guía, remitente, destinatario o pedido"
-            value={busqueda}
-            onChange={(e) => {
-              setBusqueda(e.target.value)
-              // Una búsqueda nueva empieza en la primera página.
-              if (pagina > 1) irAPagina(1, { replace: true })
-            }}
-            aria-label="Buscar envíos"
-          />
-        </div>
-        {esMovil ? (
-          <FiltrosMovil activos={filtrosHoja} onLimpiar={limpiarHoja} descripcion="Estado, forma de pago, ruta y origen">
-            {controles}
-          </FiltrosMovil>
-        ) : (
-          controles
+      <div className="space-y-3">
+        {/* Estado: el filtro principal, como pestañas de texto (escritorio). */}
+        {!esMovil && (
+          <div role="group" aria-label="Estado" className="-mx-1 flex gap-1 overflow-x-auto border-b">
+            {[TODOS, ...ESTADOS].map((e) => {
+              const activo = estado === e
+              return (
+                <button
+                  key={e}
+                  type="button"
+                  aria-pressed={activo}
+                  onClick={() => setEstado(e)}
+                  className={cn(
+                    '-mb-px shrink-0 border-b-2 px-2.5 pt-1 pb-2.5 text-sm whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
+                    activo ? 'border-foreground font-medium text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {e === TODOS ? 'Todos' : ESTADO_LABEL[e as Estado]}
+                </button>
+              )
+            })}
+          </div>
         )}
-      </div>
 
-      <div className="-mt-2 flex min-h-8 items-center justify-between gap-2 text-xs text-muted-foreground md:-mt-4">
-        <span className="flex min-w-0 items-center gap-2" aria-live="polite">
-          {resultado ? `${resultado.total} ${resultado.total === 1 ? 'envío' : 'envíos'}` : ''}
+        <div className="flex items-center gap-2">
+          <div className={esMovil ? 'relative min-w-0 flex-1' : 'relative w-full max-w-sm'}>
+            <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              className="pl-8"
+              placeholder="Buscar guía, cliente o pedido"
+              value={busqueda}
+              onChange={(e) => {
+                setBusqueda(e.target.value)
+                // Una búsqueda nueva empieza en la primera página.
+                if (pagina > 1) irAPagina(1, { replace: true })
+              }}
+              aria-label="Buscar envíos"
+            />
+          </div>
+          {esMovil ? (
+            <FiltrosMovil activos={filtrosHoja} onLimpiar={limpiarHoja} descripcion="Estado, forma de pago, ruta y origen">
+              {campo('Estado', filtroEstado)}
+              {filtrosSecundarios}
+            </FiltrosMovil>
+          ) : (
+            <div className="flex items-center gap-0.5">{filtrosSecundarios}</div>
+          )}
           {clienteId && (
-            <span className="inline-flex min-w-0 items-center gap-1 rounded-md bg-accent px-2 py-0.5 font-medium text-accent-foreground">
-              <UserRound className="size-3.5 shrink-0" />
-              <span className="truncate">{clienteFiltro?.nombre ?? 'Cliente'}</span>
+            <span className="inline-flex min-w-0 items-center gap-1 rounded-md bg-muted py-1 pr-1 pl-2 text-xs font-medium">
+              <UserRound className="size-3.5 shrink-0 text-muted-foreground" />
+              <span className="max-w-32 truncate">{clienteFiltro?.nombre ?? 'Cliente'}</span>
               <button
                 type="button"
                 aria-label="Quitar filtro de cliente"
-                className="rounded hover:text-foreground"
+                className="rounded p-0.5 text-muted-foreground hover:text-foreground"
                 onClick={() => setFiltro('clienteId')(null)}
               >
                 <X className="size-3.5" />
               </button>
             </span>
           )}
-        </span>
-        {hayFiltros && (
-          <Button variant="ghost" size="sm" onClick={limpiar}>
-            <X />
-            Limpiar filtros
-          </Button>
+          {hayFiltros && !esMovil && (
+            <Button variant="link" size="sm" className="px-1 text-muted-foreground" onClick={limpiar}>
+              Limpiar filtros
+            </Button>
+          )}
+          {!esMovil && (
+            <span className="ml-auto shrink-0 text-xs text-muted-foreground tabular-nums" aria-live="polite">
+              {total !== undefined ? `${total} ${total === 1 ? 'envío' : 'envíos'}` : ''}
+            </span>
+          )}
+        </div>
+        {esMovil && (hayFiltros || total !== undefined) && (
+          <div className="flex min-h-7 items-center justify-between text-xs text-muted-foreground" aria-live="polite">
+            <span className="tabular-nums">{total !== undefined ? `${total} ${total === 1 ? 'envío' : 'envíos'}` : ''}</span>
+            {hayFiltros && (
+              <Button variant="link" size="sm" className="h-auto px-0 text-muted-foreground" onClick={limpiar}>
+                Limpiar filtros
+              </Button>
+            )}
+          </div>
         )}
       </div>
 
       {error ? (
-        <Card>
-          <p className="px-4 text-sm text-destructive">{errorMessage(error)}</p>
-        </Card>
+        <p className="py-10 text-center text-sm text-destructive">{errorMessage(error)}</p>
       ) : isLoading ? (
-        <div className="space-y-2">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-16 rounded-xl md:h-10" />
+        <div className="divide-y">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-4 py-3.5">
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-4 flex-1" />
+              <Skeleton className="h-4 w-20" />
+            </div>
           ))}
         </div>
       ) : !envios || envios.length === 0 ? (
-        <Card className="items-center gap-2 py-16 text-center">
-          <PackageOpen className="size-8 text-muted-foreground" />
+        <div className="flex flex-col items-center gap-1.5 py-24 text-center">
+          <PackageOpen className="mb-2 size-6 text-muted-foreground/60" strokeWidth={1.5} />
           <p className="text-sm font-medium">No hay envíos</p>
-          <p className="text-sm text-muted-foreground">Ajusta los filtros o registra un nuevo envío.</p>
-        </Card>
+          <p className="text-sm text-muted-foreground">{hayFiltros ? 'Prueba con otros filtros.' : 'Registra el primero con «Nuevo envío».'}</p>
+        </div>
       ) : (
-        <>
-          <ul className="grid gap-2 sm:grid-cols-2 md:hidden" aria-label="Lista de envíos">
+        esMovil ? (
+          /* Móvil: lista plana con separadores finos; la casilla a la izquierda, el resto abre el detalle. */
+          <ul className="-mx-4 divide-y border-y" aria-label="Lista de envíos">
             {envios.map((e) => (
-              <li key={e.id}>
-                <EnvioCard envio={e} onSelect={setSeleccionado} />
+              <li key={e.id} className={cn('flex items-start gap-3 px-4 py-3', marcados.has(e.id) && 'bg-muted/60')}>
+                <Checkbox
+                  className="mt-0.5"
+                  checked={marcados.has(e.id)}
+                  onCheckedChange={() => alternarMarcado(e)}
+                  aria-label={`Seleccionar guía ${e.numeroGuia}`}
+                />
+                <button type="button" className="min-w-0 flex-1 text-left" onClick={() => setSeleccionado(e.id)}>
+                  <span className="flex items-baseline justify-between gap-3">
+                    <span className="truncate font-medium">{e.destinatario.nombre}</span>
+                    <span className="shrink-0 text-sm tabular-nums">{formatCurrency(e.costo)}</span>
+                  </span>
+                  <span className="mt-0.5 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                    <span className="truncate">
+                      <span className="font-mono">{e.numeroGuia}</span> · {rutaLabel(e.ruta)}
+                    </span>
+                    <PagoTexto formaPago={e.formaPago} />
+                  </span>
+                  <span className="mt-1.5 flex items-center gap-2">
+                    <EstadoPunto estado={e.estado} className="text-xs" />
+                    <ConEvidencia envio={e} />
+                    <OrigenBadge origen={e.origen} ocultarPanel className="max-w-40" />
+                  </span>
+                </button>
               </li>
             ))}
           </ul>
-          <Card className="hidden py-0 md:flex">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="pl-4">Guía</TableHead>
-                  <TableHead>Destinatario</TableHead>
-                  <TableHead className="hidden md:table-cell">Ruta</TableHead>
-                  <TableHead className="hidden sm:table-cell">Carga</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead className="hidden md:table-cell">Pago</TableHead>
-                  <TableHead className="text-right">Costo</TableHead>
-                  <TableHead className="hidden pr-4 text-right lg:table-cell">Registro</TableHead>
+        ) : (
+          <Table className="group/tabla">
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="w-10 pr-0">
+                  <Checkbox
+                    className={casilla}
+                    checked={paginaMarcada}
+                    indeterminate={marcadosEnPagina > 0 && !paginaMarcada}
+                    onCheckedChange={(c) => marcarPagina(c)}
+                    aria-label="Seleccionar todos los envíos de la página"
+                  />
+                </TableHead>
+                <TableHead className="text-xs font-normal text-muted-foreground">Guía</TableHead>
+                <TableHead className="text-xs font-normal text-muted-foreground">Destinatario</TableHead>
+                <TableHead className="hidden text-xs font-normal text-muted-foreground lg:table-cell">Ruta</TableHead>
+                <TableHead className="text-xs font-normal text-muted-foreground">Estado</TableHead>
+                <TableHead className="text-right text-xs font-normal text-muted-foreground">Costo</TableHead>
+                <TableHead className="hidden text-right text-xs font-normal text-muted-foreground xl:table-cell">Registro</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {envios.map((e) => (
+                <TableRow
+                  key={e.id}
+                  className="group cursor-pointer"
+                  data-state={marcados.has(e.id) ? 'selected' : undefined}
+                  onClick={() => setSeleccionado(e.id)}
+                >
+                  {/* La casilla no abre el detalle del envío. */}
+                  <TableCell className="py-3 pr-0" onClick={(ev) => ev.stopPropagation()}>
+                    <Checkbox
+                      className={casilla}
+                      checked={marcados.has(e.id)}
+                      onCheckedChange={() => alternarMarcado(e)}
+                      aria-label={`Seleccionar guía ${e.numeroGuia}`}
+                    />
+                  </TableCell>
+                  <TableCell className="py-3 align-top">
+                    <span className="block font-mono text-sm tabular-nums">{e.numeroGuia}</span>
+                    <OrigenBadge origen={e.origen} ocultarPanel className="mt-1 max-w-36" />
+                  </TableCell>
+                  <TableCell className="max-w-64 py-3 align-top">
+                    <span className="block truncate font-medium">{e.destinatario.nombre}</span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      de {e.remitente.nombre}
+                      <span className="lg:hidden"> · {rutaLabel(e.ruta)}</span>
+                    </span>
+                  </TableCell>
+                  <TableCell className="hidden py-3 align-top lg:table-cell">
+                    <span className="block">{rutaLabel(e.ruta)}</span>
+                    <span className="block max-w-56 truncate text-xs text-muted-foreground" title={resumenItems(e.items)}>
+                      {piezasLabel(e.totalPiezas)} · {resumenItems(e.items)}
+                    </span>
+                  </TableCell>
+                  <TableCell className="py-3 align-top">
+                    <span className="flex items-center gap-2">
+                      <EstadoPunto estado={e.estado} />
+                      <ConEvidencia envio={e} />
+                    </span>
+                  </TableCell>
+                  <TableCell className="py-3 text-right align-top">
+                    <span className="block tabular-nums">{formatCurrency(e.costo)}</span>
+                    <PagoTexto formaPago={e.formaPago} />
+                  </TableCell>
+                  <TableCell className="hidden py-3 text-right align-top xl:table-cell">
+                    <span className="block text-muted-foreground tabular-nums">{formatDate(e.registro.fecha)}</span>
+                    {e.registro.operador && <span className="block text-xs text-muted-foreground">{e.registro.operador}</span>}
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {envios.map((e) => (
-                  <TableRow key={e.id} className="cursor-pointer" onClick={() => setSeleccionado(e.id)}>
-                    <TableCell className="pl-4">
-                      <span className="block font-mono text-xs">{e.numeroGuia}</span>
-                      <OrigenBadge origen={e.origen} className="mt-1 max-w-36" />
-                    </TableCell>
-                    <TableCell>
-                      <span className="block font-medium">{e.destinatario.nombre}</span>
-                      <span className="block text-xs text-muted-foreground">de {e.remitente.nombre}</span>
-                      <span className="block text-xs text-muted-foreground sm:hidden">{piezasLabel(e.totalPiezas)}</span>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">{rutaLabel(e.ruta)}</TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      <span className="block max-w-56 truncate" title={resumenItems(e.items)}>
-                        {resumenItems(e.items)}
-                      </span>
-                      <span className="block text-xs text-muted-foreground">{piezasLabel(e.totalPiezas)}</span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="flex items-center gap-1.5">
-                        <EstadoBadge estado={e.estado} />
-                        <ConEvidencia envio={e} />
-                      </span>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      <FormaPagoBadge formaPago={e.formaPago} />
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">{formatCurrency(e.costo)}</TableCell>
-                    <TableCell className="hidden pr-4 text-right lg:table-cell">
-                      <span className="block text-muted-foreground">{formatDate(e.registro.fecha)}</span>
-                      {e.registro.operador && (
-                        <span className="block text-xs text-muted-foreground">{e.registro.operador}</span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Card>
-        </>
+              ))}
+            </TableBody>
+          </Table>
+        )
       )}
 
       {resultado && resultado.total > 0 && (
@@ -424,7 +541,22 @@ export function EnviosPage() {
         />
       )}
 
+      <SeleccionGuias envios={[...marcados.values()]} onLimpiar={() => setMarcados(new Map())} />
       <EnvioDetailSheet envioId={seleccionado} onClose={() => setSeleccionado(null)} />
     </>
+  )
+}
+
+/** Forma de pago como texto discreto; solo «Al cobro» se destaca porque implica una acción (cobrar). */
+function PagoTexto({ formaPago }: { formaPago: FormaPago }) {
+  return (
+    <span
+      className={cn(
+        'block text-xs whitespace-nowrap',
+        formaPago === 'AL_COBRO' ? 'font-medium text-amber-700 dark:text-amber-300' : 'text-muted-foreground',
+      )}
+    >
+      {FORMA_PAGO_LABEL[formaPago]}
+    </span>
   )
 }

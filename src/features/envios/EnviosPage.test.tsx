@@ -5,6 +5,9 @@ import { jsonResponse, mockFetch, renderWithProviders, simularMovil } from '@/te
 import type { Envio, Pagina } from '@/types/api'
 import { EnviosPage } from './EnviosPage'
 
+const generarGuias = vi.hoisted(() => vi.fn(async () => {}))
+vi.mock('./guiaPdf', async (original) => ({ ...(await original<typeof import('./guiaPdf')>()), generarGuias }))
+
 afterEach(() => {
   vi.unstubAllGlobals()
 })
@@ -78,6 +81,43 @@ describe('EnviosPage', () => {
     expect(await screen.findByText('41–45 de 45')).toBeInTheDocument()
   })
 
+  it('marca varios envíos (también en otras páginas) e imprime sus guías juntas, dos por hoja', async () => {
+    servidorPaginado()
+    renderWithProviders(<EnviosPage />, { route: '/envios', path: '/envios' })
+    await screen.findByText('1–20 de 45')
+    expect(screen.queryByRole('region', { name: 'Guías seleccionadas' })).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Seleccionar guía 40001' }))
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Seleccionar guía 40002' }))
+    // Marcar no abre el detalle del envío.
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Página siguiente' }))
+    await screen.findByText('21–40 de 45')
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Seleccionar guía 40021' }))
+
+    const barra = screen.getByRole('region', { name: 'Guías seleccionadas' })
+    expect(barra).toHaveTextContent('3 guías seleccionadas · 2 hojas A4')
+    await userEvent.click(within(barra).getByRole('button', { name: /Imprimir guías/ }))
+    expect(generarGuias).toHaveBeenCalledWith(
+      [expect.objectContaining({ numeroGuia: 40001 }), expect.objectContaining({ numeroGuia: 40002 }), expect.objectContaining({ numeroGuia: 40021 })],
+      'imprimir',
+    )
+
+    await userEvent.click(within(barra).getByRole('button', { name: /Quitar selección/ }))
+    expect(screen.queryByRole('region', { name: 'Guías seleccionadas' })).not.toBeInTheDocument()
+  }, 15_000)
+
+  it('la casilla del encabezado marca y desmarca todos los envíos de la página', async () => {
+    servidorPaginado()
+    renderWithProviders(<EnviosPage />, { route: '/envios', path: '/envios' })
+    await screen.findByText('1–20 de 45')
+    const todos = screen.getByRole('checkbox', { name: 'Seleccionar todos los envíos de la página' })
+    await userEvent.click(todos)
+    expect(screen.getByRole('region', { name: 'Guías seleccionadas' })).toHaveTextContent('20 guías seleccionadas · 10 hojas A4')
+    await userEvent.click(todos)
+    expect(screen.queryByRole('region', { name: 'Guías seleccionadas' })).not.toBeInTheDocument()
+  })
+
   it('respeta la página de la URL y vuelve a la primera al cambiar un filtro', async () => {
     const fetch = servidorPaginado()
     renderWithProviders(<EnviosPage />, { route: '/envios?pagina=2', path: '/envios' })
@@ -116,13 +156,13 @@ describe('EnviosPage', () => {
         return jsonResponse([])
       })
 
-    it('marca cada envío con su origen: «Panel» discreto y «API · integración» destacado', async () => {
+    it('marca solo los envíos por API («API · integración»); los del panel, lo habitual, no llevan insignia', async () => {
       servidor()
       renderWithProviders(<EnviosPage />, { route: '/envios', path: '/envios' })
       const tabla = await screen.findByRole('table')
       const filas = within(tabla).getAllByRole('row')
       expect(within(filas[1]!).getByTestId('origen-badge')).toHaveTextContent('API · Tienda Kichwa')
-      expect(within(filas[2]!).getByTestId('origen-badge')).toHaveTextContent('Panel')
+      expect(within(filas[2]!).queryByTestId('origen-badge')).not.toBeInTheDocument()
     })
 
     it('filtra por canal e integración (en la URL) y, sin acceso a /integraciones, toma las opciones del resumen', async () => {

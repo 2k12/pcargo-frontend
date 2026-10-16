@@ -17,3 +17,13 @@ export function EstadoBadge({ estado, className }: { estado: Estado; className?:
     </span>
   )
 }
+
+/** Estado sin fondo (punto + texto) para listas densas: el color queda solo en el punto. */
+export function EstadoPunto({ estado, className }: { estado: Estado; className?: string }) {
+  return (
+    <span className={cn('inline-flex items-center gap-2 text-sm whitespace-nowrap', className)}>
+      <span className={cn('size-1.5 shrink-0 rounded-full', ESTADO_DOT[estado])} aria-hidden />
+      {ESTADO_LABEL[estado]}
+    </span>
+  )
+}

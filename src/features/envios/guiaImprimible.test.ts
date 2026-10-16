@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Envio } from '@/types/api'
-import { datosGuia, fechaHoraEcuador, numeroGuiaImpreso } from './guiaImprimible'
+import { datosGuia, EMPRESA_GUIA, fechaHoraEcuador, numeroGuiaImpreso, rutaGuia } from './guiaImprimible'
 
 const ORIGEN = 'https://pcargo.ec'
 
@@ -43,6 +43,19 @@ describe('numeroGuiaImpreso', () => {
     [123456789, '123456789'],
   ])('%i → %s', (n, esperado) => {
     expect(numeroGuiaImpreso(n)).toBe(esperado)
+  })
+})
+
+describe('rutaGuia y datos de la empresa', () => {
+  it('la banda muestra la ruta del envío; si es urbano, solo la ciudad', () => {
+    expect(rutaGuia({ origen: 'Ibarra', destino: 'Quito' })).toBe('IBARRA - QUITO')
+    expect(rutaGuia({ origen: 'Otavalo', destino: 'Otavalo' })).toBe('OTAVALO')
+    expect(datosGuia(base, ORIGEN).ruta).toBe('ATUNTAQUI - QUITO')
+  })
+
+  it('los teléfonos ya no incluyen el 099 389 3803', () => {
+    expect(EMPRESA_GUIA.telefonos).not.toContain('3803')
+    expect(EMPRESA_GUIA.telefonos).toBe('Telf.: 06 263 2669 / 099 801 4093')
   })
 })
 
