@@ -134,6 +134,23 @@ describe('ClientesPage', () => {
 })
 
 describe('ClientesPage — acceso al portal (contrato v12)', () => {
+  it('en móvil es una lista compacta: sin desbordar, sin botón por cliente y con «Nuevo envío» en el menú', async () => {
+    simularMovil()
+    setup([ana, { ...ana, id: 'c2', nombre: 'Luis Mora', telefono: '0985556677', monto: 0, envios: 0 }])
+    const lista = await screen.findByRole('list', { name: 'Clientes' })
+    expect(within(lista).getAllByRole('listitem')).toHaveLength(2)
+    expect(within(lista).getByText('0991112233 · 4 envíos')).toBeInTheDocument()
+    expect(within(lista).getByText('+$32,50')).toHaveClass('text-brand-green-text')
+    // Sin ingresos: monto neutro, no «+$0,00».
+    expect(within(lista).getByText('$0,00')).toHaveClass('text-muted-foreground')
+    expect(within(lista).queryByRole('button', { name: 'Nuevo envío' })).not.toBeInTheDocument()
+
+    await userEvent.click(within(lista).getByRole('button', { name: 'Acciones de Ana López' }))
+    expect(await screen.findByRole('menuitem', { name: 'Llamar' })).toHaveAttribute('href', 'tel:0991112233')
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Nuevo envío' }))
+    expect(await screen.findByRole('dialog')).toHaveTextContent(/Nuevo envío/)
+  })
+
   it('indica los accesos al portal y avisa al eliminar que se desactivarán', async () => {
     setup([{ ...ana, accesosPortal: 2 }])
     expect(await screen.findByTitle('2 accesos activos al portal')).toHaveTextContent('Portal · 2')

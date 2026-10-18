@@ -2,6 +2,7 @@ import {
   ArrowUpRight,
   LayoutDashboard,
   LogOut,
+  Menu,
   PackageSearch,
   PanelLeftClose,
   PanelLeftOpen,
@@ -16,11 +17,12 @@ import {
   Wallet,
   type LucideIcon,
 } from 'lucide-react'
-import { Suspense } from 'react'
-import { Link, NavLink, Outlet, useNavigate } from 'react-router'
+import { Suspense, useState } from 'react'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 import { Logo, LogoMark } from '@/components/brand/PCargoLogo'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Toaster } from '@/components/ui/sonner'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
@@ -52,7 +54,7 @@ interface ItemNav {
   externo?: boolean
   /** Solo para ADMIN: a un OPERADOR no se le muestra (el servidor también lo bloquea). */
   soloAdmin?: boolean
-  /** false: no va en la barra inferior del móvil (cinco pestañas); en móvil se llega desde el menú del usuario. */
+  /** false: no va en la barra inferior del móvil (cuatro pestañas + «Más»); en móvil se abre desde «Más». */
   movil?: boolean
 }
 
@@ -63,13 +65,13 @@ const GRUPOS: { titulo: string; items: ItemNav[] }[] = [
       { to: '/panel', label: 'Resumen', corto: 'Resumen', icon: LayoutDashboard, end: true },
       { to: '/envios', label: 'Envíos', corto: 'Envíos', icon: Package, end: false },
       { to: '/clientes', label: 'Clientes', corto: 'Clientes', icon: Users, end: false },
-      { to: '/caja', label: 'Caja', corto: 'Caja', icon: Wallet, end: false, movil: false },
+      { to: '/caja', label: 'Caja', corto: 'Caja', icon: Wallet, end: false },
     ],
   },
   {
     titulo: 'Configuración',
     items: [
-      { to: '/rutas', label: 'Cobertura y tarifas', corto: 'Tarifas', icon: Route, end: false },
+      { to: '/rutas', label: 'Cobertura y tarifas', corto: 'Tarifas', icon: Route, end: false, movil: false },
       { to: '/catalogo', label: 'Tarifas y tipos de carga', corto: 'Catálogo', icon: Tags, end: false, soloAdmin: true, movil: false },
       { to: '/integraciones', label: 'Integraciones', corto: 'API', icon: Plug, end: false, soloAdmin: true, movil: false },
     ],
@@ -91,7 +93,7 @@ const GRUPOS: { titulo: string; items: ItemNav[] }[] = [
   },
   {
     titulo: 'Público',
-    items: [{ to: '/panel/seguimiento', label: 'Rastreo de envíos', corto: 'Rastreo', icon: PackageSearch, end: false }],
+    items: [{ to: '/panel/seguimiento', label: 'Rastreo de envíos', corto: 'Rastreo', icon: PackageSearch, end: false, movil: false }],
   },
 ]
 
@@ -106,36 +108,94 @@ function useGrupos() {
 /** Estado activo idéntico en barra lateral y pestañas (similitud). */
 const ACTIVO = 'bg-accent font-medium text-accent-foreground'
 
-/** Barra de pestañas inferior para móvil. */
-function BottomNav() {
+const enRuta = (ruta: string, to: string) => ruta === to || ruta.startsWith(`${to}/`)
+
+const claseTab = (activo: boolean) =>
+  cn('flex flex-col items-center gap-0.5 py-2 text-[11px] text-muted-foreground transition-colors', activo && 'font-medium text-foreground')
+
+function IconoTab({ icon: Icon, activo }: { icon: LucideIcon; activo: boolean }) {
   return (
-    <nav
-      aria-label="Navegación principal"
-      className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t bg-background/90 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
-    >
-      {NAV_MOVIL.map(({ to, corto, icon: Icon, end }) => (
-        <NavLink
-          key={to}
-          to={to}
-          end={end}
-          className={({ isActive }) =>
-            cn(
-              'flex flex-col items-center gap-0.5 py-2 text-[11px] text-muted-foreground transition-colors',
-              isActive && 'font-medium text-foreground',
-            )
-          }
-        >
-          {({ isActive }) => (
-            <>
-              <span className={cn('rounded-full px-3 py-1 transition-colors', isActive && ACTIVO)}>
-                <Icon className="size-4" />
-              </span>
-              {corto}
-            </>
-          )}
-        </NavLink>
-      ))}
-    </nav>
+    <span className={cn('rounded-full px-3 py-1 transition-colors', activo && ACTIVO)}>
+      <Icon className="size-4" />
+    </span>
+  )
+}
+
+/**
+ * «Más» (móvil): todas las secciones que no caben en la barra, agrupadas como en la barra lateral
+ * (mismos títulos y orden), más la cuenta. Así cada rol ve en el teléfono todo lo que puede abrir.
+ */
+function MasSheet({ abierto, onCerrar }: { abierto: boolean; onCerrar: () => void }) {
+  const { usuario, logout } = useAuth()
+  const { pathname } = useLocation()
+  const grupos = useGrupos()
+    .map((g) => ({ ...g, items: g.items.filter((i) => i.movil === false) }))
+    .filter((g) => g.items.length > 0)
+  const fila = 'flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm transition-colors hover:bg-muted'
+  return (
+    <Sheet open={abierto} onOpenChange={(o) => !o && onCerrar()}>
+      <SheetContent side="bottom" className="max-h-[85svh] gap-0 overflow-y-auto rounded-t-2xl pb-[calc(env(safe-area-inset-bottom)+1rem)]">
+        <SheetHeader className="pb-2">
+          <SheetTitle>Más</SheetTitle>
+          <SheetDescription className="sr-only">Otras secciones del panel y tu cuenta</SheetDescription>
+        </SheetHeader>
+        <nav aria-label="Más secciones" className="space-y-4 px-4">
+          {grupos.map((g) => (
+            <div key={g.titulo} className="space-y-1">
+              <p className="px-3 text-[11px] font-medium tracking-wide text-muted-foreground/80 uppercase">{g.titulo}</p>
+              {g.items.map(({ to, label, icon: Icon }) => (
+                <Link key={to} to={to} onClick={onCerrar} className={cn(fila, enRuta(pathname, to) && ACTIVO)}>
+                  <Icon className="size-4 text-muted-foreground" />
+                  {label}
+                </Link>
+              ))}
+            </div>
+          ))}
+          <div className="space-y-1 border-t pt-3">
+            <Link to="/perfil" onClick={onCerrar} className={cn(fila, enRuta(pathname, '/perfil') && ACTIVO)}>
+              <UserRound className="size-4 text-muted-foreground" />
+              Mi perfil
+              {usuario && <span className="ml-auto truncate text-xs text-muted-foreground">{usuario.email}</span>}
+            </Link>
+            <button type="button" onClick={logout} className={cn(fila, 'w-full text-left')}>
+              <LogOut className="size-4 text-muted-foreground" />
+              Cerrar sesión
+            </button>
+          </div>
+        </nav>
+      </SheetContent>
+    </Sheet>
+  )
+}
+
+/** Barra de pestañas inferior para móvil: las cuatro secciones diarias y «Más» para el resto. */
+function BottomNav() {
+  const { pathname } = useLocation()
+  const [mas, setMas] = useState(false)
+  const masActivo = useGrupos().some((g) => g.items.some((i) => i.movil === false && enRuta(pathname, i.to))) || enRuta(pathname, '/perfil')
+  return (
+    <>
+      <nav
+        aria-label="Navegación principal"
+        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t bg-background/90 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+      >
+        {NAV_MOVIL.map(({ to, corto, icon, end }) => (
+          <NavLink key={to} to={to} end={end} className={({ isActive }) => claseTab(isActive)}>
+            {({ isActive }) => (
+              <>
+                <IconoTab icon={icon} activo={isActive} />
+                {corto}
+              </>
+            )}
+          </NavLink>
+        ))}
+        <button type="button" className={claseTab(masActivo || mas)} aria-haspopup="dialog" onClick={() => setMas(true)}>
+          <IconoTab icon={Menu} activo={masActivo || mas} />
+          Más
+        </button>
+      </nav>
+      <MasSheet abierto={mas} onCerrar={() => setMas(false)} />
+    </>
   )
 }
 
@@ -240,32 +300,6 @@ function UserMenu() {
           <UserRound />
           Mi perfil
         </DropdownMenuItem>
-        {/* En móvil la barra inferior solo tiene cinco pestañas: el resto se abre desde aquí. */}
-        <DropdownMenuItem className="md:hidden" onClick={() => navigate('/caja')}>
-          <Wallet />
-          Caja
-        </DropdownMenuItem>
-        {usuario.rol === 'ADMIN' && (
-          // En móvil la barra inferior no tiene espacio: el catálogo y las integraciones se abren desde aquí.
-          <>
-            <DropdownMenuItem className="md:hidden" onClick={() => navigate('/catalogo')}>
-              <Tags />
-              Tarifas y tipos de carga
-            </DropdownMenuItem>
-            <DropdownMenuItem className="md:hidden" onClick={() => navigate('/integraciones')}>
-              <Plug />
-              Integraciones
-            </DropdownMenuItem>
-            <DropdownMenuItem className="md:hidden" onClick={() => navigate('/usuarios')}>
-              <UserCog />
-              Usuarios
-            </DropdownMenuItem>
-            <DropdownMenuItem className="md:hidden" onClick={() => navigate('/datos-personales')}>
-              <ShieldCheck />
-              Datos personales
-            </DropdownMenuItem>
-          </>
-        )}
         <DropdownMenuItem onClick={logout}>
           <LogOut />
           Cerrar sesión

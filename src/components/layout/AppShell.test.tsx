@@ -51,13 +51,23 @@ describe('AppShell — menú lateral', () => {
   })
 })
 
+const barraInferior = () =>
+  screen.getAllByRole('navigation', { name: 'Navegación principal' }).find((n) => n.className.includes('bottom-0'))!
+
+/** Abre «Más» en la barra inferior y devuelve los nombres de sus enlaces. */
+async function abrirMas() {
+  await userEvent.click(within(barraInferior()).getByRole('button', { name: 'Más' }))
+  const mas = await screen.findByRole('navigation', { name: 'Más secciones' })
+  return { mas, nombres: within(mas).getAllByRole('link').map((a) => a.textContent) }
+}
+
 // La barra inferior del móvil no cambia con el menú lateral.
 describe('AppShell — navegación móvil', () => {
-  it('mantiene las cinco pestañas inferiores', () => {
+  it('cuatro pestañas diarias (Resumen, Envíos, Clientes, Caja) y «Más»', () => {
     menuLateral()
-    const navs = screen.getAllByRole('navigation', { name: 'Navegación principal' })
-    const inferior = navs.find((n) => n.className.includes('bottom-0'))!
-    expect(within(inferior).getAllByRole('link')).toHaveLength(5)
+    const inferior = barraInferior()
+    expect(within(inferior).getAllByRole('link').map((a) => a.textContent)).toEqual(['Resumen', 'Envíos', 'Clientes', 'Caja'])
+    expect(within(inferior).getByRole('button', { name: 'Más' })).toBeInTheDocument()
   })
 })
 
@@ -89,34 +99,38 @@ describe('AppShell — opciones solo para ADMIN', () => {
     renderWithProviders(<AppShell />, { route: '/panel', path: '/panel' })
   }
 
-  it('el ADMIN ve «Integraciones» junto a la configuración (no en las cinco pestañas del móvil)', async () => {
+  it('en móvil, «Más» le muestra al ADMIN todas las demás secciones agrupadas, su perfil y cerrar sesión', async () => {
     sesion('ADMIN')
     const menu = document.getElementById('menu-lateral')!
     expect(await within(menu).findByRole('link', { name: 'Integraciones' })).toHaveAttribute('href', '/integraciones')
-    const inferior = screen.getAllByRole('navigation', { name: 'Navegación principal' }).find((n) => n.className.includes('bottom-0'))!
-    expect(within(inferior).getAllByRole('link')).toHaveLength(5)
-    // En móvil se llega desde el menú del usuario.
-    await userEvent.click(screen.getByRole('button', { name: /Usuario ADMIN/ }))
-    expect(await screen.findByRole('menuitem', { name: 'Integraciones' })).toBeInTheDocument()
+    const { mas, nombres } = await abrirMas()
+    expect(nombres).toEqual([
+      'Cobertura y tarifas',
+      'Tarifas y tipos de carga',
+      'Integraciones',
+      'Usuarios',
+      'Datos personales',
+      'Rastreo de envíos',
+      expect.stringContaining('Mi perfil'),
+    ])
+    expect(within(mas).getByText('Administración')).toBeInTheDocument()
+    expect(within(mas).getByRole('button', { name: 'Cerrar sesión' })).toBeInTheDocument()
   })
 
-  it('el ADMIN ve «Tarifas y tipos de carga» en Configuración, entre Cobertura e Integraciones, y en el menú móvil', async () => {
+  it('el ADMIN ve «Tarifas y tipos de carga» en Configuración, entre Cobertura e Integraciones', async () => {
     sesion('ADMIN')
     const menu = document.getElementById('menu-lateral')!
     expect(await within(menu).findByRole('link', { name: 'Tarifas y tipos de carga' })).toHaveAttribute('href', '/catalogo')
     const nombres = within(menu).getAllByRole('link').map((a) => a.textContent)
     expect(nombres.indexOf('Tarifas y tipos de carga')).toBe(nombres.indexOf('Cobertura y tarifas') + 1)
     expect(nombres.indexOf('Integraciones')).toBe(nombres.indexOf('Tarifas y tipos de carga') + 1)
-    await userEvent.click(screen.getByRole('button', { name: /Usuario ADMIN/ }))
-    expect(await screen.findByRole('menuitem', { name: 'Tarifas y tipos de carga' })).toBeInTheDocument()
   })
 
-  it('un OPERADOR no ve «Integraciones»', async () => {
+  it('un OPERADOR no ve las secciones del ADMIN, ni en el menú lateral ni en «Más»', async () => {
     sesion('OPERADOR')
-    await userEvent.click(await screen.findByRole('button', { name: /Usuario OPERADOR/ }))
-    await screen.findByRole('menuitem', { name: 'Mi perfil' })
-    expect(screen.queryByRole('menuitem', { name: 'Integraciones' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('menuitem', { name: 'Tarifas y tipos de carga' })).not.toBeInTheDocument()
+    await screen.findByRole('button', { name: /Usuario OPERADOR/ })
+    const { nombres } = await abrirMas()
+    expect(nombres).toEqual(['Cobertura y tarifas', 'Rastreo de envíos', expect.stringContaining('Mi perfil')])
     expect(within(document.getElementById('menu-lateral')!).queryByRole('link', { name: 'Tarifas y tipos de carga' })).not.toBeInTheDocument()
     expect(within(document.getElementById('menu-lateral')!).queryByRole('link', { name: 'Integraciones' })).not.toBeInTheDocument()
   })

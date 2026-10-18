@@ -109,13 +109,21 @@ export function NuevoEnvioDialog({
   cliente,
   label = 'Nuevo envío',
   variant = 'default',
+  abierto,
+  onAbiertoChange,
 }: {
   /** Abre el formulario con este cliente como remitente. */
   cliente?: Cliente
   label?: string
   variant?: 'default' | 'outline'
+  /** Modo controlado (p. ej. desde el menú de un cliente): sin botón propio. */
+  abierto?: boolean
+  onAbiertoChange?: (abierto: boolean) => void
 } = {}) {
-  const [open, setOpen] = useState(false)
+  const [openInterno, setOpenInterno] = useState(false)
+  const controlado = abierto !== undefined
+  const open = controlado ? abierto : openInterno
+  const setOpen = (o: boolean) => (controlado ? onAbiertoChange?.(o) : setOpenInterno(o))
   const qc = useQueryClient()
   const { data: clientes = [] } = useClientes()
   const { data: tipos = TIPOS_CARGA_DEFAULT } = useTiposCarga()
@@ -219,10 +227,12 @@ export function NuevoEnvioDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button variant={variant} />}>
-        <Plus />
-        {label}
-      </DialogTrigger>
+      {!controlado && (
+        <DialogTrigger render={<Button variant={variant} />}>
+          <Plus />
+          {label}
+        </DialogTrigger>
+      )}
       <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Nuevo envío</DialogTitle>

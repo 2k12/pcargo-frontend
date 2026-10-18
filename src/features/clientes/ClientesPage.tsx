@@ -1,4 +1,4 @@
-import { ArrowUpDown, BarChart3, KeyRound, MapPin, MoreHorizontal, Package, Pencil, Phone, Search, Trash2, UserPlus, Users, X } from 'lucide-react'
+import { ArrowUpDown, BarChart3, KeyRound, MapPin, MoreHorizontal, Package, Pencil, Phone, Plus, Search, Trash2, UserPlus, Users, X } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { toast } from 'sonner'
@@ -28,7 +28,7 @@ import { NuevoEnvioDialog } from '@/features/envios/components/NuevoEnvioDialog'
 import { useEsMovil } from '@/hooks/useMediaQuery'
 import { errorMessage } from '@/lib/api'
 import { SUPERFICIE } from '@/lib/estilos'
-import { formatIngreso, formatRelativo, iniciales } from '@/lib/format'
+import { formatCurrency, formatIngreso, formatRelativo, iniciales } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { Cliente } from '@/types/api'
 import { useClientes, useEliminarCliente } from './api'
@@ -44,6 +44,110 @@ const OPCIONES_ORDEN: { value: OrdenClientes; label: string }[] = [
   { value: 'reciente', label: 'Recientes' },
 ]
 
+interface AccionesCliente {
+  onEditar: () => void
+  onEliminar: () => void
+  /** Solo ADMIN (contrato v12): accesos al portal de clientes empresa. */
+  onAccesos?: () => void
+  /** Móvil: el nuevo envío va en el menú (la fila no tiene sitio para un botón). */
+  onNuevoEnvio?: () => void
+}
+
+function MenuCliente({ cliente, onEditar, onEliminar, onAccesos, onNuevoEnvio }: { cliente: Cliente } & AccionesCliente) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger render={<Button variant="ghost" size="icon" aria-label={`Acciones de ${cliente.nombre}`} />}>
+        <MoreHorizontal />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-52">
+        {onNuevoEnvio && (
+          <>
+            <DropdownMenuItem onClick={onNuevoEnvio}>
+              <Plus />
+              Nuevo envío
+            </DropdownMenuItem>
+            <DropdownMenuItem render={<a href={`tel:${cliente.telefono.replace(/\s/g, '')}`} />}>
+              <Phone />
+              Llamar
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
+        <DropdownMenuItem onClick={onEditar}>
+          <Pencil />
+          Editar
+        </DropdownMenuItem>
+        <DropdownMenuItem render={<Link to={`/panel?cliente=${cliente.id}`} />}>
+          <BarChart3 />
+          Ver en el resumen
+        </DropdownMenuItem>
+        <DropdownMenuItem render={<Link to={`/envios?clienteId=${cliente.id}`} />}>
+          <Package />
+          Ver sus envíos
+        </DropdownMenuItem>
+        {onAccesos && (
+          <DropdownMenuItem onClick={onAccesos}>
+            <KeyRound />
+            Acceso al portal
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem variant="destructive" onClick={onEliminar}>
+          <Trash2 />
+          Eliminar
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+function InsigniaPortal({ accesos }: { accesos: number }) {
+  if (accesos <= 0) return null
+  return (
+    <span
+      className="inline-flex shrink-0 items-center gap-1 rounded-md bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground"
+      title={`${accesos} ${accesos === 1 ? 'acceso activo' : 'accesos activos'} al portal`}
+    >
+      <KeyRound className="size-3" />
+      Portal{accesos > 1 ? ` · ${accesos}` : ''}
+    </span>
+  )
+}
+
+/** Ingresos: en verde con «+» si hay; «$0,00» neutro si aún no envió (un «+$0,00» no dice nada). */
+const ingresos = (monto: number) => (monto > 0 ? formatIngreso(monto) : formatCurrency(0))
+
+/**
+ * Móvil: una fila por cliente dentro de una sola superficie (región común), como la lista de envíos.
+ * Nombre y monto son la figura; teléfono, envíos y último envío, el fondo; las acciones, en el menú.
+ */
+function ClienteFila({ cliente, ...acciones }: { cliente: Cliente } & AccionesCliente) {
+  const detalle = [
+    cliente.telefono,
+    `${cliente.envios} ${cliente.envios === 1 ? 'envío' : 'envíos'}`,
+    cliente.ultimoEnvio ? formatRelativo(cliente.ultimoEnvio) : null,
+  ].filter(Boolean)
+  return (
+    <li className="flex items-center gap-3 py-3 pr-1 pl-4">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+        {iniciales(cliente.nombre)}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="flex min-w-0 items-center gap-1.5">
+          <span className="truncate font-medium">{cliente.nombre}</span>
+          <InsigniaPortal accesos={cliente.accesosPortal ?? 0} />
+        </p>
+        <p className="truncate text-xs text-muted-foreground">{detalle.join(' · ')}</p>
+        {!cliente.consentimientoEn && <p className="text-xs text-amber-700 dark:text-amber-300">Sin consentimiento registrado</p>}
+      </div>
+      <span className={cn('shrink-0 text-sm font-semibold tabular-nums', cliente.monto > 0 ? 'text-brand-green-text' : 'text-muted-foreground')}>
+        {ingresos(cliente.monto)}
+      </span>
+      <MenuCliente cliente={cliente} {...acciones} />
+    </li>
+  )
+}
+
 function ClienteCard({
   cliente,
   onEditar,
@@ -58,7 +162,7 @@ function ClienteCard({
 }) {
   const accesos = cliente.accesosPortal ?? 0
   return (
-    <li className={cn('flex flex-col gap-3 p-4', SUPERFICIE)}>
+    <li className={cn('flex min-w-0 flex-col gap-3 p-4', SUPERFICIE)}>
       <div className="flex items-start gap-3">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
           {iniciales(cliente.nombre)}
@@ -66,15 +170,7 @@ function ClienteCard({
         <div className="min-w-0 flex-1 space-y-0.5">
           <p className="flex items-center gap-2">
             <span className="truncate font-medium">{cliente.nombre}</span>
-            {accesos > 0 && (
-              <span
-                className="inline-flex shrink-0 items-center gap-1 rounded-md bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground"
-                title={`${accesos} ${accesos === 1 ? 'acceso activo' : 'accesos activos'} al portal`}
-              >
-                <KeyRound className="size-3" />
-                Portal{accesos > 1 ? ` · ${accesos}` : ''}
-              </span>
-            )}
+            <InsigniaPortal accesos={accesos} />
           </p>
           {!cliente.consentimientoEn && (
             <p className="text-xs text-amber-700 dark:text-amber-300">Sin consentimiento registrado: confírmalo al editar</p>
@@ -90,36 +186,7 @@ function ClienteCard({
             </p>
           )}
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label={`Acciones de ${cliente.nombre}`} />}>
-            <MoreHorizontal />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={onEditar}>
-              <Pencil />
-              Editar
-            </DropdownMenuItem>
-            <DropdownMenuItem render={<Link to={`/panel?cliente=${cliente.id}`} />}>
-              <BarChart3 />
-              Ver en el resumen
-            </DropdownMenuItem>
-            <DropdownMenuItem render={<Link to={`/envios?clienteId=${cliente.id}`} />}>
-              <Package />
-              Ver sus envíos
-            </DropdownMenuItem>
-            {onAccesos && (
-              <DropdownMenuItem onClick={onAccesos}>
-                <KeyRound />
-                Acceso al portal
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive" onClick={onEliminar}>
-              <Trash2 />
-              Eliminar
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <MenuCliente cliente={cliente} onEditar={onEditar} onEliminar={onEliminar} onAccesos={onAccesos} />
       </div>
 
       {cliente.notas && <p className="line-clamp-2 text-xs text-muted-foreground italic">{cliente.notas}</p>}
@@ -132,7 +199,7 @@ function ClienteCard({
         <div>
           <dt className="text-muted-foreground">Ingresos</dt>
           <dd className={cn('text-sm font-semibold tabular-nums', cliente.monto > 0 && 'text-brand-green-text')}>
-            {formatIngreso(cliente.monto)}
+            {ingresos(cliente.monto)}
           </dd>
         </div>
         <div>
@@ -157,6 +224,7 @@ export function ClientesPage() {
   const [aEliminar, setAEliminar] = useState<Cliente | null>(null)
   const esAdmin = useEsAdmin()
   const [accesosDe, setAccesosDe] = useState<Cliente | null>(null)
+  const [envioDe, setEnvioDe] = useState<Cliente | null>(null)
 
   const visibles = ordenarClientes(buscarClientes(clientes, busqueda), orden)
   const abrirNuevo = () => {
@@ -259,6 +327,22 @@ export function ClientesPage() {
             Registrarlo como nuevo
           </Button>
         </div>
+      ) : esMovil ? (
+        <ul className={cn('divide-y overflow-hidden', SUPERFICIE)} aria-label="Clientes">
+          {visibles.map((c) => (
+            <ClienteFila
+              key={c.id}
+              cliente={c}
+              onEditar={() => {
+                setEditando(c)
+                setFormAbierto(true)
+              }}
+              onEliminar={() => setAEliminar(c)}
+              onAccesos={esAdmin ? () => setAccesosDe(c) : undefined}
+              onNuevoEnvio={() => setEnvioDe(c)}
+            />
+          ))}
+        </ul>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {visibles.map((c) => (
@@ -282,6 +366,15 @@ export function ClientesPage() {
         cliente={editando}
         inicial={!editando && busqueda.trim() ? (/\d{3}/.test(busqueda) ? { telefono: busqueda } : { nombre: busqueda }) : undefined}
       />
+
+      {envioDe && (
+        <NuevoEnvioDialog
+          key={envioDe.id}
+          cliente={envioDe}
+          abierto
+          onAbiertoChange={(o) => !o && setEnvioDe(null)}
+        />
+      )}
 
       <AccesosPortalDialog key={accesosDe?.id ?? 'accesos'} cliente={accesosDe} onClose={() => setAccesosDe(null)} />
 

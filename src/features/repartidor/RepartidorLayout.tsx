@@ -1,6 +1,6 @@
 import { CalendarCheck, ListTodo, LogOut, ScanLine, UserRound, Wallet, type LucideIcon } from 'lucide-react'
 import { Suspense, useEffect, useState } from 'react'
-import { NavLink, Outlet, useSearchParams } from 'react-router'
+import { NavLink, Outlet, useLocation, useSearchParams } from 'react-router'
 import { LogoMark } from '@/components/brand/PCargoLogo'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { Button } from '@/components/ui/button'
@@ -46,6 +46,8 @@ export function RepartidorLayout() {
     setBuscar(true)
   }
   const nombre = usuario?.nombre.split(/\s+/)[0] ?? ''
+  // En el perfil el botón flotante taparía el formulario.
+  const enPerfil = useLocation().pathname.startsWith('/repartidor/perfil')
 
   return (
     <div className="flex min-h-svh flex-col bg-muted/40">
@@ -68,8 +70,13 @@ export function RepartidorLayout() {
         </Suspense>
       </main>
 
-      {/* Acción frecuente: siempre visible sobre la barra de pestañas. */}
-      <div className="pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+4.25rem)] z-30 flex justify-center px-4">
+      {/* Acción frecuente: siempre visible sobre la barra de pestañas (salvo en el perfil). */}
+      <div
+        className={cn(
+          'pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+4.25rem)] z-30 flex justify-center px-4',
+          enPerfil && 'hidden',
+        )}
+      >
         <Button className="pointer-events-auto h-12 rounded-full px-6 text-base shadow-lg" onClick={abrirBuscar}>
           <ScanLine className="size-5" />
           Buscar o escanear guía
