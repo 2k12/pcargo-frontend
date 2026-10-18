@@ -669,11 +669,6 @@ export interface FiltroCierres {
   porPagina?: number
 }
 
-export interface PoliticaDatos {
-  /** Plazo declarado en la política de privacidad: 12–120, por defecto 12. El sistema no borra nada por su cuenta. */
-  mesesRetencion: number
-}
-
 export interface DatosTitular {
   /** Tal como se consultó. */
   telefono: string

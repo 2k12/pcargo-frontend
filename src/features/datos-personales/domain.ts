@@ -1,18 +1,6 @@
-// Retención y eliminación de datos personales (contrato v13, LOPDP): reglas puras.
+// Eliminación de datos personales a pedido del titular (contrato v14, LOPDP): reglas puras.
 import { z } from 'zod'
 import type { CanalSolicitud, DatosTitular, SolicitudDatos } from '@/types/api'
-
-export const MESES_MIN = 12
-export const MESES_MAX = 120
-export const MESES_DEFECTO = 12
-
-export const politicaSchema = z.object({
-  mesesRetencion: z
-    .number({ message: `Entre ${MESES_MIN} y ${MESES_MAX} meses` })
-    .int('Solo meses enteros')
-    .min(MESES_MIN, `Mínimo ${MESES_MIN} meses`)
-    .max(MESES_MAX, `Máximo ${MESES_MAX} meses`),
-})
 
 export const CANALES: CanalSolicitud[] = ['PRESENCIAL', 'CORREO', 'TELEFONO', 'WHATSAPP']
 
@@ -33,15 +21,6 @@ export type SolicitudFormValues = z.infer<typeof solicitudSchema>
 
 /** «1 envío», «3 envíos». */
 export const contar = (n: number, singular: string, plural: string): string => `${n} ${n === 1 ? singular : plural}`
-
-/** «12 meses», «2 años», «1 año y 6 meses». */
-export function plazoTexto(meses: number): string {
-  const anios = Math.floor(meses / 12)
-  const resto = meses % 12
-  if (anios === 0) return contar(meses, 'mes', 'meses')
-  const a = contar(anios, 'año', 'años')
-  return resto ? `${a} y ${contar(resto, 'mes', 'meses')}` : a
-}
 
 /** ¿Hay algo asociado a ese teléfono? */
 export const titularSinDatos = (t: DatosTitular): boolean => !t.cliente && t.envios.total === 0

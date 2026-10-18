@@ -4,20 +4,7 @@ import { datosPersonalesApi } from './api'
 
 export const datosKeys = {
   all: ['datos-personales'] as const,
-  politica: ['datos-personales', 'politica'] as const,
   solicitudes: (pagina: number) => ['datos-personales', 'solicitudes', pagina] as const,
-}
-
-export function usePoliticaDatos() {
-  return useQuery({ queryKey: datosKeys.politica, queryFn: datosPersonalesApi.politica })
-}
-
-export function useGuardarPolitica() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (meses: number) => datosPersonalesApi.guardarPolitica(meses),
-    onSuccess: (p) => qc.setQueryData(datosKeys.politica, p),
-  })
 }
 
 export function useSolicitudesDatos(pagina: number) {

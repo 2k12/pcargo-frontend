@@ -1,21 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { plazoTexto, politicaSchema, porAnonimizar, resumenSolicitud, titularSinDatos } from './domain'
-
-describe('datos personales — política', () => {
-  it('acepta de 12 a 120 meses enteros', () => {
-    expect(politicaSchema.safeParse({ mesesRetencion: 12 }).success).toBe(true)
-    expect(politicaSchema.safeParse({ mesesRetencion: 120 }).success).toBe(true)
-    expect(politicaSchema.safeParse({ mesesRetencion: 11 }).success).toBe(false)
-    expect(politicaSchema.safeParse({ mesesRetencion: 121 }).success).toBe(false)
-    expect(politicaSchema.safeParse({ mesesRetencion: 12.5 }).success).toBe(false)
-  })
-
-  it('expresa el plazo en años y meses', () => {
-    expect(plazoTexto(12)).toBe('1 año')
-    expect(plazoTexto(18)).toBe('1 año y 6 meses')
-    expect(plazoTexto(120)).toBe('10 años')
-  })
-})
+import { porAnonimizar, resumenSolicitud, titularSinDatos } from './domain'
 
 describe('datos personales — solicitudes', () => {
   it('cuenta lo que una solicitud anonimiza y si el teléfono no tiene datos', () => {
