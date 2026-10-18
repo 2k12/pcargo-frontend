@@ -1,4 +1,4 @@
-import { CalendarCheck, ListTodo, LogOut, ScanLine, Wallet, type LucideIcon } from 'lucide-react'
+import { CalendarCheck, ListTodo, LogOut, ScanLine, UserRound, Wallet, type LucideIcon } from 'lucide-react'
 import { Suspense, useEffect, useState } from 'react'
 import { NavLink, Outlet, useSearchParams } from 'react-router'
 import { LogoMark } from '@/components/brand/PCargoLogo'
@@ -14,11 +14,12 @@ const PESTANAS: { to: string; label: string; icon: LucideIcon; end: boolean }[] 
   { to: '/repartidor', label: 'Pendientes', icon: ListTodo, end: true },
   { to: '/repartidor/hoy', label: 'Hoy', icon: CalendarCheck, end: false },
   { to: '/repartidor/caja', label: 'Caja', icon: Wallet, end: false },
+  { to: '/repartidor/perfil', label: 'Perfil', icon: UserRound, end: false },
 ]
 
 /**
  * App del repartidor: liviana y pensada para el teléfono en la calle. Encabezado mínimo (logo,
- * nombre, salir), botón de escanear siempre a mano y tres pestañas al alcance del pulgar.
+ * nombre, salir), botón de escanear siempre a mano y cuatro pestañas al alcance del pulgar (incluido su perfil).
  */
 export function RepartidorLayout() {
   const { usuario, logout } = useAuth()
@@ -79,7 +80,7 @@ export function RepartidorLayout() {
         aria-label="Secciones"
         className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur"
       >
-        <div className="mx-auto grid max-w-lg grid-cols-3">
+        <div className="mx-auto grid max-w-lg grid-cols-4">
           {PESTANAS.map(({ to, label, icon: Icon, end }) => (
             <NavLink
               key={to}

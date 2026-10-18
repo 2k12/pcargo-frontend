@@ -40,6 +40,9 @@ const HoyPage = lazy(() => entregas().then((m) => ({ default: m.HoyPage })))
 const CajaRepartidorPage = lazy(() =>
   import('@/features/repartidor/CajaRepartidorPage').then((m) => ({ default: m.CajaRepartidorPage })),
 )
+const PerfilRepartidorPage = lazy(() =>
+  import('@/features/repartidor/PerfilRepartidorPage').then((m) => ({ default: m.PerfilRepartidorPage })),
+)
 const PortalLayout = lazy(() => import('@/features/portal/PortalLayout').then((m) => ({ default: m.PortalLayout })))
 const ResumenPortalPage = lazy(() => import('@/features/portal/ResumenPortalPage').then((m) => ({ default: m.ResumenPortalPage })))
 const EnviosPortalPage = lazy(() => import('@/features/portal/EnviosPortalPage').then((m) => ({ default: m.EnviosPortalPage })))
@@ -104,6 +107,7 @@ export function AppRoutes() {
             <Route index element={<PendientesPage />} />
             <Route path="hoy" element={<HoyPage />} />
             <Route path="caja" element={<CajaRepartidorPage />} />
+            <Route path="perfil" element={<PerfilRepartidorPage />} />
             <Route path="*" element={<Navigate to="/repartidor" replace />} />
           </Route>
         </Route>

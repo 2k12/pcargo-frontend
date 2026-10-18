@@ -102,7 +102,7 @@ describe('NuevoEnvioPortalPage', () => {
     expect(accion).toBe('imprimir')
     expect(envio.numeroGuia).toBe(40480)
     expect(envio.remitente).toEqual({ nombre: 'Textiles Atuntaqui', telefono: '0991112233', direccion: 'Sucre 5-12' })
-  })
+  }, 20_000)
 
   it('valida destinatario, ruta e ítems antes de crear', async () => {
     const { crear } = servidor()

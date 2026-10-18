@@ -51,6 +51,15 @@ describe('Rutas por rol (contrato v12)', () => {
     expect(document.getElementById('menu-lateral')).toBeNull()
   })
 
+  it('el REPARTIDOR edita su perfil desde la pestaña «Perfil»', async () => {
+    sesion('REPARTIDOR')
+    abrir('/repartidor')
+    await userEvent.click(await screen.findByRole('link', { name: 'Perfil' }, { timeout: 4000 }))
+    expect(await screen.findByRole('heading', { name: 'Mi perfil' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Nombre')).toHaveValue('Usuario REPARTIDOR')
+    expect(screen.getByLabelText('Contraseña actual')).toBeInTheDocument()
+  })
+
   it('un CLIENTE que abre el panel o la app del repartidor termina en el portal de su empresa', async () => {
     sesion('CLIENTE')
     abrir('/repartidor/caja')
