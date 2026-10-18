@@ -64,6 +64,19 @@ describe('EnviosPage', () => {
     await vi.waitFor(() => expect(urls().at(-1)).not.toContain('estado='))
   })
 
+  it('con ?guia= (QR leído con la sesión abierta) abre el detalle de ese envío y limpia la URL', async () => {
+    const fetch = mockFetch((url) => {
+      if (/\/envios\/e5$/.test(url)) return jsonResponse({ ...envio(5), historial: [] })
+      if (url.includes('q=40005')) return jsonResponse({ ...vacia, datos: [envio(5)], total: 1, totalPaginas: 1 })
+      return jsonResponse(url.includes('/envios') ? vacia : [])
+    })
+    renderWithProviders(<EnviosPage />, { route: '/envios?guia=0040005', path: '/envios' })
+
+    const detalle = await screen.findByRole('dialog')
+    await vi.waitFor(() => expect(detalle).toHaveTextContent('40005'))
+    expect(urlsEnvios(fetch).some((u) => u.includes('/envios/e5'))).toBe(true)
+  })
+
   it('pide al servidor solo la página visible y navega entre páginas', async () => {
     const fetch = servidorPaginado()
     renderWithProviders(<EnviosPage />, { route: '/envios', path: '/envios' })
@@ -206,5 +219,27 @@ describe('EnviosPage', () => {
       await userEvent.click(within(hoja).getByRole('button', { name: 'Ver resultados' }))
       expect(await screen.findByRole('button', { name: 'Filtros' })).toBeInTheDocument()
     })
+  })
+})
+
+describe('EnviosPage — repartidor (contrato v12)', () => {
+  it('muestra el repartidor asignado y filtra por repartidor o «Sin asignar»', async () => {
+    const asignado = { ...envio(1), repartidor: { id: 'u3', nombre: 'Rider Uno' } } as Envio
+    const fetch = mockFetch((url) => {
+      if (url.endsWith('/usuarios/repartidores')) return jsonResponse([{ id: 'u3', nombre: 'Rider Uno' }])
+      if (url.includes('/envios')) return jsonResponse({ datos: [asignado], pagina: 1, porPagina: 20, total: 1, totalPaginas: 1 })
+      return jsonResponse([])
+    })
+    renderWithProviders(<EnviosPage />, { route: '/envios', path: '/envios' })
+    const fila = await screen.findByRole('row', { name: /Cliente 1/ })
+    expect(within(fila).getByTitle('Repartidor asignado')).toHaveTextContent('Rider Uno')
+
+    await userEvent.click(screen.getByRole('combobox', { name: 'Filtrar por repartidor' }))
+    await userEvent.click(await screen.findByRole('option', { name: 'Sin asignar' }))
+    await vi.waitFor(() => expect(urlsEnvios(fetch).at(-1)).toContain('repartidorId=ninguno'))
+
+    await userEvent.click(screen.getByRole('combobox', { name: 'Filtrar por repartidor' }))
+    await userEvent.click(await screen.findByRole('option', { name: 'Rider Uno' }))
+    await vi.waitFor(() => expect(urlsEnvios(fetch).at(-1)).toContain('repartidorId=u3'))
   })
 })

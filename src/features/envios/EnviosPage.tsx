@@ -1,6 +1,7 @@
-import { PackageOpen, Search, UserRound, X } from 'lucide-react'
+import { Bike, PackageOpen, Search, UserRound, X } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router'
+import { toast } from 'sonner'
 import { CampoFiltro, FiltrosMovil } from '@/components/FiltrosMovil'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Paginacion } from '@/components/Paginacion'
@@ -12,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useClientes } from '@/features/clientes/api'
 import { rutaLabel, useRutas } from '@/features/rutas/hooks'
+import { useRepartidores } from '@/features/usuarios/hooks'
 import { useDebounced } from '@/hooks/useDebounced'
 import { useEsMovil } from '@/hooks/useMediaQuery'
 import { errorMessage } from '@/lib/api'
@@ -21,15 +23,20 @@ import { cn } from '@/lib/utils'
 import type { Envio, Estado, FormaPago } from '@/types/api'
 import { ConEvidencia } from './components/ConEvidencia'
 import { EnvioDetailSheet } from './components/EnvioDetailSheet'
+import { EscanearGuiaDialog } from './components/EscanearGuiaDialog'
 import { EstadoPunto } from './components/EstadoBadge'
 import { NuevoEnvioDialog } from './components/NuevoEnvioDialog'
 import { OrigenBadge } from './components/OrigenBadge'
 import { SeleccionGuias } from './components/SeleccionGuias'
+import { enviosApi } from './api'
 import { ESTADO_LABEL, ESTADOS, FORMA_PAGO_LABEL, FORMAS_PAGO, piezasLabel, resumenItems } from './domain'
+import { normalizarGuia } from './guia'
 import { useEnvios, useOpcionesIntegracion } from './hooks'
 import { ImportarEnviosDialog } from './importacion/ImportarEnviosDialog'
 
 const TODOS = 'TODOS'
+/** Valor del contrato para filtrar los envíos sin repartidor. */
+const SIN_ASIGNAR = 'ninguno'
 const POR_PAGINA_DEFECTO = 20
 
 /** Lee un entero positivo de la URL; si falta o no es válido usa el valor por defecto. */
@@ -81,6 +88,10 @@ export function EnviosPage() {
   const setEstado = setFiltro('estado')
   const setRutaId = setFiltro('rutaId')
   const setFormaPago = setFiltro('formaPago')
+  // Repartidor (contrato v12): un id o `ninguno` (sin asignar).
+  const repartidorId = params.get('repartidorId') ?? TODOS
+  const setRepartidor = setFiltro('repartidorId')
+  const { data: repartidores = [] } = useRepartidores()
   // Origen (contrato v10): Panel o API; con API se puede elegir además una integración.
   const integracionId = params.get('integracionId') ?? undefined
   const canalUrl = params.get('canal')
@@ -114,17 +125,23 @@ export function EnviosPage() {
   const clienteFiltro = clienteId ? clientes.find((c) => c.id === clienteId) : undefined
   const [busqueda, setBusqueda] = useState('')
   const hayFiltros =
-    estado !== TODOS || rutaId !== TODOS || formaPago !== TODOS || canal !== TODOS || !!clienteId || busqueda !== ''
+    estado !== TODOS ||
+    rutaId !== TODOS ||
+    formaPago !== TODOS ||
+    canal !== TODOS ||
+    repartidorId !== TODOS ||
+    !!clienteId ||
+    busqueda !== ''
   const limpiar = () => {
     setBusqueda('')
     setParams({}, { replace: true })
   }
-  // Filtros de la hoja móvil: estado, pago, ruta y origen (la búsqueda y el cliente tienen su propio control).
-  const filtrosHoja = [estado, formaPago, rutaId, canal].filter((v) => v !== TODOS).length + (integracionId ? 1 : 0)
+  // Filtros de la hoja móvil: estado, pago, ruta, repartidor y origen (la búsqueda y el cliente tienen su propio control).
+  const filtrosHoja = [estado, formaPago, rutaId, repartidorId, canal].filter((v) => v !== TODOS).length + (integracionId ? 1 : 0)
   const limpiarHoja = () =>
     setParams(
       (p) => {
-        for (const clave of ['estado', 'formaPago', 'rutaId', 'canal', 'integracionId', 'pagina']) p.delete(clave)
+        for (const clave of ['estado', 'formaPago', 'rutaId', 'repartidorId', 'canal', 'integracionId', 'pagina']) p.delete(clave)
         return p
       },
       { replace: true },
@@ -133,6 +150,24 @@ export function EnviosPage() {
   /** En móvil cada control va con su etiqueta dentro de la hoja; en escritorio, en línea. */
   const campo = (label: string, control: ReactNode) => (esMovil ? <CampoFiltro label={label}>{control}</CampoFiltro> : control)
   const [seleccionado, setSeleccionado] = useState<string | null>(null)
+  // /envios?guia=N (QR de la guía leído con la cámara del teléfono con la sesión abierta): abre ese envío.
+  const guiaUrl = params.get('guia')
+  useEffect(() => {
+    if (guiaUrl === null) return
+    setParams(
+      (p) => {
+        p.delete('guia')
+        return p
+      },
+      { replace: true },
+    )
+    const n = normalizarGuia(guiaUrl)
+    if (!n) return
+    enviosApi
+      .porGuia(n)
+      .then((e) => (e ? setSeleccionado(e.id) : toast.error(`No hay ningún envío con la guía ${n}`)))
+      .catch((e) => toast.error(errorMessage(e)))
+  }, [guiaUrl, setParams])
   // Envíos marcados para imprimir sus guías juntas; se conservan al cambiar de página o de filtro.
   const [marcados, setMarcados] = useState<Map<string, Envio>>(() => new Map())
   const alternarMarcado = (e: Envio) =>
@@ -157,6 +192,7 @@ export function EnviosPage() {
     clienteId,
     canal: canal === TODOS ? undefined : canal,
     integracionId: canal === 'API' ? integracionId : undefined,
+    repartidorId: repartidorId === TODOS ? undefined : repartidorId,
     q: q || undefined,
     pagina,
     porPagina,
@@ -197,6 +233,17 @@ export function EnviosPage() {
   const rutaItems: Record<string, string> = {
     [TODOS]: 'Ruta',
     ...Object.fromEntries(opcionesRuta.map((o) => [o.value, o.label])),
+  }
+
+  // El repartidor de la URL se conserva aunque ya no esté activo (o aún no carguen las opciones).
+  const repartidoresFiltro =
+    repartidorId !== TODOS && repartidorId !== SIN_ASIGNAR && !repartidores.some((r) => r.id === repartidorId)
+      ? [...repartidores, { id: repartidorId, nombre: 'Repartidor seleccionado' }]
+      : repartidores
+  const repartidorItems: Record<string, string> = {
+    [TODOS]: 'Repartidor',
+    [SIN_ASIGNAR]: 'Sin asignar',
+    ...Object.fromEntries(repartidoresFiltro.map((r) => [r.id, r.nombre])),
   }
 
   const canalItems: Record<string, string> = { [TODOS]: 'Origen', PANEL: 'Panel', API: 'API' }
@@ -273,6 +320,23 @@ export function EnviosPage() {
         </Select>,
       )}
       {campo(
+        'Repartidor',
+        <Select items={repartidorItems} value={repartidorId} onValueChange={(v) => setRepartidor(v)}>
+          <SelectTrigger className={trigger(repartidorId !== TODOS)} aria-label="Filtrar por repartidor">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={TODOS}>Todo repartidor</SelectItem>
+            <SelectItem value={SIN_ASIGNAR}>Sin asignar</SelectItem>
+            {repartidoresFiltro.map((r) => (
+              <SelectItem key={r.id} value={r.id}>
+                {r.nombre}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>,
+      )}
+      {campo(
         'Origen',
         <Select items={canalItems} value={canal} onValueChange={(v) => setCanal(v)}>
           <SelectTrigger className={trigger(canal !== TODOS)} aria-label="Filtrar por origen">
@@ -319,6 +383,7 @@ export function EnviosPage() {
         title="Envíos"
         actions={
           <>
+            <EscanearGuiaDialog onEncontrado={setSeleccionado} />
             <ImportarEnviosDialog />
             <NuevoEnvioDialog />
           </>
@@ -365,7 +430,7 @@ export function EnviosPage() {
             />
           </div>
           {esMovil ? (
-            <FiltrosMovil activos={filtrosHoja} onLimpiar={limpiarHoja} descripcion="Estado, forma de pago, ruta y origen">
+            <FiltrosMovil activos={filtrosHoja} onLimpiar={limpiarHoja} descripcion="Estado, forma de pago, ruta, repartidor y origen">
               {campo('Estado', filtroEstado)}
               {filtrosSecundarios}
             </FiltrosMovil>
@@ -453,6 +518,7 @@ export function EnviosPage() {
                   <span className="mt-1.5 flex items-center gap-2">
                     <EstadoPunto estado={e.estado} className="text-xs" />
                     <ConEvidencia envio={e} />
+                    <RepartidorTexto envio={e} />
                     <OrigenBadge origen={e.origen} ocultarPanel className="max-w-40" />
                   </span>
                 </button>
@@ -519,6 +585,7 @@ export function EnviosPage() {
                       <EstadoPunto estado={e.estado} />
                       <ConEvidencia envio={e} />
                     </span>
+                    <RepartidorTexto envio={e} className="mt-1" />
                   </TableCell>
                   <TableCell className="py-3 text-right align-top">
                     <span className="block tabular-nums">{formatCurrency(e.costo)}</span>
@@ -566,6 +633,18 @@ function PagoTexto({ formaPago }: { formaPago: FormaPago }) {
       )}
     >
       {FORMA_PAGO_LABEL[formaPago]}
+    </span>
+  )
+}
+
+/** Repartidor asignado, discreto bajo el estado (proximidad: ambos hablan de la entrega). */
+function RepartidorTexto({ envio, className }: { envio: Envio; className?: string }) {
+  if (!envio.repartidor) return null
+  return (
+    <span className={cn('flex min-w-0 items-center gap-1 text-xs text-muted-foreground', className)} title="Repartidor asignado">
+      <Bike className="size-3 shrink-0" aria-hidden />
+      <span className="sr-only">Repartidor:</span>
+      <span className="max-w-32 truncate">{envio.repartidor.nombre}</span>
     </span>
   )
 }

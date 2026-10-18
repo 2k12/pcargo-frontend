@@ -2,7 +2,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { useEsAdmin } from '@/features/auth/hooks'
 import { dashboardApi } from '@/features/dashboard/api'
 import { useIntegraciones } from '@/features/integraciones/hooks'
-import type { CotizacionRequest, Estado, FiltrosEnvios, NuevoEnvio } from '@/types/api'
+import type { AsignacionRepartidor, Cotizacion, CotizacionRequest, Estado, FiltrosEnvios, NuevoEnvio } from '@/types/api'
 import { enviosApi } from './api'
 import { registrarTiposCarga, TIPOS_CARGA_DEFAULT } from './domain'
 
@@ -50,10 +50,18 @@ export function useTiposCarga() {
   })
 }
 
-export function useCotizacion(req: CotizacionRequest | null) {
+/**
+ * Cotización en vivo. `cotizar` permite usar otro endpoint con las mismas reglas (p. ej. el del portal);
+ * `fuente` separa su caché.
+ */
+export function useCotizacion(
+  req: CotizacionRequest | null,
+  cotizar: (r: CotizacionRequest) => Promise<Cotizacion> = enviosApi.cotizar,
+  fuente = 'panel',
+) {
   return useQuery({
-    queryKey: ['cotizacion', req],
-    queryFn: () => enviosApi.cotizar(req!),
+    queryKey: ['cotizacion', fuente, req],
+    queryFn: () => cotizar(req!),
     enabled: !!req,
     placeholderData: keepPreviousData,
     retry: false,
@@ -81,6 +89,14 @@ export function useCambiarEstado(id: string) {
       qc.invalidateQueries({ queryKey: ['envios', 'list'] })
       qc.invalidateQueries({ queryKey: ['dashboard'] })
     },
+  })
+}
+
+export function useAsignarRepartidor() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: AsignacionRepartidor) => enviosApi.asignar(data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: enviosKeys.all }),
   })
 }
 

@@ -15,6 +15,18 @@ export function normalizarGuia(texto: string): string | null {
   return sinCeros
 }
 
+/**
+ * Número de guía a partir de lo leído en el QR de la guía impresa (`<sitio>/seguimiento/<numero>`)
+ * o de lo que se escriba (admite ceros a la izquierda). null si no hay un número válido.
+ */
+export function numeroGuiaDesdeQr(texto: string): string | null {
+  const t = texto.trim()
+  if (!t) return null
+  const enUrl = /\/seguimiento\/0*(\d{1,12})(?:[/?#]|$)/.exec(t)
+  if (enUrl) return normalizarGuia(enUrl[1]!)
+  return normalizarGuia(t)
+}
+
 export const etiquetaGuia = (n: number): string => `Guía ${n}`
 
 export const MENSAJE_GUIA_INVALIDA = 'Ingresa solo los números de la guía (puedes incluir los ceros de adelante)'

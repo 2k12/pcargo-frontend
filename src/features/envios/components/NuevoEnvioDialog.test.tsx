@@ -22,6 +22,7 @@ const tienda: Cliente = {
   envios: 7,
   monto: 50,
   ultimoEnvio: null,
+  accesosPortal: 0,
 }
 
 async function abrir(props: Parameters<typeof NuevoEnvioDialog>[0] = {}, tipos: TipoCarga[] = TIPOS_CARGA_DEFAULT) {

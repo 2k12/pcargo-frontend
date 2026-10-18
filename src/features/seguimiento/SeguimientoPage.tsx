@@ -1,12 +1,14 @@
 import { AlertTriangle, ArrowRight, Check, Loader2, PackageSearch, PackageX, Search, XCircle } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
+import { Link, Navigate, useNavigate, useParams } from 'react-router'
 import { Logo } from '@/components/brand/PCargoLogo'
 import { SectionLabel } from '@/components/layout/SectionLabel'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { destinoGuiaConSesion } from '@/features/auth/roles'
+import { useAuth } from '@/features/auth/hooks'
 import { EstadoBadge } from '@/features/envios/components/EstadoBadge'
 import { HistorialTimeline } from '@/features/envios/components/HistorialTimeline'
 import { ESTADO_LABEL, FLUJO_ESTADOS, piezasLabel, resumenItems } from '@/features/envios/domain'
@@ -119,6 +121,12 @@ export function SeguimientoPage({ embebido = false }: { embebido?: boolean }) {
   }
 
   const noEncontrado = error instanceof ApiError && error.status === 404
+
+  // El QR de la guía abre esta página: con la sesión abierta, el personal va directo a gestionar el envío.
+  const { usuario } = useAuth()
+  const guia = numeroGuia ? normalizarGuia(numeroGuia) : null
+  const destino = !embebido && usuario && guia ? destinoGuiaConSesion(usuario.rol, guia) : null
+  if (destino) return <Navigate to={destino} replace />
 
   return (
     <div className={embebido ? undefined : 'min-h-svh bg-muted/30'}>

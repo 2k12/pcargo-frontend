@@ -39,6 +39,9 @@ const envio: Envio = {
   referenciaExterna: null,
   creadoEn: '2026-10-08T03:24:55.786Z',
   actualizadoEn: '2026-10-08T05:00:00.000Z',
+  repartidor: null,
+  asignadoEn: null,
+  anonimizadoEn: null,
   historial: [],
 }
 
@@ -112,5 +115,44 @@ describe('EnvioDetailSheet', () => {
     renderWithProviders(<EnvioDetailSheet envioId={envio.id} onClose={vi.fn()} />)
     expect(await screen.findByTestId('origen-badge')).toHaveTextContent('Panel')
     expect(screen.queryByTestId('referencia-externa')).not.toBeInTheDocument()
+  })
+})
+
+describe('EnvioDetailSheet — repartidor y datos anonimizados (contrato v12)', () => {
+  const asignado: Envio = {
+    ...envio,
+    estado: 'EN_REPARTO',
+    repartidor: { id: 'u3', nombre: 'Rider Uno' },
+    asignadoEn: '2026-10-08T06:00:00.000Z',
+  }
+
+  it('muestra el repartidor asignado y permite reasignarlo', async () => {
+    const asignar = vi.fn((_body: unknown) => jsonResponse({ asignados: 1 }))
+    mockFetch((url, init) => {
+      if (url.endsWith(`/envios/${envio.id}`)) return jsonResponse(asignado)
+      if (url.endsWith('/usuarios/repartidores')) return jsonResponse([{ id: 'u3', nombre: 'Rider Uno' }, { id: 'u4', nombre: 'Ana Moto' }])
+      if (url.endsWith('/envios/asignar') && init?.method === 'POST') return asignar(JSON.parse(init.body as string))
+      return jsonResponse({}, 404)
+    })
+    renderWithProviders(<EnvioDetailSheet envioId={envio.id} onClose={vi.fn()} />)
+
+    const bloque = await screen.findByTestId('repartidor')
+    expect(within(bloque).getByText('Rider Uno')).toBeInTheDocument()
+    await userEvent.click(within(bloque).getByRole('button', { name: 'Reasignar' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: /Ana Moto/ }))
+    await vi.waitFor(() => expect(asignar).toHaveBeenCalledWith({ envioIds: [envio.id], repartidorId: 'u4' }))
+  })
+
+  it('un envío terminado no ofrece asignar y avisa si sus datos personales se eliminaron', async () => {
+    mockFetch((url) =>
+      url.endsWith(`/envios/${envio.id}`)
+        ? jsonResponse({ ...envio, estado: 'ENTREGADO', anonimizadoEn: '2027-10-08T05:00:00.000Z' })
+        : jsonResponse([]),
+    )
+    renderWithProviders(<EnvioDetailSheet envioId={envio.id} onClose={vi.fn()} />)
+    expect(await screen.findByTestId('anonimizado')).toHaveTextContent('Datos personales eliminados')
+    const bloque = screen.getByTestId('repartidor')
+    expect(within(bloque).getByText('Sin asignar')).toBeInTheDocument()
+    expect(within(bloque).queryByRole('button')).not.toBeInTheDocument()
   })
 })

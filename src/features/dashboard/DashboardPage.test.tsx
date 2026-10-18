@@ -51,6 +51,7 @@ const cliente: Cliente = {
   envios: 12,
   monto: 80,
   ultimoEnvio: '2026-10-07T10:00:00.000Z',
+  accesosPortal: 0,
 }
 
 const ruta: Ruta = {

@@ -1,4 +1,4 @@
-import { Copy } from 'lucide-react'
+import { Bike, Copy, Loader2, ShieldCheck } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { BotonCopiar } from '@/components/BotonCopiar'
@@ -7,11 +7,12 @@ import { SectionLabel } from '@/components/layout/SectionLabel'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Skeleton } from '@/components/ui/skeleton'
 import { errorMessage } from '@/lib/api'
-import { formatCurrency, formatDateTime, formatPeso } from '@/lib/format'
+import { formatCurrency, formatDate, formatDateTime, formatPeso } from '@/lib/format'
 import type { Envio, Estado, Zona } from '@/types/api'
-import { ESTADO_LABEL, nombreTipoCarga, piezasLabel, ZONA_LABEL } from '../domain'
-import { useCambiarEstado, useEnvio } from '../hooks'
+import { esEstadoFinal, ESTADO_LABEL, nombreTipoCarga, piezasLabel, ZONA_LABEL } from '../domain'
+import { useAsignarRepartidor, useCambiarEstado, useEnvio } from '../hooks'
 import { iconoTipoCarga } from '../ui'
+import { AsignarRepartidorMenu } from './AsignarRepartidorMenu'
 import { CambioEstadoForm } from './CambioEstadoForm'
 import { EstadoBadge } from './EstadoBadge'
 import { FormaPagoBadge } from './FormaPagoBadge'
@@ -113,6 +114,44 @@ function ItemsTabla({ envio }: { envio: Envio }) {
   )
 }
 
+/** Repartidor asignado (contrato v12) y opción de asignar o reasignar mientras el envío no termine. */
+function Repartidor({ envio }: { envio: Envio }) {
+  const asignar = useAsignarRepartidor()
+  const actual = envio.repartidor ?? null
+  const elegir = async (repartidorId: string | null, nombre: string | null) => {
+    if (repartidorId === (actual?.id ?? null)) return
+    try {
+      await asignar.mutateAsync({ envioIds: [envio.id], repartidorId })
+      toast.success(repartidorId ? `Guía ${envio.numeroGuia} asignada a ${nombre}` : `Guía ${envio.numeroGuia} sin repartidor`)
+    } catch (e) {
+      toast.error(errorMessage(e))
+    }
+  }
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-xl bg-muted/40 p-3" data-testid="repartidor">
+      <div className="flex min-w-0 items-center gap-2.5">
+        <Bike className="size-4 shrink-0 text-muted-foreground" />
+        <div className="min-w-0">
+          <p className="text-xs text-muted-foreground">Repartidor</p>
+          <p className="truncate text-sm">{actual?.nombre ?? 'Sin asignar'}</p>
+          {actual && envio.asignadoEn && <p className="text-xs text-muted-foreground">Desde {formatDateTime(envio.asignadoEn)}</p>}
+        </div>
+      </div>
+      {!esEstadoFinal(envio.estado) && (
+        <AsignarRepartidorMenu
+          actualId={actual?.id}
+          permitirQuitar={!!actual}
+          onElegir={elegir}
+          trigger={<Button variant="outline" size="sm" disabled={asignar.isPending} />}
+        >
+          {asignar.isPending && <Loader2 className="animate-spin" />}
+          {actual ? 'Reasignar' : 'Asignar'}
+        </AsignarRepartidorMenu>
+      )}
+    </div>
+  )
+}
+
 export function EnvioDetailSheet({ envioId, onClose }: { envioId: string | null; onClose: () => void }) {
   const { data: envio, isLoading } = useEnvio(envioId)
   const cambiar = useCambiarEstado(envioId ?? '')
@@ -174,6 +213,13 @@ export function EnvioDetailSheet({ envioId, onClose }: { envioId: string | null;
               <span className="text-xl font-semibold tabular-nums">{formatCurrency(envio.costo)}</span>
             </div>
 
+            {envio.anonimizadoEn && (
+              <p className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground" data-testid="anonimizado">
+                <ShieldCheck className="size-3.5 shrink-0" />
+                Datos personales eliminados el {formatDate(envio.anonimizadoEn)}. Se conservan guía, ruta, costos y estados.
+              </p>
+            )}
+
             {envio.referenciaExterna && (
               <div className="flex items-center justify-between gap-2 rounded-xl bg-muted/40 px-3 py-2" data-testid="referencia-externa">
                 <p className="min-w-0 text-sm">
@@ -218,6 +264,7 @@ export function EnvioDetailSheet({ envioId, onClose }: { envioId: string | null;
 
             <section className="space-y-2" aria-label="Gestión">
               <SectionLabel>Gestión</SectionLabel>
+              <Repartidor envio={envio} />
               <div className="grid gap-2 sm:grid-cols-2">
                 <div className="space-y-0.5 rounded-xl bg-muted/40 p-3" data-testid="registro">
                   <p className="text-xs text-muted-foreground">Registrado</p>

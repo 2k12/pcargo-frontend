@@ -458,7 +458,7 @@ export function guardarMitadGuia(mitad: MitadHoja): void {
 }
 
 /** Descarga el PDF (`guia-0040461.pdf`). */
-function descargarPdf({ blob, nombreArchivo }: { blob: Blob; nombreArchivo: string }): void {
+export function descargarPdf({ blob, nombreArchivo }: { blob: Blob; nombreArchivo: string }): void {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
@@ -473,7 +473,7 @@ function descargarPdf({ blob, nombreArchivo }: { blob: Blob; nombreArchivo: stri
  * Abre el diálogo de impresión con la guía. En escritorio se imprime desde un iframe oculto;
  * si el navegador no lo permite (p. ej. en el celular), se abre el PDF en otra pestaña.
  */
-function imprimirPdf({ blob, nombreArchivo }: { blob: Blob; nombreArchivo: string }): void {
+export function imprimirPdf({ blob, nombreArchivo }: { blob: Blob; nombreArchivo: string }): void {
   const url = URL.createObjectURL(blob)
   const abrirPestana = () => {
     if (!window.open(url, '_blank')) {

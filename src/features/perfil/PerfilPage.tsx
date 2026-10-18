@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/features/auth/hooks'
+import { ROL_LABEL } from '@/features/auth/roles'
 import { ApiError, errorMessage } from '@/lib/api'
 import { iniciales } from '@/lib/format'
 import type { Usuario } from '@/types/api'
@@ -58,7 +59,7 @@ function Campo({
 const describir = (id: string, error?: unknown, ayuda?: boolean) =>
   error ? `${id}-error` : ayuda ? `${id}-ayuda` : undefined
 
-function DatosForm({ usuario }: { usuario: Usuario }) {
+export function DatosForm({ usuario }: { usuario: Usuario }) {
   const actualizar = useActualizarPerfil()
   const {
     register,
@@ -101,7 +102,11 @@ function DatosForm({ usuario }: { usuario: Usuario }) {
           <UserRound className="size-4 text-muted-foreground" />
           Datos personales
         </CardTitle>
-        <CardDescription>Tu nombre aparece como operador en los envíos que registras y gestionas.</CardDescription>
+        <CardDescription>
+          {usuario.rol === 'CLIENTE'
+            ? 'Tu nombre queda registrado en los envíos que creas desde el portal.'
+            : 'Tu nombre aparece como operador en los envíos que registras y gestionas.'}
+        </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit(onSubmit)} noValidate aria-label="Datos personales" className="flex flex-col gap-(--card-spacing)">
         <CardContent className="space-y-4">
@@ -127,8 +132,7 @@ function DatosForm({ usuario }: { usuario: Usuario }) {
             />
           </Campo>
           <p className="text-xs text-muted-foreground">
-            Rol: <span className="font-medium text-foreground">{usuario.rol === 'ADMIN' ? 'Administrador' : 'Operador'}</span> (lo
-            asigna un administrador)
+            Rol: <span className="font-medium text-foreground">{ROL_LABEL[usuario.rol]}</span> (lo asigna un administrador)
           </p>
         </CardContent>
         <CardFooter className="justify-end gap-2 border-t">
@@ -144,7 +148,7 @@ function DatosForm({ usuario }: { usuario: Usuario }) {
 
 const CONTRASENA_VACIA: ContrasenaValues = { actual: '', nueva: '', confirmar: '' }
 
-function ContrasenaForm() {
+export function ContrasenaForm() {
   const cambiar = useCambiarContrasena()
   const {
     register,

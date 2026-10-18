@@ -1,6 +1,7 @@
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { tokenStorage } from '@/lib/api'
 import { jsonResponse, mockFetch, renderWithProviders } from '@/test/utils'
 import type { Seguimiento } from '@/types/api'
 import { MENSAJE_ESTADO } from './estados'
@@ -10,6 +11,7 @@ vi.mock('next-themes', () => ({ useTheme: () => ({ resolvedTheme: 'light', setTh
 
 afterEach(() => {
   vi.unstubAllGlobals()
+  tokenStorage.clear()
 })
 
 const seguimiento: Seguimiento = {
@@ -128,3 +130,34 @@ describe('personaje del estado', () => {
     expect(screen.queryByTestId('personaje-estado')).not.toBeInTheDocument()
   })
 })
+
+describe('SeguimientoPage — QR de la guía con la sesión abierta', () => {
+  const usuario = (rol: string) => ({ id: 'u1', nombre: 'Ana', email: 'ana@pcargo.ec', rol, clienteId: rol === 'CLIENTE' ? 'c1' : null })
+  const rutas = [
+    { path: '/envios', element: <p>Panel de envíos</p> },
+    { path: '/repartidor', element: <p>App del repartidor</p> },
+  ]
+
+  it('el operador va directo al envío en el panel', async () => {
+    tokenStorage.set('tok')
+    mockFetch((url) => (url.endsWith('/auth/me') ? jsonResponse(usuario('OPERADOR')) : jsonResponse(seguimiento)))
+    renderWithProviders(<SeguimientoPage />, { route: '/seguimiento/0040425', path: '/seguimiento/:numeroGuia', extraRoutes: rutas })
+    expect(await screen.findByText('Panel de envíos')).toBeInTheDocument()
+  })
+
+  it('el repartidor va a su app', async () => {
+    tokenStorage.set('tok')
+    mockFetch((url) => (url.endsWith('/auth/me') ? jsonResponse(usuario('REPARTIDOR')) : jsonResponse(seguimiento)))
+    renderWithProviders(<SeguimientoPage />, { route: '/seguimiento/40425', path: '/seguimiento/:numeroGuia', extraRoutes: rutas })
+    expect(await screen.findByText('App del repartidor')).toBeInTheDocument()
+  })
+
+  it('el cliente del portal ve el rastreo público', async () => {
+    tokenStorage.set('tok')
+    mockFetch((url) => (url.endsWith('/auth/me') ? jsonResponse(usuario('CLIENTE')) : jsonResponse(seguimiento)))
+    renderWithProviders(<SeguimientoPage />, { route: '/seguimiento/40425', path: '/seguimiento/:numeroGuia', extraRoutes: rutas })
+    expect(await screen.findByText('Salió en bus de las 10h')).toBeInTheDocument()
+    expect(screen.queryByText('Panel de envíos')).not.toBeInTheDocument()
+  })
+})
+

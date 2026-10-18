@@ -14,7 +14,7 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-const operador: Usuario = { id: 'u2', nombre: 'Operador Ibarra', email: 'operador@pcargo.ec', rol: 'OPERADOR' }
+const operador: Usuario = { id: 'u2', nombre: 'Operador Ibarra', email: 'operador@pcargo.ec', rol: 'OPERADOR', clienteId: null }
 
 type Handler = Parameters<typeof mockFetch>[0]
 

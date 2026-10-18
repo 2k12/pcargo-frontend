@@ -33,6 +33,9 @@ const base: Envio = {
   referenciaExterna: null,
   creadoEn: '2026-10-08T03:24:55.786Z',
   actualizadoEn: '2026-10-08T03:24:55.786Z',
+  repartidor: null,
+  asignadoEn: null,
+  anonimizadoEn: null,
 }
 
 describe('numeroGuiaImpreso', () => {

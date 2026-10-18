@@ -13,6 +13,7 @@ const cliente = (id: string, nombre: string, telefono: string, extra: Partial<Cl
   envios: 0,
   monto: 0,
   ultimoEnvio: null,
+  accesosPortal: 0,
   ...extra,
 })
 

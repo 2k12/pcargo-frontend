@@ -1,4 +1,4 @@
-import { ArrowUpDown, BarChart3, MapPin, MoreHorizontal, Package, Pencil, Phone, Search, Trash2, UserPlus, Users, X } from 'lucide-react'
+import { ArrowUpDown, BarChart3, KeyRound, MapPin, MoreHorizontal, Package, Pencil, Phone, Search, Trash2, UserPlus, Users, X } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { toast } from 'sonner'
@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useEsAdmin } from '@/features/auth/hooks'
 import { NuevoEnvioDialog } from '@/features/envios/components/NuevoEnvioDialog'
 import { useEsMovil } from '@/hooks/useMediaQuery'
 import { errorMessage } from '@/lib/api'
@@ -31,6 +32,7 @@ import { formatIngreso, formatRelativo, iniciales } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { Cliente } from '@/types/api'
 import { useClientes, useEliminarCliente } from './api'
+import { AccesosPortalDialog } from './components/AccesosPortalDialog'
 import { ClienteFormDialog } from './components/ClienteFormDialog'
 import { buscarClientes, ordenarClientes, type OrdenClientes } from './domain'
 
@@ -46,11 +48,15 @@ function ClienteCard({
   cliente,
   onEditar,
   onEliminar,
+  onAccesos,
 }: {
   cliente: Cliente
   onEditar: () => void
   onEliminar: () => void
+  /** Solo ADMIN (contrato v12): accesos al portal de clientes empresa. */
+  onAccesos?: () => void
 }) {
+  const accesos = cliente.accesosPortal ?? 0
   return (
     <li className={cn('flex flex-col gap-3 p-4', SUPERFICIE)}>
       <div className="flex items-start gap-3">
@@ -58,7 +64,18 @@ function ClienteCard({
           {iniciales(cliente.nombre)}
         </span>
         <div className="min-w-0 flex-1 space-y-0.5">
-          <p className="truncate font-medium">{cliente.nombre}</p>
+          <p className="flex items-center gap-2">
+            <span className="truncate font-medium">{cliente.nombre}</span>
+            {accesos > 0 && (
+              <span
+                className="inline-flex shrink-0 items-center gap-1 rounded-md bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground"
+                title={`${accesos} ${accesos === 1 ? 'acceso activo' : 'accesos activos'} al portal`}
+              >
+                <KeyRound className="size-3" />
+                Portal{accesos > 1 ? ` · ${accesos}` : ''}
+              </span>
+            )}
+          </p>
           {!cliente.consentimientoEn && (
             <p className="text-xs text-amber-700 dark:text-amber-300">Sin consentimiento registrado: confírmalo al editar</p>
           )}
@@ -90,6 +107,12 @@ function ClienteCard({
               <Package />
               Ver sus envíos
             </DropdownMenuItem>
+            {onAccesos && (
+              <DropdownMenuItem onClick={onAccesos}>
+                <KeyRound />
+                Acceso al portal
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem variant="destructive" onClick={onEliminar}>
               <Trash2 />
@@ -132,6 +155,8 @@ export function ClientesPage() {
   const [formAbierto, setFormAbierto] = useState(false)
   const [editando, setEditando] = useState<Cliente | null>(null)
   const [aEliminar, setAEliminar] = useState<Cliente | null>(null)
+  const esAdmin = useEsAdmin()
+  const [accesosDe, setAccesosDe] = useState<Cliente | null>(null)
 
   const visibles = ordenarClientes(buscarClientes(clientes, busqueda), orden)
   const abrirNuevo = () => {
@@ -245,6 +270,7 @@ export function ClientesPage() {
                 setFormAbierto(true)
               }}
               onEliminar={() => setAEliminar(c)}
+              onAccesos={esAdmin ? () => setAccesosDe(c) : undefined}
             />
           ))}
         </ul>
@@ -257,12 +283,21 @@ export function ClientesPage() {
         inicial={!editando && busqueda.trim() ? (/\d{3}/.test(busqueda) ? { telefono: busqueda } : { nombre: busqueda }) : undefined}
       />
 
+      <AccesosPortalDialog key={accesosDe?.id ?? 'accesos'} cliente={accesosDe} onClose={() => setAccesosDe(null)} />
+
       <Dialog open={!!aEliminar} onOpenChange={(o) => !o && setAEliminar(null)}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>¿Eliminar a {aEliminar?.nombre}?</DialogTitle>
             <DialogDescription>
               Sus {aEliminar?.envios ?? 0} envíos se conservan, pero dejarán de contar en su historial de cliente.
+              {!!aEliminar?.accesosPortal && (
+                <span className="mt-2 block font-medium text-foreground">
+                  {aEliminar.accesosPortal === 1
+                    ? 'Su acceso al portal se desactivará.'
+                    : `Sus ${aEliminar.accesosPortal} accesos al portal se desactivarán.`}
+                </span>
+              )}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

@@ -6,7 +6,7 @@ import { MENSAJE_GUIA_INVALIDA, normalizarGuia } from './guia'
 export const MAX_ITEMS = 20
 export const MAX_CANTIDAD = 999
 
-const telefono = z
+export const telefonoSchema = z
   .string()
   .trim()
   .regex(/^[0-9+\s-]{7,15}$/, 'Teléfono inválido')
@@ -22,35 +22,40 @@ const itemSchema = z.object({
   pesoKg: z.number({ message: 'Ingresa el peso' }).positive('Mayor a 0'),
 })
 
+/** Ítems del envío validados contra el catálogo (tipo activo y peso máximo por unidad). */
+export function itemsSchema(tipos: Pick<TipoCarga, 'codigo' | 'nombre' | 'pesoMaxKg'>[]) {
+  return z
+    .array(
+      itemSchema.superRefine((item, ctx) => {
+        const tipo = tipos.find((t) => t.codigo === item.tipoCarga)
+        if (!tipo) {
+          ctx.addIssue({ code: 'custom', path: ['tipoCarga'], message: 'Ese tipo de carga ya no está disponible' })
+          return
+        }
+        if (item.pesoKg > tipo.pesoMaxKg) {
+          ctx.addIssue({
+            code: 'custom',
+            path: ['pesoKg'],
+            message: `Máx. ${tipo.pesoMaxKg} kg por ${enFrase(tipo.nombre)}`,
+          })
+        }
+      }),
+    )
+    .min(1, 'Agrega al menos un ítem')
+    .max(MAX_ITEMS, `Máximo ${MAX_ITEMS} ítems`)
+}
+
 export function crearEnvioSchema(tipos: TipoCarga[]) {
   return z.object({
     remitenteNombre: z.string().trim().min(2, 'Requerido'),
-    remitenteTelefono: telefono,
+    remitenteTelefono: telefonoSchema,
     // Contrato v9: opcional (0–200); se imprime en la guía.
     remitenteDireccion: z.string().trim().max(200, 'Máximo 200 caracteres').optional(),
     destinatarioNombre: z.string().trim().min(2, 'Requerido'),
-    destinatarioTelefono: telefono,
+    destinatarioTelefono: telefonoSchema,
     destinatarioDireccion: z.string().trim().min(5, 'Ingresa una dirección de entrega'),
     rutaId: z.string().min(1, 'Selecciona una ruta'),
-    items: z
-      .array(
-        itemSchema.superRefine((item, ctx) => {
-          const tipo = tipos.find((t) => t.codigo === item.tipoCarga)
-          if (!tipo) {
-            ctx.addIssue({ code: 'custom', path: ['tipoCarga'], message: 'Ese tipo de carga ya no está disponible' })
-            return
-          }
-          if (item.pesoKg > tipo.pesoMaxKg) {
-            ctx.addIssue({
-              code: 'custom',
-              path: ['pesoKg'],
-              message: `Máx. ${tipo.pesoMaxKg} kg por ${enFrase(tipo.nombre)}`,
-            })
-          }
-        }),
-      )
-      .min(1, 'Agrega al menos un ítem')
-      .max(MAX_ITEMS, `Máximo ${MAX_ITEMS} ítems`),
+    items: itemsSchema(tipos),
     // Zona de entrega (contrato v8): solo cambia el precio de los tipos con precio rural.
     zona: z.enum(['URBANA', 'RURAL'], { message: 'Selecciona la zona' }),
     formaPago: z.enum(['PAGADO', 'AL_COBRO', 'CONTRATO', 'SEGURO'], { message: 'Selecciona la forma de pago' }),

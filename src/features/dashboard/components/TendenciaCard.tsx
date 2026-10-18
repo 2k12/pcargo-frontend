@@ -11,7 +11,6 @@ import { estadisticasSerie, formatDia } from '../domain'
 type Metrica = 'envios' | 'ingresos'
 type Dia = Resumen['porDia'][number]
 
-const valor = (m: Metrica, n: number) => (m === 'ingresos' ? formatIngreso(n) : `${n} ${n === 1 ? 'envío' : 'envíos'}`)
 
 /**
  * Serie diaria del periodo. Una sola métrica a la vez (un solo eje): envíos o ingresos.
@@ -25,8 +24,13 @@ export function TendenciaCard({
   onSelectDia,
   onVerPeriodo,
   nota,
+  montoLabel = 'Ingresos',
+  formatoMonto = formatIngreso,
 }: {
   serie: Dia[]
+  /** Nombre de la métrica de dinero (el portal la llama «Monto»). */
+  montoLabel?: string
+  formatoMonto?: (n: number) => string
   /** Aviso bajo el título (p. ej. cuando el rango supera lo que el gráfico puede mostrar). */
   nota?: string
   diaSeleccionado?: string
@@ -34,6 +38,7 @@ export function TendenciaCard({
   onVerPeriodo: () => void
 }) {
   const [metrica, setMetrica] = useState<Metrica>('envios')
+  const valor = (m: Metrica, n: number) => (m === 'ingresos' ? formatoMonto(n) : `${n} ${n === 1 ? 'envío' : 'envíos'}`)
   const [activo, setActivo] = useState<number | null>(null)
   const { total, promedio, pico } = estadisticasSerie(serie, metrica)
   const max = Math.max(1, ...serie.map((d) => d[metrica]))
@@ -49,9 +54,9 @@ export function TendenciaCard({
           <CardTitle>Tendencia diaria</CardTitle>
           <p className="text-xs text-muted-foreground tabular-nums" aria-live="polite">
             <span className={cn('font-semibold', metrica === 'ingresos' ? 'text-brand-green-text' : 'text-foreground')}>
-              {metrica === 'ingresos' ? formatIngreso(total) : total}
+              {metrica === 'ingresos' ? formatoMonto(total) : total}
             </span>
-            {metrica === 'envios' && ' envíos'} · {metrica === 'ingresos' ? formatIngreso(promedio) : promedio.toFixed(1)} por día
+            {metrica === 'envios' && ' envíos'} · {metrica === 'ingresos' ? formatoMonto(promedio) : promedio.toFixed(1)} por día
             {pico && pico[metrica] > 0 && ` · pico el ${formatDia(pico.fecha)}`}
           </p>
           {nota && <p className="text-xs text-muted-foreground">{nota}</p>}
@@ -69,7 +74,7 @@ export function TendenciaCard({
             onChange={setMetrica}
             options={[
               { value: 'envios', label: 'Envíos' },
-              { value: 'ingresos', label: 'Ingresos' },
+              { value: 'ingresos', label: montoLabel },
             ]}
           />
         </div>
@@ -89,7 +94,7 @@ export function TendenciaCard({
               {/* Referencia recesiva: el máximo de la escala */}
               <span className="pointer-events-none absolute inset-x-0 top-0 border-t border-dashed border-foreground/10" />
               <span className="pointer-events-none absolute top-0 right-0 -translate-y-full pb-0.5 text-[10px] text-muted-foreground tabular-nums">
-                {metrica === 'ingresos' ? formatIngreso(max) : max}
+                {metrica === 'ingresos' ? formatoMonto(max) : max}
               </span>
               <span className="pointer-events-none absolute inset-x-0 bottom-0 border-t border-foreground/15" />
 
@@ -101,7 +106,7 @@ export function TendenciaCard({
                     <button
                       key={d.fecha}
                       type="button"
-                      aria-label={`${formatDia(d.fecha, true)}: ${d.envios} envíos, ${formatIngreso(d.ingresos)}`}
+                      aria-label={`${formatDia(d.fecha, true)}: ${d.envios} envíos, ${formatoMonto(d.ingresos)}`}
                       aria-pressed={seleccionado}
                       onMouseEnter={() => setActivo(i)}
                       onFocus={() => setActivo(i)}
@@ -132,7 +137,7 @@ export function TendenciaCard({
                 >
                   <p className="font-medium first-letter:uppercase">{formatDia(dia.fecha, true)}</p>
                   <p className="text-muted-foreground tabular-nums">{valor('envios', dia.envios)}</p>
-                  <p className="font-medium text-brand-green-text tabular-nums">{formatIngreso(dia.ingresos)}</p>
+                  <p className="font-medium text-brand-green-text tabular-nums">{formatoMonto(dia.ingresos)}</p>
                   {dia.fecha === diaSeleccionado ? (
                     <p className="mt-1 text-[10px] text-muted-foreground">Toca para ver todo el periodo</p>
                   ) : (

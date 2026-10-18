@@ -1,7 +1,7 @@
 import { Loader2 } from 'lucide-react'
 import { errorMessage } from '@/lib/api'
 import { formatCurrency, formatPeso } from '@/lib/format'
-import type { CotizacionRequest, TipoCarga } from '@/types/api'
+import type { Cotizacion, CotizacionRequest, TipoCarga } from '@/types/api'
 import { nombreTipo, notasMayoreo, piezasLabel, TIPOS_CARGA_DEFAULT, ZONA_LABEL } from '../domain'
 import { useCotizacion } from '../hooks'
 
@@ -9,11 +9,16 @@ import { useCotizacion } from '../hooks'
 export function CotizacionPanel({
   request,
   tipos = TIPOS_CARGA_DEFAULT,
+  cotizar,
+  fuente,
 }: {
   request: CotizacionRequest | null
   tipos?: TipoCarga[]
+  /** Otro endpoint de cotización (p. ej. `/portal/cotizar`). */
+  cotizar?: (r: CotizacionRequest) => Promise<Cotizacion>
+  fuente?: string
 }) {
-  const { data, isFetching, error } = useCotizacion(request)
+  const { data, isFetching, error } = useCotizacion(request, cotizar, fuente)
   const notas = data ? notasMayoreo(data, tipos) : []
 
   return (

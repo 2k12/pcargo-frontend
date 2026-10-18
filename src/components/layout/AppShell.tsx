@@ -8,9 +8,12 @@ import {
   Plug,
   Route,
   Package,
+  ShieldCheck,
   Tags,
+  UserCog,
   UserRound,
   Users,
+  Wallet,
   type LucideIcon,
 } from 'lucide-react'
 import { Suspense } from 'react'
@@ -30,6 +33,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useAuth, useEsAdmin } from '@/features/auth/hooks'
+import { ROL_LABEL } from '@/features/auth/roles'
 import { useMenuMinimizado } from '@/hooks/useMenuMinimizado'
 import { iniciales } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -59,6 +63,7 @@ const GRUPOS: { titulo: string; items: ItemNav[] }[] = [
       { to: '/panel', label: 'Resumen', corto: 'Resumen', icon: LayoutDashboard, end: true },
       { to: '/envios', label: 'Envíos', corto: 'Envíos', icon: Package, end: false },
       { to: '/clientes', label: 'Clientes', corto: 'Clientes', icon: Users, end: false },
+      { to: '/caja', label: 'Caja', corto: 'Caja', icon: Wallet, end: false, movil: false },
     ],
   },
   {
@@ -67,6 +72,21 @@ const GRUPOS: { titulo: string; items: ItemNav[] }[] = [
       { to: '/rutas', label: 'Cobertura y tarifas', corto: 'Tarifas', icon: Route, end: false },
       { to: '/catalogo', label: 'Tarifas y tipos de carga', corto: 'Catálogo', icon: Tags, end: false, soloAdmin: true, movil: false },
       { to: '/integraciones', label: 'Integraciones', corto: 'API', icon: Plug, end: false, soloAdmin: true, movil: false },
+    ],
+  },
+  {
+    titulo: 'Administración',
+    items: [
+      { to: '/usuarios', label: 'Usuarios', corto: 'Usuarios', icon: UserCog, end: false, soloAdmin: true, movil: false },
+      {
+        to: '/datos-personales',
+        label: 'Datos personales',
+        corto: 'Datos',
+        icon: ShieldCheck,
+        end: false,
+        soloAdmin: true,
+        movil: false,
+      },
     ],
   },
   {
@@ -205,7 +225,7 @@ function UserMenu() {
         <span className="hidden text-left sm:block">
           <span className="block text-sm leading-tight font-medium">{usuario.nombre}</span>
           <span className="block text-[11px] leading-tight text-muted-foreground">
-            {usuario.rol === 'ADMIN' ? 'Administrador' : 'Operador'}
+            {ROL_LABEL[usuario.rol]}
           </span>
         </span>
       </DropdownMenuTrigger>
@@ -220,6 +240,11 @@ function UserMenu() {
           <UserRound />
           Mi perfil
         </DropdownMenuItem>
+        {/* En móvil la barra inferior solo tiene cinco pestañas: el resto se abre desde aquí. */}
+        <DropdownMenuItem className="md:hidden" onClick={() => navigate('/caja')}>
+          <Wallet />
+          Caja
+        </DropdownMenuItem>
         {usuario.rol === 'ADMIN' && (
           // En móvil la barra inferior no tiene espacio: el catálogo y las integraciones se abren desde aquí.
           <>
@@ -230,6 +255,14 @@ function UserMenu() {
             <DropdownMenuItem className="md:hidden" onClick={() => navigate('/integraciones')}>
               <Plug />
               Integraciones
+            </DropdownMenuItem>
+            <DropdownMenuItem className="md:hidden" onClick={() => navigate('/usuarios')}>
+              <UserCog />
+              Usuarios
+            </DropdownMenuItem>
+            <DropdownMenuItem className="md:hidden" onClick={() => navigate('/datos-personales')}>
+              <ShieldCheck />
+              Datos personales
             </DropdownMenuItem>
           </>
         )}

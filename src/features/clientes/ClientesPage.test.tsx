@@ -20,6 +20,7 @@ const ana: Cliente = {
   envios: 4,
   monto: 32.5,
   ultimoEnvio: null,
+  accesosPortal: 0,
 }
 
 function setup(lista: Cliente[] = [ana]) {
@@ -129,5 +130,23 @@ describe('ClientesPage', () => {
     expect(await screen.findByRole('button', { name: 'Ordenar (1 activo)' })).toBeInTheDocument()
     const nombres = screen.getAllByText(/^(Ana López|Beto Ruiz)$/).map((n) => n.textContent)
     expect(nombres).toEqual(['Beto Ruiz', 'Ana López'])
+  })
+})
+
+describe('ClientesPage — acceso al portal (contrato v12)', () => {
+  it('indica los accesos al portal y avisa al eliminar que se desactivarán', async () => {
+    setup([{ ...ana, accesosPortal: 2 }])
+    expect(await screen.findByTitle('2 accesos activos al portal')).toHaveTextContent('Portal · 2')
+    await userEvent.click(screen.getByRole('button', { name: 'Acciones de Ana López' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Eliminar' }))
+    const confirmar = await screen.findByRole('dialog')
+    expect(within(confirmar).getByText('Sus 2 accesos al portal se desactivarán.')).toBeInTheDocument()
+  })
+
+  it('«Acceso al portal» solo se ofrece al ADMIN', async () => {
+    setup()
+    await userEvent.click(await screen.findByRole('button', { name: 'Acciones de Ana López' }))
+    await screen.findByRole('menuitem', { name: 'Editar' })
+    expect(screen.queryByRole('menuitem', { name: 'Acceso al portal' })).not.toBeInTheDocument()
   })
 })

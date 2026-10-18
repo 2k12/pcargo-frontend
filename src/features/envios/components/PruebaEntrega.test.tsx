@@ -53,6 +53,9 @@ const entregado: Envio = {
   referenciaExterna: null,
   creadoEn: '2026-10-08T03:00:00.000Z',
   actualizadoEn: '2026-10-08T15:05:00.000Z',
+  repartidor: null,
+  asignadoEn: null,
+  anonimizadoEn: null,
 }
 
 const foto = (tipo = 'image/jpeg', nombre = 'guia.jpg') => new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], nombre, { type: tipo })

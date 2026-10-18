@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label'
 import { EnlacesLegales } from '@/features/legal/components/EnlacesLegales'
 import { errorMessage } from '@/lib/api'
 import { useAuth } from './hooks'
+import { destinoTrasLogin, espacioDeRol } from './roles'
 
 const schema = z.object({
   email: z.email('Ingresa un correo válido'),
@@ -22,7 +23,7 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>
 
 export function LoginPage() {
-  const { login, status } = useAuth()
+  const { login, status, usuario } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [error, setError] = useState<string | null>(null)
@@ -33,14 +34,15 @@ export function LoginPage() {
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { email: '', password: '' } })
 
-  if (status === 'authenticated') return <Navigate to="/panel" replace />
+  if (status === 'authenticated' && usuario) return <Navigate to={espacioDeRol(usuario.rol)} replace />
 
   const onSubmit = async (values: FormValues) => {
     setError(null)
     try {
-      await login(values.email, values.password)
-      const from = (location.state as { from?: string } | null)?.from ?? '/panel'
-      navigate(from, { replace: true })
+      const u = await login(values.email, values.password)
+      // Cada rol va a su espacio (contrato v12); la ruta pedida solo se respeta si el rol puede verla.
+      const from = (location.state as { from?: string } | null)?.from
+      navigate(destinoTrasLogin(u.rol, from), { replace: true })
     } catch (e) {
       setError(errorMessage(e))
     }
