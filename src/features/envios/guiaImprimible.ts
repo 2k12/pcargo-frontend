@@ -77,8 +77,9 @@ export interface DatosGuia {
   pie: string
 }
 
-/** 40461 → «0040461». */
+/** 40461 → «0040461». Sin número aún (vista previa de una importación) → «———». */
 export function numeroGuiaImpreso(n: number): string {
+  if (n <= 0) return '———'
   return String(n).padStart(DIGITOS_GUIA_IMPRESA, '0')
 }
 

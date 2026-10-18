@@ -27,6 +27,7 @@ import { OrigenBadge } from './components/OrigenBadge'
 import { SeleccionGuias } from './components/SeleccionGuias'
 import { ESTADO_LABEL, ESTADOS, FORMA_PAGO_LABEL, FORMAS_PAGO, piezasLabel, resumenItems } from './domain'
 import { useEnvios, useOpcionesIntegracion } from './hooks'
+import { ImportarEnviosDialog } from './importacion/ImportarEnviosDialog'
 
 const TODOS = 'TODOS'
 const POR_PAGINA_DEFECTO = 20
@@ -314,7 +315,15 @@ export function EnviosPage() {
 
   return (
     <>
-      <PageHeader title="Envíos" actions={<NuevoEnvioDialog />} />
+      <PageHeader
+        title="Envíos"
+        actions={
+          <>
+            <ImportarEnviosDialog />
+            <NuevoEnvioDialog />
+          </>
+        }
+      />
 
       <div className="space-y-3">
         {/* Estado: el filtro principal, como pestañas de texto (escritorio). */}
