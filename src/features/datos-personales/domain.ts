@@ -1,6 +1,6 @@
-// Retención y eliminación de datos personales (contrato v12, LOPDP): reglas puras.
+// Retención y eliminación de datos personales (contrato v13, LOPDP): reglas puras.
 import { z } from 'zod'
-import type { CanalSolicitud, DatosTitular, ResultadoDepuracion, SolicitudDatos } from '@/types/api'
+import type { CanalSolicitud, DatosTitular, SolicitudDatos } from '@/types/api'
 
 export const MESES_MIN = 12
 export const MESES_MAX = 120
@@ -42,18 +42,6 @@ export function plazoTexto(meses: number): string {
   const a = contar(anios, 'año', 'años')
   return resto ? `${a} y ${contar(resto, 'mes', 'meses')}` : a
 }
-
-/** Qué hará la depuración (o qué hizo): «Anonimizará 3 envíos y eliminará 1 cliente». */
-export function resumenDepuracion(r: Pick<ResultadoDepuracion, 'envios' | 'clientes' | 'evidencias'>): string[] {
-  return [
-    contar(r.envios, 'envío anonimizado', 'envíos anonimizados'),
-    contar(r.clientes, 'cliente inactivo eliminado', 'clientes inactivos eliminados'),
-    contar(r.evidencias, 'foto de evidencia borrada', 'fotos de evidencia borradas'),
-  ]
-}
-
-export const sinNadaQueDepurar = (r: Pick<ResultadoDepuracion, 'envios' | 'clientes' | 'evidencias'>): boolean =>
-  r.envios === 0 && r.clientes === 0 && r.evidencias === 0
 
 /** ¿Hay algo asociado a ese teléfono? */
 export const titularSinDatos = (t: DatosTitular): boolean => !t.cliente && t.envios.total === 0

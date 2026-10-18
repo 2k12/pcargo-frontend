@@ -670,19 +670,8 @@ export interface FiltroCierres {
 }
 
 export interface PoliticaDatos {
-  /** 12–120, por defecto 12. */
+  /** Plazo declarado en la política de privacidad: 12–120, por defecto 12. El sistema no borra nada por su cuenta. */
   mesesRetencion: number
-  ultimaDepuracion: { fecha: string; envios: number; clientes: number; evidencias: number } | null
-  /** Lo que la próxima depuración tocaría. */
-  pendientes: { envios: number; clientes: number }
-}
-
-export interface ResultadoDepuracion {
-  simulado: boolean
-  envios: number
-  clientes: number
-  evidencias: number
-  fechaCorte: string
 }
 
 export interface DatosTitular {

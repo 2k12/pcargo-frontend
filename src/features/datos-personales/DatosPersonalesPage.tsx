@@ -22,7 +22,7 @@ export function DatosPersonalesPage() {
         </li>
         <li>
           <span className="block font-medium text-foreground">Anonimizar, no perder cifras</span>
-          Se borran nombres, teléfonos, direcciones, notas y fotos; se conservan guía, ruta, costos y estados.
+          Al atender una solicitud se borran nombres, teléfonos, direcciones, notas y fotos; se conservan guía, ruta, costos y estados.
         </li>
         <li>
           <span className="block font-medium text-foreground">Derecho de eliminación</span>

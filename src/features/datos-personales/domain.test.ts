@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { plazoTexto, politicaSchema, porAnonimizar, resumenDepuracion, resumenSolicitud, sinNadaQueDepurar, titularSinDatos } from './domain'
+import { plazoTexto, politicaSchema, porAnonimizar, resumenSolicitud, titularSinDatos } from './domain'
 
 describe('datos personales — política', () => {
   it('acepta de 12 a 120 meses enteros', () => {
@@ -17,14 +17,7 @@ describe('datos personales — política', () => {
   })
 })
 
-describe('datos personales — depuración y solicitudes', () => {
-  it('resume lo que hace la depuración y detecta cuando no hay nada', () => {
-    const r = { envios: 3, clientes: 1, evidencias: 0 }
-    expect(resumenDepuracion(r)).toEqual(['3 envíos anonimizados', '1 cliente inactivo eliminado', '0 fotos de evidencia borradas'])
-    expect(sinNadaQueDepurar(r)).toBe(false)
-    expect(sinNadaQueDepurar({ envios: 0, clientes: 0, evidencias: 0 })).toBe(true)
-  })
-
+describe('datos personales — solicitudes', () => {
   it('cuenta lo que una solicitud anonimiza y si el teléfono no tiene datos', () => {
     const t = { telefono: '099', cliente: null, envios: { total: 5, terminados: 4, enCurso: 1, anonimizados: 1 } }
     expect(porAnonimizar(t)).toBe(3)

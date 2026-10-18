@@ -20,18 +20,6 @@ export function useGuardarPolitica() {
   })
 }
 
-/** Simula (solo cuenta) o ejecuta la depuración. Al ejecutarla cambian envíos, clientes y el resumen. */
-export function useDepurar() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (simular: boolean) => datosPersonalesApi.depurar(simular),
-    onSuccess: (r) => {
-      if (r.simulado) return
-      for (const key of [datosKeys.all, ['envios'], ['clientes'], ['dashboard']]) qc.invalidateQueries({ queryKey: key })
-    },
-  })
-}
-
 export function useSolicitudesDatos(pagina: number) {
   return useQuery({
     queryKey: datosKeys.solicitudes(pagina),
