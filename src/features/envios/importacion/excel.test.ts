@@ -20,16 +20,23 @@ describe('plantilla de Excel', () => {
     const hoja = libro.getWorksheet(NOMBRE_HOJA)!
     const encabezados = (hoja.getRow(1).values as string[]).slice(1)
     expect(encabezados).toEqual(COLUMNAS.map((c) => (c.requerida ? `${c.titulo} *` : c.titulo)))
-    expect(hoja.getCell('H2').dataValidation).toMatchObject({ type: 'list', formulae: ['Listas!$A$1:$A$2'] })
+    expect(hoja.getCell('I2').dataValidation).toMatchObject({ type: 'list', formulae: ['Listas!$A$1:$A$2'] })
     expect(libro.getWorksheet('Listas')!.getCell('B1').value).toBe('Sobre')
-    expect(libro.getWorksheet('Instrucciones')!.getCell('A2').value).toBe('N.º guía')
+    expect(libro.getWorksheet('Instrucciones')!.getCell('A2').value).toBe('Envío')
+    // Hoja «Ejemplo»: 2 cartones y 1 paquete en el envío 1 (la segunda fila solo con la carga) y un sobre en el envío 2.
+    const ej = libro.getWorksheet('Ejemplo')!
+    const fila = (n: number) => (ej.getRow(n).values as unknown[]).slice(1)
+    expect(fila(2)).toEqual(expect.arrayContaining(['1', 'Almacén El Sol', 'Cartón', '2']))
+    expect(fila(3).filter((v) => v !== undefined && v !== '')).toEqual(['1', 'Paquete', '1', '3'])
+    expect(fila(4)).toEqual(expect.arrayContaining(['2', 'Sobre']))
+    expect(libro.worksheets.map((h) => h.name)).toEqual(['Envíos', 'Listas', 'Ejemplo', 'Instrucciones'])
   })
 
   it('la plantilla llenada se lee de vuelta, sin filas vacías y con el 0 de los teléfonos', async () => {
     const libro = await libroDe(await crearPlantilla(TIPOS, [{ nombre: 'Ibarra' }]))
     const hoja = libro.getWorksheet(NOMBRE_HOJA)!
-    hoja.getRow(2).values = ['40461', 'Ana', 991112233, '', 'Luis', '0994445566', 'Av. Siempre Viva 123', 'Ibarra', 'Quito', '', 'Paquete', 2, 1.5, 'Pagado', 'Ropa']
-    hoja.getRow(4).values = ['', 'Eva', '062950111', '', 'Rosa', '0999999999', 'Calle Larga 45', 'Ibarra', 'Ibarra', 'Rural', 'Sobre', 1, 0.2, 'Al cobro']
+    hoja.getRow(2).values = ['', '40461', 'Ana', 991112233, '', 'Luis', '0994445566', 'Av. Siempre Viva 123', 'Ibarra', 'Quito', '', 'Paquete', 2, 1.5, 'Pagado', 'Ropa']
+    hoja.getRow(4).values = ['', '', 'Eva', '062950111', '', 'Rosa', '0999999999', 'Calle Larga 45', 'Ibarra', 'Ibarra', 'Rural', 'Sobre', 1, 0.2, 'Al cobro']
     const filas = await leerExcel(await blobDe(libro))
     expect(filas).toHaveLength(2)
     expect(filas[0]).toMatchObject({

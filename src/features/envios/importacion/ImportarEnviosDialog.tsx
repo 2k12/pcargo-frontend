@@ -7,6 +7,7 @@ import {
   Eye,
   FileSpreadsheet,
   Loader2,
+  PackagePlus,
   Plus,
   Printer,
   RefreshCw,
@@ -29,6 +30,7 @@ import { crearGuiasPdf, generarGuias, MENSAJE_ERROR_GUIA } from '../guiaPdf'
 import { enviosKeys, useTiposCarga } from '../hooks'
 import { descargarPlantilla, ErrorPlantilla, leerExcel } from './excel'
 import {
+  agregarCargaAlEnvio,
   COLUMNAS,
   envioBorrador,
   filaVacia,
@@ -36,6 +38,7 @@ import {
   type ClaveColumna,
   type EnvioImportado,
   type FilaImportacion,
+  type ValoresFila,
 } from './importacion'
 
 type Fase = 'archivo' | 'revision' | 'importando' | 'resultado'
@@ -122,6 +125,7 @@ function Importador({ onCerrar }: { onCerrar: () => void }) {
     setFilas((prev) => prev.map((f) => (f.id === id ? { ...f, valores: { ...f.valores, [clave]: valor } } : f)))
   const eliminar = (id: string) => setFilas((prev) => prev.filter((f) => f.id !== id))
   const agregar = () => setFilas((prev) => [...prev, filaVacia(`n${Date.now()}`)])
+  const agregarCarga = (id: string) => setFilas((prev) => agregarCargaAlEnvio(prev, id, `n${Date.now()}`))
 
   const importar = async () => {
     const lote = resultado.validos
@@ -226,11 +230,13 @@ function Importador({ onCerrar }: { onCerrar: () => void }) {
           <TablaEditable
             filas={soloErrores ? filas.filter((f) => Object.keys(resultado.errores.get(f.id) ?? {}).length > 0 || fallos.has(envioDeFila.get(f.id)?.clave ?? '')) : filas}
             errores={resultado.errores}
+            heredados={resultado.heredados}
             envioDeFila={envioDeFila}
             fallos={fallos}
             onEditar={editar}
             onEliminar={eliminar}
             onAgregar={agregar}
+            onAgregarCarga={agregarCarga}
             onVerGuia={(clave) => {
               setGuiaEnfocada(clave)
               setVista('guias')
@@ -399,7 +405,8 @@ function SeleccionArchivo({
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          Una fila por tipo de carga. Para un envío con varios tipos, repite el N.º de guía. Las columnas con * son obligatorias.
+          Una fila por tipo de carga. Para mandar varios tipos juntos (p. ej. 2 cartones y 1 paquete al mismo destinatario), pon el
+          mismo número en «Envío»: en las filas adicionales basta el tipo, la cantidad y el peso. Las columnas con * son obligatorias.
         </p>
         <ul className="flex flex-wrap gap-1.5" aria-label="Columnas de la plantilla">
           {COLUMNAS.map((c) => (
@@ -421,20 +428,25 @@ function SeleccionArchivo({
 function TablaEditable({
   filas,
   errores,
+  heredados,
   envioDeFila,
   fallos,
   onEditar,
   onEliminar,
   onAgregar,
+  onAgregarCarga,
   onVerGuia,
 }: {
   filas: FilaImportacion[]
   errores: Map<string, Partial<Record<ClaveColumna, string>>>
+  /** Datos del envío que una fila adicional toma de la primera: se muestran en gris como sugerencia. */
+  heredados: Map<string, Partial<ValoresFila>>
   envioDeFila: Map<string, EnvioImportado>
   fallos: Map<string, string>
   onEditar: (id: string, clave: ClaveColumna, valor: string) => void
   onEliminar: (id: string) => void
   onAgregar: () => void
+  onAgregarCarga: (id: string) => void
   onVerGuia: (clave: string) => void
 }) {
   return (
@@ -452,7 +464,7 @@ function TablaEditable({
               </th>
             ))}
             <th className="border-b px-3 py-2 text-right text-xs font-normal text-muted-foreground">Costo</th>
-            <th className="w-20 border-b" />
+            <th className="w-28 border-b" />
           </tr>
         </thead>
         <tbody>
@@ -482,25 +494,26 @@ function TablaEditable({
                 </td>
                 {COLUMNAS.map((c) => {
                   const msg = e[c.clave]
+                  const heredado = heredados.get(f.id)?.[c.clave]
                   return (
                     <td key={c.clave} className={cn('px-0.5 py-1', finDelGrupo && 'border-b border-border/60')}>
                       <input
                         value={f.valores[c.clave]}
                         onChange={(ev) => onEditar(f.id, c.clave, ev.target.value)}
                         list={LISTA[c.clave]}
-                        inputMode={c.clave === 'cantidad' || c.clave === 'numeroGuia' ? 'numeric' : c.clave === 'pesoKg' ? 'decimal' : undefined}
+                        inputMode={c.clave === 'cantidad' || c.clave === 'numeroGuia' || c.clave === 'envio' ? 'numeric' : c.clave === 'pesoKg' ? 'decimal' : undefined}
                         aria-label={`${c.titulo}, fila ${f.filaExcel ?? 'nueva'}`}
                         aria-invalid={!!msg}
-                        title={msg}
+                        title={msg ?? (heredado ? 'Se toma de la primera fila del envío' : undefined)}
                         style={{ width: `${c.ancho + 2}ch` }}
                         className={cn(
                           'h-8 rounded-md bg-transparent px-2 outline-none transition-colors placeholder:text-muted-foreground/50',
                           'hover:bg-muted/70 focus:bg-background focus:ring-1 focus:ring-ring',
-                          c.clave === 'numeroGuia' && 'font-mono tabular-nums',
+                          (c.clave === 'numeroGuia' || c.clave === 'envio') && 'font-mono tabular-nums',
                           (c.clave === 'cantidad' || c.clave === 'pesoKg') && 'text-right tabular-nums',
                           msg && 'bg-destructive/5 text-destructive ring-1 ring-destructive/40 hover:bg-destructive/10',
                         )}
-                        placeholder={msg ? '' : c.requerida ? '' : '—'}
+                        placeholder={msg ? '' : (heredado ?? (c.requerida ? '' : '—'))}
                       />
                     </td>
                   )
@@ -513,6 +526,17 @@ function TablaEditable({
                     {primeraDelGrupo && envio?.solicitud && (
                       <Button variant="ghost" size="icon-sm" aria-label={`Ver guía de la fila ${f.filaExcel ?? 'nueva'}`} title="Ver guía" onClick={() => onVerGuia(envio.clave)}>
                         <Eye />
+                      </Button>
+                    )}
+                    {primeraDelGrupo && (
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={`Agregar carga al envío de la fila ${f.filaExcel ?? 'nueva'}`}
+                        title="Agregar otro tipo de carga a este envío"
+                        onClick={() => onAgregarCarga(f.id)}
+                      >
+                        <PackagePlus />
                       </Button>
                     )}
                     <Button variant="ghost" size="icon-sm" aria-label={`Quitar fila ${f.filaExcel ?? 'nueva'}`} title="Quitar fila" onClick={() => onEliminar(f.id)}>

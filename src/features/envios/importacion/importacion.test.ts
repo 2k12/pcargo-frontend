@@ -10,6 +10,7 @@ import {
   resolverTipo,
   resolverZona,
   validarImportacion,
+  agregarCargaAlEnvio,
   type FilaImportacion,
   type ValoresFila,
 } from './importacion'
@@ -111,8 +112,68 @@ describe('validarImportacion', () => {
     expect(r.validos[0]!.totalPiezas).toBe(3)
 
     const distinta = validarImportacion([fila('a', { numeroGuia: '5' }), fila('b', { numeroGuia: '5', destinatarioNombre: 'Otro' })], ctx)
-    expect(distinta.errores.get('b')!.destinatarioNombre).toBe('Debe coincidir con la otra fila de la guía 5')
+    expect(distinta.errores.get('b')!.destinatarioNombre).toBe('Debe coincidir con la primera fila de la guía 5')
     expect(distinta.validos).toHaveLength(0)
+  })
+
+  it('«Envío» agrupa sin N.º de guía: 2 cartones y 1 paquete al mismo destinatario, la fila adicional solo con la carga', () => {
+    const soloCarga = (id: string, envio: string, tipoCarga: string, cantidad: string, pesoKg: string): FilaImportacion => {
+      const f = filaVacia(id)
+      f.valores = { ...f.valores, envio, tipoCarga, cantidad, pesoKg }
+      return f
+    }
+    const r = validarImportacion(
+      [
+        fila('a', { envio: '1', tipoCarga: 'Cartón', cantidad: '2', pesoKg: '8' }),
+        soloCarga('b', '1', 'Paquete', '1', '3'),
+        fila('c', { envio: '2', tipoCarga: 'Sobre', cantidad: '1', pesoKg: '0.2' }),
+      ],
+      ctx,
+    )
+    expect(r.filasConError).toBe(0)
+    expect(r.envios).toHaveLength(2)
+    expect(r.validos[0]!.nombre).toBe('del envío 1')
+    expect(r.validos[0]!.solicitud).toMatchObject({
+      destinatario: { nombre: 'Almacén El Sol' },
+      rutaId: 7,
+      formaPago: 'AL_COBRO',
+      items: [
+        { tipoCarga: 'CARTON', cantidad: 2, pesoKg: 8 },
+        { tipoCarga: 'PAQUETE', cantidad: 1, pesoKg: 3 },
+      ],
+    })
+    expect(r.validos[0]!.solicitud!.numeroGuia).toBeUndefined()
+    expect(r.validos[0]!.totalPiezas).toBe(3)
+    // La fila adicional toma de la primera lo que dejó vacío (la vista previa lo muestra en gris).
+    expect(r.heredados.get('b')).toMatchObject({ remitenteNombre: 'Textiles Atuntaqui', destino: 'Quito', formaPago: 'Al cobro' })
+    expect(r.heredados.has('a')).toBe(false)
+  })
+
+  it('si la fila adicional llena un dato distinto, lo marca; un N.º de guía no puede estar en dos envíos', () => {
+    const r = validarImportacion(
+      [fila('a', { envio: '1' }), fila('b', { envio: '1', destino: 'Ibarra' }), fila('c', { envio: '2', numeroGuia: '9' }), fila('d', { envio: '3', numeroGuia: '009' })],
+      ctx,
+    )
+    expect(r.errores.get('b')!.destino).toBe('Debe coincidir con la primera fila del envío 1')
+    expect(r.errores.get('c')!.numeroGuia).toBe('La guía 9 está en otro envío')
+    expect(r.errores.get('d')!.numeroGuia).toBe('La guía 9 está en otro envío')
+    expect(r.validos).toHaveLength(0)
+  })
+
+  it('«Agregar carga» une la fila nueva al envío (le asigna número de envío si no tenía)', () => {
+    const filas = [fila('a'), fila('b', { envio: '4' }), fila('c')]
+    const conA = agregarCargaAlEnvio(filas, 'a', 'n1')
+    expect(conA.map((f) => f.id)).toEqual(['a', 'n1', 'b', 'c'])
+    expect(conA[0]!.valores.envio).toBe('5')
+    expect(conA[1]!.valores).toMatchObject({ envio: '5', remitenteNombre: '' })
+    const conB = agregarCargaAlEnvio(filas, 'b', 'n2')
+    expect(conB.map((f) => f.id)).toEqual(['a', 'b', 'n2', 'c'])
+    expect(conB[2]!.valores.envio).toBe('4')
+    const r = validarImportacion(
+      conA.map((f) => (f.id === 'n1' ? { ...f, valores: { ...f.valores, tipoCarga: 'Sobre', cantidad: '1', pesoKg: '0.1' } } : f)),
+      ctx,
+    )
+    expect(r.envios.find((e) => e.filas.includes('n1'))!.filas).toEqual(['a', 'n1'])
   })
 
   it('calcula el costo con mayoreo por tipo en todo el envío y precio rural', () => {

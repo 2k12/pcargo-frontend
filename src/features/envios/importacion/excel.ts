@@ -12,6 +12,7 @@ import {
   NOMBRE_HOJA,
   type ClaveColumna,
   type FilaImportacion,
+  type ValoresFila,
 } from './importacion'
 
 export const NOMBRE_PLANTILLA = 'plantilla-envios-pcargo.xlsx'
@@ -30,9 +31,35 @@ const letra = (n: number) => {
 }
 
 /**
+ * Filas de la hoja «Ejemplo»: un envío con 2 cartones y 1 paquete (la segunda fila solo lleva la carga) y otro con
+ * un sobre. Usa los tipos y ciudades vigentes, sin pasar el peso máximo de cada tipo.
+ */
+function filasEjemplo(tipos: TipoCargaPublico[], ciudades: Pick<Ciudad, 'nombre'>[]): Partial<ValoresFila>[] {
+  const tipo = (codigo: string, i: number) => tipos.find((t) => t.codigo === codigo) ?? tipos[i % Math.max(tipos.length, 1)]
+  const peso = (t: TipoCargaPublico | undefined, kg: number) => String(Math.min(kg, t?.pesoMaxKg ?? kg))
+  const [carton, paquete, sobre] = [tipo('CARTON', 0), tipo('PAQUETE', 1), tipo('SOBRE', 2)]
+  const origen = ciudades[0]?.nombre ?? 'Ibarra'
+  const destino = ciudades.at(-1)?.nombre ?? 'Quito'
+  const remitente = { remitenteNombre: 'Textiles Atuntaqui', remitenteTelefono: '0991112233', remitenteDireccion: 'Calle Bolívar 12-34' }
+  return [
+    {
+      envio: '1', ...remitente,
+      destinatarioNombre: 'Almacén El Sol', destinatarioTelefono: '0994445566', destinatarioDireccion: 'Av. 10 de Agosto N20-15',
+      origen, destino, zona: 'Urbana', tipoCarga: carton?.nombre ?? '', cantidad: '2', pesoKg: peso(carton, 8), formaPago: 'Al cobro', descripcion: 'Ropa',
+    },
+    { envio: '1', tipoCarga: paquete?.nombre ?? '', cantidad: '1', pesoKg: peso(paquete, 3) },
+    {
+      envio: '2', ...remitente,
+      destinatarioNombre: 'Farmacia Cruz Azul', destinatarioTelefono: '0997778899', destinatarioDireccion: 'Sucre 5-12',
+      origen, destino: origen, zona: 'Urbana', tipoCarga: sobre?.nombre ?? '', cantidad: '1', pesoKg: peso(sobre, 0.3), formaPago: 'Pagado', descripcion: 'Documentos',
+    },
+  ]
+}
+
+/**
  * Arma la plantilla: hoja «Envíos» con los encabezados y listas desplegables (ciudades, tipos de carga,
- * zona y forma de pago), hoja «Instrucciones» con el formato de cada columna y un ejemplo, y una hoja
- * oculta con las listas.
+ * zona y forma de pago), hoja «Ejemplo» (varios tipos de carga en un envío), hoja «Instrucciones» con el
+ * formato de cada columna, y una hoja oculta con las listas.
  */
 export async function crearPlantilla(tipos: TipoCargaPublico[], ciudades: Pick<Ciudad, 'nombre'>[]): Promise<Blob> {
   const libro = await nuevoLibro()
@@ -93,6 +120,18 @@ export async function crearPlantilla(tipos: TipoCargaPublico[], ciudades: Pick<C
     }
   })
 
+  // Ejemplo con las mismas columnas: no se importa (solo se lee la hoja «Envíos»).
+  const ejemplo = libro.addWorksheet('Ejemplo', { views: [{ state: 'frozen', ySplit: 1 }] })
+  ejemplo.columns = COLUMNAS.map((c) => ({ header: c.requerida ? `${c.titulo} *` : c.titulo, key: c.clave, width: c.ancho + 4 }))
+  ejemplo.getRow(1).eachCell((celda) => {
+    celda.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+    celda.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF5B6684' } }
+  })
+  for (const f of filasEjemplo(tipos, ciudades)) ejemplo.addRow(f)
+  ejemplo.addRow({})
+  ejemplo.addRow({ envio: 'Envío 1: 2 cartones y 1 paquete para el mismo destinatario. La segunda fila solo lleva Envío, Tipo, Cantidad y Peso.' })
+  ejemplo.addRow({ envio: 'Envío 2: un sobre (una sola fila). Esta hoja no se importa: llena la hoja «Envíos».' })
+
   const ayuda = libro.addWorksheet('Instrucciones')
   ayuda.columns = [
     { header: 'Columna', key: 'titulo', width: 24 },
@@ -103,7 +142,12 @@ export async function crearPlantilla(tipos: TipoCargaPublico[], ciudades: Pick<C
   ayuda.getRow(1).font = { bold: true }
   for (const c of COLUMNAS) ayuda.addRow({ titulo: c.titulo, req: c.requerida ? 'Sí' : 'No', ayuda: c.ayuda, ejemplo: c.ejemplo })
   ayuda.addRow({})
-  ayuda.addRow({ titulo: 'Una fila por tipo de carga. Para un envío con varios tipos, repite el N.º de guía en varias filas.' })
+  ayuda.addRow({ titulo: 'Una fila por cada tipo de carga.' })
+  ayuda.addRow({
+    titulo:
+      'Varios tipos en un mismo envío (p. ej. 2 cartones y 1 paquete al mismo destinatario): pon el mismo número en la columna «Envío» en esas filas. ' +
+      'En las filas adicionales basta llenar Tipo de carga, Cantidad y Peso; los demás datos se toman de la primera fila del envío. Mira la hoja «Ejemplo».',
+  })
   ayuda.addRow({ titulo: `Ciudades: ${valores.ciudades.join(', ')}` })
   ayuda.addRow({ titulo: `Tipos de carga: ${tipos.map((t) => `${t.nombre} (máx. ${t.pesoMaxKg} kg)`).join(', ')}` })
   ayuda.addRow({ titulo: `Formas de pago: ${valores.pagos.join(', ')} · Zona: ${valores.zonas.join(' o ')}` })

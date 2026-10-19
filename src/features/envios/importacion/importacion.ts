@@ -6,6 +6,7 @@ import { normalizarGuia } from '../guia'
 import { MAX_CANTIDAD, MAX_ITEMS } from '../schema'
 
 export type ClaveColumna =
+  | 'envio'
   | 'numeroGuia'
   | 'remitenteNombre'
   | 'remitenteTelefono'
@@ -35,9 +36,13 @@ export interface Columna {
   texto?: boolean
 }
 
-/** Formato de la plantilla: una fila por tipo de carga; filas con el mismo N.º de guía son un solo envío. */
+/**
+ * Formato de la plantilla: una fila por tipo de carga. Las filas con el mismo «Envío» (o, sin él, el mismo N.º de
+ * guía) son un solo envío con varios tipos de carga; en las filas adicionales basta el tipo, la cantidad y el peso.
+ */
 export const COLUMNAS: Columna[] = [
-  { clave: 'numeroGuia', titulo: 'N.º guía', requerida: false, ayuda: 'Número impreso en la guía física. Vacío: se asigna el siguiente. Filas con el mismo número forman un solo envío (varios tipos de carga).', ejemplo: '0040461', ancho: 11, texto: true },
+  { clave: 'envio', titulo: 'Envío', requerida: false, ayuda: 'Agrupa las filas de un mismo envío (1, 2, 3…). Para mandar varios tipos de carga juntos (p. ej. 2 cartones y 1 paquete al mismo destinatario) pon el mismo número en esas filas: en las filas adicionales basta llenar Tipo de carga, Cantidad y Peso. Vacío: cada fila es un envío.', ejemplo: '1', ancho: 7, texto: true },
+  { clave: 'numeroGuia', titulo: 'N.º guía', requerida: false, ayuda: 'Número impreso en la guía física. Vacío: se asigna el siguiente. Sin columna «Envío», las filas con el mismo número forman un solo envío.', ejemplo: '0040461', ancho: 11, texto: true },
   { clave: 'remitenteNombre', titulo: 'Remitente', requerida: true, ayuda: 'Nombre de quien envía (2–120 caracteres).', ejemplo: 'Textiles Atuntaqui', ancho: 22 },
   { clave: 'remitenteTelefono', titulo: 'Teléfono remitente', requerida: true, ayuda: '7 a 15 dígitos; puede llevar espacios, guiones o +.', ejemplo: '0991112233', ancho: 15, texto: true },
   { clave: 'remitenteDireccion', titulo: 'Dirección remitente', requerida: false, ayuda: 'Opcional (hasta 200 caracteres). Se imprime en la guía.', ejemplo: 'Calle Bolívar 12-34', ancho: 22 },
@@ -122,8 +127,12 @@ export function leerNumero(texto: string): number | null {
 
 const TELEFONO = /^[0-9+\s-]{7,15}$/
 
-/** Datos del envío que deben coincidir entre las filas de una misma guía. */
+/**
+ * Datos del envío (no de la carga): en las filas adicionales de un envío pueden quedar vacíos (se toman de su
+ * primera fila); si se llenan, deben coincidir con ella.
+ */
 const CLAVES_ENVIO: ClaveColumna[] = [
+  'numeroGuia',
   'remitenteNombre',
   'remitenteTelefono',
   'remitenteDireccion',
@@ -138,8 +147,10 @@ const CLAVES_ENVIO: ClaveColumna[] = [
 ]
 
 export interface EnvioImportado {
-  /** Clave del grupo: el N.º de guía normalizado o, sin número, el id de la fila. */
+  /** Clave del grupo: el «Envío», si no el N.º de guía normalizado o, sin ninguno, el id de la fila. */
   clave: string
+  /** Cómo se nombra el envío en los mensajes: «del envío 1», «de la guía 40461» o null (fila suelta). */
+  nombre: string | null
   filas: string[]
   numeroGuia: string | null
   ruta: Ruta | undefined
@@ -157,6 +168,8 @@ export interface ResultadoValidacion {
   /** Envíos sin errores. */
   validos: EnvioImportado[]
   filasConError: number
+  /** Datos del envío que una fila adicional toma de la primera (celdas que dejó vacías). */
+  heredados: Map<string, Partial<ValoresFila>>
 }
 
 export interface ContextoValidacion {
@@ -212,33 +225,75 @@ export function calcularCosto(items: ItemSolicitud[], zona: Zona, tipos: TipoCar
   )
 }
 
+/** ¿Mismo dato del envío? La guía se compara por su número («0040461» = «40461»); el resto, sin tildes ni mayúsculas. */
+const mismoDato = (c: ClaveColumna, a: string, b: string) =>
+  c === 'numeroGuia' ? normalizarGuia(a) === normalizarGuia(b) : normalizar(a) === normalizar(b)
+
+/** A qué envío pertenece una fila: por «Envío»; si no, por N.º de guía; si no, a ninguno (va sola). */
+function grupoDeFila(v: ValoresFila): { clave: string; nombre: string } | null {
+  const envio = v.envio.trim()
+  if (envio) return { clave: `envio:${normalizar(envio)}`, nombre: `del envío ${envio}` }
+  const guia = normalizarGuia(v.numeroGuia)
+  return guia ? { clave: `guia:${guia}`, nombre: `de la guía ${guia}` } : null
+}
+
 /**
- * Valida todas las filas y las agrupa en envíos: filas con el mismo N.º de guía son un envío con varios
- * tipos de carga (sus datos de remitente, destinatario, ruta y pago deben coincidir).
+ * Valida todas las filas y las agrupa en envíos: las filas con el mismo «Envío» (o, sin él, el mismo N.º de guía)
+ * son un envío con varios tipos de carga. Sus filas adicionales pueden dejar vacíos los datos del envío
+ * (remitente, destinatario, ruta, pago…), que se toman de la primera; si los llenan, deben coincidir.
  */
 export function validarImportacion(filas: FilaImportacion[], ctx: ContextoValidacion): ResultadoValidacion {
   const errores = new Map<string, Partial<Record<ClaveColumna, string>>>()
-  const grupos = new Map<string, FilaImportacion[]>()
+  const heredados = new Map<string, Partial<ValoresFila>>()
+  const grupos = new Map<string, { nombre: string | null; filas: FilaImportacion[] }>()
   for (const f of filas) {
-    errores.set(f.id, validarFila(f.valores, ctx))
-    const guia = normalizarGuia(f.valores.numeroGuia)
-    const clave = guia ? `guia:${guia}` : `fila:${f.id}`
-    grupos.set(clave, [...(grupos.get(clave) ?? []), f])
+    const g = grupoDeFila(f.valores)
+    const clave = g?.clave ?? `fila:${f.id}`
+    const grupo = grupos.get(clave) ?? { nombre: g?.nombre ?? null, filas: [] }
+    grupo.filas.push(f)
+    grupos.set(clave, grupo)
+  }
+
+  for (const { nombre, filas: miembros } of grupos.values()) {
+    const [primera, ...resto] = miembros
+    errores.set(primera!.id, validarFila(primera!.valores, ctx))
+    for (const f of resto) {
+      // Las celdas vacías de datos del envío se toman de la primera fila; sus errores se muestran allá.
+      const tomados: Partial<ValoresFila> = {}
+      for (const c of CLAVES_ENVIO) if (!f.valores[c].trim() && primera!.valores[c].trim()) tomados[c] = primera!.valores[c]
+      const e = validarFila({ ...f.valores, ...tomados }, ctx)
+      for (const c of Object.keys(tomados) as ClaveColumna[]) delete e[c]
+      if (tomados.origen || tomados.destino) delete e.destino
+      for (const c of CLAVES_ENVIO) {
+        if (!e[c] && !tomados[c] && f.valores[c].trim() && !mismoDato(c, f.valores[c], primera!.valores[c])) {
+          e[c] = `Debe coincidir con la primera fila ${nombre ?? 'del envío'}`
+        }
+      }
+      errores.set(f.id, e)
+      if (Object.keys(tomados).length) heredados.set(f.id, tomados)
+    }
+  }
+
+  // Un N.º de guía solo puede estar en un envío (si no, el servidor rechazaría el segundo).
+  const enviosPorGuia = new Map<string, Set<string>>()
+  for (const [clave, g] of grupos) {
+    for (const f of g.filas) {
+      const guia = normalizarGuia(f.valores.numeroGuia)
+      if (guia) enviosPorGuia.set(guia, (enviosPorGuia.get(guia) ?? new Set()).add(clave))
+    }
+  }
+  for (const g of grupos.values()) {
+    for (const f of g.filas) {
+      const guia = normalizarGuia(f.valores.numeroGuia)
+      if (guia && enviosPorGuia.get(guia)!.size > 1) errores.get(f.id)!.numeroGuia ??= `La guía ${guia} está en otro envío`
+    }
   }
 
   const envios: EnvioImportado[] = []
-  for (const [clave, miembros] of grupos) {
-    const [primera, ...resto] = miembros
-    for (const f of resto) {
-      const e = errores.get(f.id)!
-      for (const c of CLAVES_ENVIO) {
-        if (!e[c] && normalizar(f.valores[c]) !== normalizar(primera!.valores[c])) {
-          e[c] = `Debe coincidir con la otra fila de la guía ${f.valores.numeroGuia.trim()}`
-        }
-      }
-    }
+  for (const [clave, { nombre, filas: miembros }] of grupos) {
+    const [primera] = miembros
     if (miembros.length > MAX_ITEMS) {
-      for (const f of miembros) errores.get(f.id)!.tipoCarga ??= `Máximo ${MAX_ITEMS} filas por guía`
+      for (const f of miembros) errores.get(f.id)!.tipoCarga ??= `Máximo ${MAX_ITEMS} tipos de carga por envío`
     }
 
     const v = primera!.valores
@@ -252,7 +307,8 @@ export function validarImportacion(filas: FilaImportacion[], ctx: ContextoValida
       if (tipo && cantidad !== null && peso !== null) items.push({ tipoCarga: tipo.codigo, cantidad, pesoKg: peso })
     }
     const sinErrores = miembros.every((f) => Object.keys(errores.get(f.id)!).length === 0)
-    const numeroGuia = normalizarGuia(v.numeroGuia)
+    // La guía puede venir en cualquier fila del envío (las demás la dejan vacía).
+    const numeroGuia = miembros.map((f) => normalizarGuia(f.valores.numeroGuia)).find((g) => g !== null) ?? null
     const formaPago = resolverFormaPago(v.formaPago)
     const solicitud: NuevoEnvio | null =
       sinErrores && ruta && formaPago
@@ -277,6 +333,7 @@ export function validarImportacion(filas: FilaImportacion[], ctx: ContextoValida
         : null
     envios.push({
       clave,
+      nombre,
       filas: miembros.map((f) => f.id),
       numeroGuia,
       ruta,
@@ -289,7 +346,30 @@ export function validarImportacion(filas: FilaImportacion[], ctx: ContextoValida
 
   const validos = envios.filter((e) => e.solicitud)
   const filasConError = [...errores.values()].filter((e) => Object.keys(e).length > 0).length
-  return { envios, errores, validos, filasConError }
+  return { envios, errores, validos, filasConError, heredados }
+}
+
+/**
+ * Vista previa: agrega una fila de carga al envío de `filaId` (justo después de su última fila). Si ese envío aún
+ * no tiene «Envío» ni N.º de guía, se le asigna el siguiente número de «Envío» libre para que queden unidas.
+ */
+export function agregarCargaAlEnvio(filas: FilaImportacion[], filaId: string, nuevoId: string): FilaImportacion[] {
+  const base = filas.find((f) => f.id === filaId)
+  if (!base) return filas
+  const g = grupoDeFila(base.valores)
+  const delGrupo = (f: FilaImportacion) => (g ? grupoDeFila(f.valores)?.clave === g.clave : f.id === filaId)
+  let resultado = filas
+  const nueva = filaVacia(nuevoId)
+  if (base.valores.envio.trim()) nueva.valores.envio = base.valores.envio.trim()
+  else if (g) nueva.valores.numeroGuia = base.valores.numeroGuia.trim()
+  else {
+    const usados = filas.map((f) => Number(f.valores.envio.trim())).filter((n) => Number.isInteger(n) && n > 0)
+    const envio = String(Math.max(0, ...usados) + 1)
+    nueva.valores.envio = envio
+    resultado = filas.map((f) => (f.id === filaId ? { ...f, valores: { ...f.valores, envio } } : f))
+  }
+  const ultima = resultado.reduce((idx, f, i) => (delGrupo(f) || f.id === filaId ? i : idx), -1)
+  return [...resultado.slice(0, ultima + 1), nueva, ...resultado.slice(ultima + 1)]
 }
 
 /** Fila del Excel vacía (todas sus celdas en blanco): se ignora al importar. */
@@ -305,6 +385,7 @@ export function mapearEncabezados(encabezados: string[]): { indices: Partial<Rec
     const base = [c.titulo, c.clave, c.titulo.replace(/\s*\(.*\)$/, '')]
     if (c.clave === 'pesoKg') base.push('Peso (kg)', 'Peso')
     if (c.clave === 'numeroGuia') base.push('Guía', 'N° guía', 'No. guía', 'Numero de guia')
+    if (c.clave === 'envio') base.push('N.º envío', 'N° envío', 'No. envío', 'Grupo', 'Pedido')
     return base.map(normalizar)
   }
   encabezados.forEach((h, i) => {

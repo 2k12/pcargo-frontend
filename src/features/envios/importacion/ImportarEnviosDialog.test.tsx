@@ -103,6 +103,48 @@ describe('ImportarEnviosDialog', () => {
     expect(within(dialogo).getByTitle('Ya existe un envío con la guía 777')).toBeInTheDocument()
   }, 20_000)
 
+  it('con la columna «Envío», 2 cartones y 1 paquete para el mismo destinatario son una sola guía', async () => {
+    const { creados } = servidor()
+    renderWithProviders(<ImportarEnviosDialog />)
+    await userEvent.click(screen.getByRole('button', { name: /Importar/ }))
+    const dialogo = await screen.findByRole('dialog', { name: 'Importar envíos' })
+    const libro = new ExcelJS.Workbook()
+    const hoja = libro.addWorksheet('Envíos')
+    hoja.addRow([
+      'Envío', 'N.º guía', 'Remitente *', 'Teléfono remitente *', 'Dirección remitente', 'Destinatario *', 'Teléfono destinatario *',
+      'Dirección destinatario *', 'Origen *', 'Destino *', 'Zona', 'Tipo de carga *', 'Cantidad *', 'Peso por unidad (kg) *', 'Forma de pago *',
+    ])
+    hoja.addRow(['1', '', 'Ana', '0991112233', '', 'Luis', '0994445566', 'Av. Siempre Viva 123', 'Ibarra', 'Quito', '', 'Cartón', 2, 8, 'Al cobro'])
+    hoja.addRow(['1', '', '', '', '', '', '', '', '', '', '', 'Paquete', 1, 3, ''])
+    await userEvent.upload(
+      within(dialogo).getByLabelText('Archivo de Excel'),
+      new File([await libro.xlsx.writeBuffer()], 'mixto.xlsx'),
+    )
+
+    expect(await within(dialogo).findByText(/mixto\.xlsx · 2 filas · 1 guía/)).toBeInTheDocument()
+    expect(within(dialogo).getByText('1 guía lista')).toBeInTheDocument()
+    // La segunda fila muestra en gris lo que toma de la primera.
+    expect(within(dialogo).getByRole('textbox', { name: 'Destinatario, fila 3' })).toHaveAttribute('placeholder', 'Luis')
+
+    // «Agregar carga» suma otra fila al mismo envío.
+    await userEvent.click(within(dialogo).getByRole('button', { name: 'Agregar carga al envío de la fila 2' }))
+    expect(within(dialogo).getAllByRole('textbox', { name: 'Envío, fila nueva' })[0]).toHaveValue('1')
+    await userEvent.click(within(dialogo).getByRole('button', { name: 'Quitar fila nueva' }))
+
+    await userEvent.click(within(dialogo).getByRole('button', { name: 'Importar 1 guía' }))
+    expect(await within(dialogo).findByText('1 guía creada')).toBeInTheDocument()
+    expect(creados).toEqual([
+      expect.objectContaining({
+        destinatario: expect.objectContaining({ nombre: 'Luis' }),
+        formaPago: 'AL_COBRO',
+        items: [
+          { tipoCarga: 'CARTON', cantidad: 2, pesoKg: 8 },
+          { tipoCarga: 'PAQUETE', cantidad: 1, pesoKg: 3 },
+        ],
+      }),
+    ])
+  }, 20_000)
+
   it('avisa si el archivo no tiene el formato de la plantilla', async () => {
     servidor()
     renderWithProviders(<ImportarEnviosDialog />)
