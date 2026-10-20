@@ -233,7 +233,10 @@ export interface Envio {
   /** Zona de entrega; los envíos anteriores a v8 vienen como URBANA. */
   zona: Zona
   descripcion: string | null
+  /** Incluye `costoAdicional`. */
   costo: number
+  /** v15: recargo acordado sumado al costo (0 si no hubo). */
+  costoAdicional: number
   formaPago: FormaPago
   estado: Estado
   registro: Gestion
@@ -266,6 +269,8 @@ export interface NuevoEnvio {
   descripcion?: string
   /** Guía física; vacío → el sistema asigna el consecutivo. */
   numeroGuia?: string
+  /** v15: recargo en USD (≥ 0, hasta 2 decimales) que se suma al costo; por defecto 0. Solo panel. */
+  costoAdicional?: number
   /** Cliente frecuente elegido. */
   clienteId?: string
   /** Sin clienteId: guarda al remitente como cliente frecuente (o reutiliza el de su teléfono). */

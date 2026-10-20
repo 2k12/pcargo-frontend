@@ -23,6 +23,7 @@ const base: Envio = {
   zona: 'URBANA',
   descripcion: '  Ropa y documentos ',
   costo: 35.75,
+  costoAdicional: 0,
   formaPago: 'AL_COBRO',
   estado: 'EN_TRANSITO',
   // 03:24 UTC = 22:24 del día anterior en Ecuador (UTC−5)
@@ -200,5 +201,24 @@ describe('datosGuia', () => {
       referenciaExterna: ' PED-1001 ',
     }
     expect(datosGuia(porApi, ORIGEN).referenciaExterna).toBe('PED-1001')
+  })
+})
+
+describe('datosGuia — costo adicional (contrato v15)', () => {
+  it('sin adicional la guía queda igual: sin línea extra y el valor es el costo', () => {
+    const d = datosGuia(base, ORIGEN)
+    expect(d.adicional).toBe('')
+    expect(d.valor).toMatch(/35,75/)
+  })
+
+  it('con adicional muestra «Costo adicional» y el total ya lo incluye', () => {
+    const d = datosGuia({ ...base, costo: 37.25, costoAdicional: 1.5 }, ORIGEN)
+    expect(d.adicional).toMatch(/1,50/)
+    expect(d.valor).toMatch(/37,25/)
+  })
+
+  it('tolera envíos anteriores a v15 sin el campo', () => {
+    const { costoAdicional: _omitido, ...antiguo } = base
+    expect(datosGuia(antiguo as Envio, ORIGEN).adicional).toBe('')
   })
 })

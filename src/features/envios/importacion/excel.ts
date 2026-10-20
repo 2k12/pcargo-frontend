@@ -45,7 +45,7 @@ function filasEjemplo(tipos: TipoCargaPublico[], ciudades: Pick<Ciudad, 'nombre'
     {
       envio: '1', ...remitente,
       destinatarioNombre: 'Almacén El Sol', destinatarioTelefono: '0994445566', destinatarioDireccion: 'Av. 10 de Agosto N20-15',
-      origen, destino, zona: 'Urbana', tipoCarga: carton?.nombre ?? '', cantidad: '2', pesoKg: peso(carton, 8), formaPago: 'Al cobro', descripcion: 'Ropa',
+      origen, destino, zona: 'Urbana', tipoCarga: carton?.nombre ?? '', cantidad: '2', pesoKg: peso(carton, 8), formaPago: 'Al cobro', costoAdicional: '1.50', descripcion: 'Ropa',
     },
     { envio: '1', tipoCarga: paquete?.nombre ?? '', cantidad: '1', pesoKg: peso(paquete, 3) },
     {
@@ -129,7 +129,7 @@ export async function crearPlantilla(tipos: TipoCargaPublico[], ciudades: Pick<C
   })
   for (const f of filasEjemplo(tipos, ciudades)) ejemplo.addRow(f)
   ejemplo.addRow({})
-  ejemplo.addRow({ envio: 'Envío 1: 2 cartones y 1 paquete para el mismo destinatario. La segunda fila solo lleva Envío, Tipo, Cantidad y Peso.' })
+  ejemplo.addRow({ envio: 'Envío 1: 2 cartones y 1 paquete para el mismo destinatario, con $1,50 de costo adicional. La segunda fila solo lleva Envío, Tipo, Cantidad y Peso.' })
   ejemplo.addRow({ envio: 'Envío 2: un sobre (una sola fila). Esta hoja no se importa: llena la hoja «Envíos».' })
 
   const ayuda = libro.addWorksheet('Instrucciones')
@@ -151,6 +151,7 @@ export async function crearPlantilla(tipos: TipoCargaPublico[], ciudades: Pick<C
   ayuda.addRow({ titulo: `Ciudades: ${valores.ciudades.join(', ')}` })
   ayuda.addRow({ titulo: `Tipos de carga: ${tipos.map((t) => `${t.nombre} (máx. ${t.pesoMaxKg} kg)`).join(', ')}` })
   ayuda.addRow({ titulo: `Formas de pago: ${valores.pagos.join(', ')} · Zona: ${valores.zonas.join(' o ')}` })
+  ayuda.addRow({ titulo: 'Costo adicional (opcional): recargo en USD que se suma al costo del envío, p. ej. 2 o 1.50. Vacío: sin recargo.' })
 
   const buffer = await libro.xlsx.writeBuffer()
   return new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })

@@ -28,6 +28,7 @@ import { useDebounced } from '@/hooks/useDebounced'
 import { errorMessage } from '@/lib/api'
 import { enumerar } from '@/lib/format'
 import type { Cliente, CotizacionRequest, TipoCarga } from '@/types/api'
+import { leerCostoAdicional } from '../costoAdicional'
 import { dependeDeZona, enFrase, pluralizar, TIPOS_CARGA_DEFAULT, zonaInfluye } from '../domain'
 import { generarGuia, MENSAJE_ERROR_GUIA } from '../guiaPdf'
 import { useCrearEnvio, useTiposCarga } from '../hooks'
@@ -43,6 +44,7 @@ const DEFAULTS = {
   descripcion: '',
   remitenteDireccion: '',
   numeroGuia: '',
+  costoAdicional: '',
   clienteId: '',
   guardarCliente: false,
   consentimientoCliente: false,
@@ -184,7 +186,9 @@ export function NuevoEnvioDialog({
     if (!c.direccion) setFocus('destinatarioDireccion')
   }
 
-  const [rutaId, items, zona] = useWatch({ control, name: ['rutaId', 'items', 'zona'] })
+  const [rutaId, items, zona, costoAdicionalTexto] = useWatch({ control, name: ['rutaId', 'items', 'zona', 'costoAdicional'] })
+  // Contrato v15: el total en vivo suma el adicional mientras sea un monto válido.
+  const adicional = leerCostoAdicional(costoAdicionalTexto).valor ?? 0
   // JSON estable: useWatch devuelve un array nuevo en cada render del field array.
   const itemsKey = JSON.stringify(itemsCotizables(items, tipos))
   const request = useMemo<CotizacionRequest | null>(() => {
@@ -394,7 +398,37 @@ export function NuevoEnvioDialog({
                 )}
               />
             </Campo>
-            <CotizacionPanel request={cotizacionReq} tipos={tipos} />
+            <CotizacionPanel
+              request={cotizacionReq}
+              tipos={tipos}
+              adicional={adicional}
+              adicionalCampo={
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                  <Label htmlFor="costoAdicional" className="font-normal text-muted-foreground">
+                    Costo adicional (USD)
+                  </Label>
+                  <div className="relative w-32">
+                    <span className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-sm text-muted-foreground">$</span>
+                    <Input
+                      id="costoAdicional"
+                      inputMode="decimal"
+                      autoComplete="off"
+                      placeholder="0,00"
+                      aria-invalid={!!errors.costoAdicional}
+                      aria-describedby="costoAdicional-ayuda"
+                      className="bg-background pl-6 text-right tabular-nums"
+                      {...register('costoAdicional')}
+                    />
+                  </div>
+                  <p
+                    id="costoAdicional-ayuda"
+                    className={errors.costoAdicional ? 'w-full text-xs text-destructive' : 'w-full text-xs text-muted-foreground'}
+                  >
+                    {errors.costoAdicional?.message ?? 'Opcional: embalaje, entrega especial u otro recargo acordado. Se suma al total.'}
+                  </p>
+                </div>
+              }
+            />
           </Paso>
         </form>
 

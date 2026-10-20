@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { ItemSolicitud, NuevoEnvio, TipoCarga } from '@/types/api'
+import { leerCostoAdicional } from './costoAdicional'
 import { enFrase } from './domain'
 import { MENSAJE_GUIA_INVALIDA, normalizarGuia } from './guia'
 
@@ -65,6 +66,14 @@ export function crearEnvioSchema(tipos: TipoCarga[]) {
       .string()
       .optional()
       .refine((v) => !v?.trim() || normalizarGuia(v) !== null, MENSAJE_GUIA_INVALIDA),
+    // Contrato v15: recargo opcional en USD («2», «1,50» o «1.5»); ≥ 0, ≤ 9999.99 y hasta 2 decimales.
+    costoAdicional: z
+      .string()
+      .optional()
+      .superRefine((v, ctx) => {
+        const r = leerCostoAdicional(v)
+        if (r.error) ctx.addIssue({ code: 'custom', message: r.error })
+      }),
     // Cliente frecuente elegido, o guardar al remitente como cliente nuevo.
     clienteId: z.string().optional(),
     guardarCliente: z.boolean().optional(),
@@ -100,6 +109,8 @@ export function itemsCotizables(items: Partial<ItemSolicitud>[] | undefined, tip
 }
 
 export function toNuevoEnvio(v: EnvioFormValues): NuevoEnvio {
+  // Vacío o 0 → se omite (el servidor asume 0).
+  const costoAdicional = leerCostoAdicional(v.costoAdicional).valor ?? 0
   return {
     remitente: {
       nombre: v.remitenteNombre,
@@ -117,6 +128,7 @@ export function toNuevoEnvio(v: EnvioFormValues): NuevoEnvio {
     zona: v.zona,
     descripcion: v.descripcion || undefined,
     ...(v.numeroGuia?.trim() ? { numeroGuia: normalizarGuia(v.numeroGuia)! } : {}),
+    ...(costoAdicional > 0 ? { costoAdicional } : {}),
     ...(v.clienteId ? { clienteId: v.clienteId } : v.guardarCliente ? { guardarCliente: true, consentimientoCliente: v.consentimientoCliente === true } : {}),
   }
 }

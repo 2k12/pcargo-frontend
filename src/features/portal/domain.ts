@@ -26,6 +26,7 @@ export function envioDesdePortal(e: EnvioPortal, cliente: ClientePortal): Envio 
     zona: e.zona,
     descripcion: e.descripcion,
     costo: e.costo,
+    costoAdicional: 0,
     formaPago: e.formaPago,
     estado: e.estado,
     registro: { fecha: e.creadoEn, operador: null },

@@ -44,6 +44,7 @@ const entregado: Envio = {
   zona: 'URBANA',
   descripcion: null,
   costo: 3,
+  costoAdicional: 0,
   formaPago: 'PAGADO',
   estado: 'ENTREGADO',
   registro: { fecha: '2026-10-08T03:00:00.000Z', operador: 'Operador' },

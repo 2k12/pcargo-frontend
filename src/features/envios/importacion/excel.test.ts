@@ -20,30 +20,38 @@ describe('plantilla de Excel', () => {
     const hoja = libro.getWorksheet(NOMBRE_HOJA)!
     const encabezados = (hoja.getRow(1).values as string[]).slice(1)
     expect(encabezados).toEqual(COLUMNAS.map((c) => (c.requerida ? `${c.titulo} *` : c.titulo)))
+    // Costo adicional (v15): opcional, junto a Forma de pago; Origen sigue en la columna I.
+    const iPago = COLUMNAS.findIndex((c) => c.clave === 'formaPago')
+    expect(COLUMNAS[iPago + 1]).toMatchObject({ clave: 'costoAdicional', titulo: 'Costo adicional', requerida: false })
+    expect(hoja.getCell(1, iPago + 2).note).toMatch(/Ejemplo: 1\.50/)
     expect(hoja.getCell('I2').dataValidation).toMatchObject({ type: 'list', formulae: ['Listas!$A$1:$A$2'] })
     expect(libro.getWorksheet('Listas')!.getCell('B1').value).toBe('Sobre')
     expect(libro.getWorksheet('Instrucciones')!.getCell('A2').value).toBe('Envío')
     // Hoja «Ejemplo»: 2 cartones y 1 paquete en el envío 1 (la segunda fila solo con la carga) y un sobre en el envío 2.
     const ej = libro.getWorksheet('Ejemplo')!
     const fila = (n: number) => (ej.getRow(n).values as unknown[]).slice(1)
-    expect(fila(2)).toEqual(expect.arrayContaining(['1', 'Almacén El Sol', 'Cartón', '2']))
+    expect(fila(2)).toEqual(expect.arrayContaining(['1', 'Almacén El Sol', 'Cartón', '2', '1.50']))
     expect(fila(3).filter((v) => v !== undefined && v !== '')).toEqual(['1', 'Paquete', '1', '3'])
     expect(fila(4)).toEqual(expect.arrayContaining(['2', 'Sobre']))
+    const instrucciones = libro.getWorksheet('Instrucciones')!
+    const filaAyuda = COLUMNAS.findIndex((c) => c.clave === 'costoAdicional') + 2
+    expect(instrucciones.getCell(`A${filaAyuda}`).value).toBe('Costo adicional')
+    expect(instrucciones.getCell(`B${filaAyuda}`).value).toBe('No')
     expect(libro.worksheets.map((h) => h.name)).toEqual(['Envíos', 'Listas', 'Ejemplo', 'Instrucciones'])
   })
 
   it('la plantilla llenada se lee de vuelta, sin filas vacías y con el 0 de los teléfonos', async () => {
     const libro = await libroDe(await crearPlantilla(TIPOS, [{ nombre: 'Ibarra' }]))
     const hoja = libro.getWorksheet(NOMBRE_HOJA)!
-    hoja.getRow(2).values = ['', '40461', 'Ana', 991112233, '', 'Luis', '0994445566', 'Av. Siempre Viva 123', 'Ibarra', 'Quito', '', 'Paquete', 2, 1.5, 'Pagado', 'Ropa']
+    hoja.getRow(2).values = ['', '40461', 'Ana', 991112233, '', 'Luis', '0994445566', 'Av. Siempre Viva 123', 'Ibarra', 'Quito', '', 'Paquete', 2, 1.5, 'Pagado', 1.5, 'Ropa']
     hoja.getRow(4).values = ['', '', 'Eva', '062950111', '', 'Rosa', '0999999999', 'Calle Larga 45', 'Ibarra', 'Ibarra', 'Rural', 'Sobre', 1, 0.2, 'Al cobro']
     const filas = await leerExcel(await blobDe(libro))
     expect(filas).toHaveLength(2)
     expect(filas[0]).toMatchObject({
       filaExcel: 2,
-      valores: { numeroGuia: '40461', remitenteNombre: 'Ana', remitenteTelefono: '0991112233', cantidad: '2', pesoKg: '1.5', descripcion: 'Ropa' },
+      valores: { numeroGuia: '40461', remitenteNombre: 'Ana', remitenteTelefono: '0991112233', cantidad: '2', pesoKg: '1.5', costoAdicional: '1.5', descripcion: 'Ropa' },
     })
-    expect(filas[1]).toMatchObject({ filaExcel: 4, valores: { zona: 'Rural', remitenteTelefono: '062950111' } })
+    expect(filas[1]).toMatchObject({ filaExcel: 4, valores: { zona: 'Rural', remitenteTelefono: '062950111', costoAdicional: '' } })
   })
 
   it('rechaza un archivo sin las columnas obligatorias o que no es Excel', async () => {

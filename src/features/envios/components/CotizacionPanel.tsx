@@ -1,30 +1,44 @@
 import { Loader2 } from 'lucide-react'
+import type { ReactNode } from 'react'
 import { errorMessage } from '@/lib/api'
 import { formatCurrency, formatPeso } from '@/lib/format'
 import type { Cotizacion, CotizacionRequest, TipoCarga } from '@/types/api'
+import { totalConAdicional } from '../costoAdicional'
 import { nombreTipo, notasMayoreo, piezasLabel, TIPOS_CARGA_DEFAULT, ZONA_LABEL } from '../domain'
 import { useCotizacion } from '../hooks'
 
-/** Muestra la cotización en vivo consultando POST /envios/cotizar (con desglose por ítem). */
+/**
+ * Muestra la cotización en vivo consultando POST /envios/cotizar (con desglose por ítem).
+ * En el panel (contrato v15) recibe el costo adicional: el total suma tarifa + adicional y el campo
+ * para escribirlo (`adicionalCampo`) va pegado al total.
+ */
 export function CotizacionPanel({
   request,
   tipos = TIPOS_CARGA_DEFAULT,
   cotizar,
   fuente,
+  adicional = 0,
+  adicionalCampo,
 }: {
   request: CotizacionRequest | null
   tipos?: TipoCarga[]
   /** Otro endpoint de cotización (p. ej. `/portal/cotizar`). */
   cotizar?: (r: CotizacionRequest) => Promise<Cotizacion>
   fuente?: string
+  /** Costo adicional ya validado (USD); 0 si no hay. */
+  adicional?: number
+  /** Campo para escribir el costo adicional (solo panel). */
+  adicionalCampo?: ReactNode
 }) {
   const { data, isFetching, error } = useCotizacion(request, cotizar, fuente)
   const notas = data ? notasMayoreo(data, tipos) : []
+  const conAdicional = adicional > 0
+  const total = data ? totalConAdicional(data.costo, adicional) : 0
 
   return (
     <div className="rounded-xl bg-muted/50 p-4" aria-live="polite">
       <div className="flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">Costo estimado</span>
+        <span className="text-sm text-muted-foreground">{conAdicional ? 'Total estimado' : 'Costo estimado'}</span>
         {isFetching && <Loader2 className="size-3.5 animate-spin text-muted-foreground" />}
       </div>
       {!request ? (
@@ -32,15 +46,25 @@ export function CotizacionPanel({
       ) : error ? (
         <p className="mt-1 text-sm text-destructive">{errorMessage(error)}</p>
       ) : data ? (
+        <div className="mt-1 flex flex-wrap items-baseline justify-between gap-2">
+          <p data-testid="cotizacion-total" className="text-3xl font-semibold tracking-tight tabular-nums">
+            {formatCurrency(total)}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {piezasLabel(data.totalPiezas)} · {formatPeso(data.pesoTotalKg)} · zona {ZONA_LABEL[data.zona].toLowerCase()}
+          </p>
+        </div>
+      ) : null}
+      {data && conAdicional && !error && request && (
+        <p data-testid="cotizacion-suma" className="mt-1 text-xs text-muted-foreground tabular-nums">
+          Tarifa {formatCurrency(data.costo)} + adicional {formatCurrency(adicional)} ={' '}
+          <span className="font-medium text-foreground">Total {formatCurrency(total)}</span>
+        </p>
+      )}
+      {/* Proximidad: el adicional va pegado al total, antes del desglose de la tarifa. */}
+      {adicionalCampo && <div className="mt-3">{adicionalCampo}</div>}
+      {data && request && !error && (
         <>
-          <div className="mt-1 flex flex-wrap items-baseline justify-between gap-2">
-            <p data-testid="cotizacion-total" className="text-3xl font-semibold tracking-tight tabular-nums">
-              {formatCurrency(data.costo)}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {piezasLabel(data.totalPiezas)} · {formatPeso(data.pesoTotalKg)} · zona {ZONA_LABEL[data.zona].toLowerCase()}
-            </p>
-          </div>
           <ul className="mt-3 space-y-1 border-t pt-3 text-xs" aria-label="Desglose de la cotización">
             {data.items.map((i, idx) => (
               <li key={`${i.tipoCarga}-${idx}`} className="flex items-center justify-between gap-2 tabular-nums">
@@ -63,7 +87,7 @@ export function CotizacionPanel({
             </p>
           )}
         </>
-      ) : null}
+      )}
     </div>
   )
 }

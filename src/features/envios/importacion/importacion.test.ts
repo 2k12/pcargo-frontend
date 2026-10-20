@@ -208,3 +208,58 @@ describe('mapearEncabezados', () => {
     expect(mapearEncabezados(['Remitente']).faltan.map((c) => c.titulo)).toContain('Destinatario')
   })
 })
+
+describe('costo adicional (contrato v15)', () => {
+  const soloCarga = (id: string, extra: Partial<ValoresFila>): FilaImportacion => {
+    const f = filaVacia(id)
+    f.valores = { ...f.valores, envio: '1', tipoCarga: 'Sobre', cantidad: '1', pesoKg: '0.2', ...extra }
+    return f
+  }
+
+  it('se suma al costo de la vista previa y va en costoAdicional de la solicitud', () => {
+    const r = validarImportacion([fila('a', { costoAdicional: '1,50' })], ctx)
+    expect(r.filasConError).toBe(0)
+    expect(r.validos[0]!.costo).toBe(7.5)
+    expect(r.validos[0]!.costoAdicional).toBe(1.5)
+    expect(r.validos[0]!.solicitud!.costoAdicional).toBe(1.5)
+    const e = envioBorrador(r.validos[0]!, TIPOS, null)!
+    expect(e).toMatchObject({ costo: 7.5, costoAdicional: 1.5 })
+    expect(calcularCosto([{ tipoCarga: 'PAQUETE', cantidad: 2, pesoKg: 1 }], 'URBANA', TIPOS, 2)).toBe(8)
+  })
+
+  it('vacío o 0 no se envía', () => {
+    expect(validarImportacion([fila('a')], ctx).validos[0]!.solicitud).not.toHaveProperty('costoAdicional')
+    const cero = validarImportacion([fila('a', { costoAdicional: '0' })], ctx).validos[0]!
+    expect(cero.solicitud).not.toHaveProperty('costoAdicional')
+    expect(cero.costo).toBe(6)
+  })
+
+  it('valida igual que el formulario', () => {
+    const error = (costoAdicional: string) => validarImportacion([fila('a', { costoAdicional })], ctx).errores.get('a')!.costoAdicional
+    expect(error('2')).toBeUndefined()
+    expect(error('1.5')).toBeUndefined()
+    expect(error('-1')).toBe('No puede ser negativo')
+    expect(error('1,555')).toBe('Máximo 2 decimales')
+    expect(error('10000')).toBe('Máximo $9.999,99')
+    expect(error('dos')).toBe('Escribe un monto, p. ej. 2 o 1,50')
+  })
+
+  it('las filas adicionales del envío lo heredan si quedan vacías y se marca si lo llenan distinto', () => {
+    const r = validarImportacion([fila('a', { envio: '1', costoAdicional: '2' }), soloCarga('b', {}), soloCarga('c', { costoAdicional: '2.00' })], ctx)
+    expect(r.filasConError).toBe(0)
+    expect(r.heredados.get('b')).toMatchObject({ costoAdicional: '2' })
+    // Se cobra una sola vez por envío: 2 paquetes ($6) + 2 sobres ($6) + $2.
+    expect(r.validos[0]!.costo).toBe(14)
+    expect(r.validos[0]!.solicitud!.costoAdicional).toBe(2)
+
+    const distinto = validarImportacion([fila('a', { envio: '1', costoAdicional: '2' }), soloCarga('b', { costoAdicional: '3' })], ctx)
+    expect(distinto.errores.get('b')!.costoAdicional).toBe('Debe coincidir con la primera fila del envío 1')
+    expect(distinto.validos).toHaveLength(0)
+  })
+
+  it('reconoce los encabezados «Costo adicional», «Adicional» y «Recargo»', () => {
+    for (const h of ['Costo adicional', 'ADICIONAL', 'Recargo']) {
+      expect(mapearEncabezados(['Remitente', h]).indices.costoAdicional).toBe(1)
+    }
+  })
+})

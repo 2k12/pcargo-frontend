@@ -2,6 +2,7 @@
 // Lógica pura, sin jsPDF ni DOM: se testea sola y el dibujo (`guiaPdf.ts`) solo coloca textos.
 import { formatCurrency } from '@/lib/format'
 import type { Envio, FormaPago, TipoCarga, TipoCargaCodigo } from '@/types/api'
+import { adicionalDe } from './costoAdicional'
 import { nombreTipo } from './domain'
 
 /** Datos fijos de la guía de imprenta que esta reemplaza. */
@@ -66,7 +67,10 @@ export interface DatosGuia {
   /** Número de pedido de la empresa (envíos por API, contrato v10); vacío si no hay. */
   referenciaExterna: string
   pago: { etiqueta: string; marcada: boolean }[]
+  /** Total del envío (ya incluye el costo adicional). */
   valor: string
+  /** Costo adicional formateado (contrato v15); vacío si no hubo: la guía queda igual que antes. */
+  adicional: string
   /** «ZONA RURAL» o vacío. */
   zona: string
   aceptacion: string
@@ -174,6 +178,7 @@ export function datosGuia(
     referenciaExterna: envio.referenciaExterna?.trim() ?? '',
     pago: CASILLAS_PAGO.map((c) => ({ etiqueta: c.etiqueta, marcada: c.formaPago === envio.formaPago })),
     valor: formatCurrency(envio.costo),
+    adicional: adicionalDe(envio) > 0 ? formatCurrency(adicionalDe(envio)) : '',
     zona: envio.zona === 'RURAL' ? 'ZONA RURAL' : '',
     aceptacion: `El remitente al firmar este documento acepta en todas sus partes las condiciones de transporte publicadas en ${base}/terminos`,
     seguro: 'Agradecemos tomar seguro por la mercadería arriba declarada.',

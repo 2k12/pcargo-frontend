@@ -501,7 +501,7 @@ function TablaEditable({
                         value={f.valores[c.clave]}
                         onChange={(ev) => onEditar(f.id, c.clave, ev.target.value)}
                         list={LISTA[c.clave]}
-                        inputMode={c.clave === 'cantidad' || c.clave === 'numeroGuia' || c.clave === 'envio' ? 'numeric' : c.clave === 'pesoKg' ? 'decimal' : undefined}
+                        inputMode={c.clave === 'cantidad' || c.clave === 'numeroGuia' || c.clave === 'envio' ? 'numeric' : c.clave === 'pesoKg' || c.clave === 'costoAdicional' ? 'decimal' : undefined}
                         aria-label={`${c.titulo}, fila ${f.filaExcel ?? 'nueva'}`}
                         aria-invalid={!!msg}
                         title={msg ?? (heredado ? 'Se toma de la primera fila del envío' : undefined)}
@@ -510,7 +510,7 @@ function TablaEditable({
                           'h-8 rounded-md bg-transparent px-2 outline-none transition-colors placeholder:text-muted-foreground/50',
                           'hover:bg-muted/70 focus:bg-background focus:ring-1 focus:ring-ring',
                           (c.clave === 'numeroGuia' || c.clave === 'envio') && 'font-mono tabular-nums',
-                          (c.clave === 'cantidad' || c.clave === 'pesoKg') && 'text-right tabular-nums',
+                          (c.clave === 'cantidad' || c.clave === 'pesoKg' || c.clave === 'costoAdicional') && 'text-right tabular-nums',
                           msg && 'bg-destructive/5 text-destructive ring-1 ring-destructive/40 hover:bg-destructive/10',
                         )}
                         placeholder={msg ? '' : (heredado ?? (c.requerida ? '' : '—'))}

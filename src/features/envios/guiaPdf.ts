@@ -338,8 +338,20 @@ function dibujarCopia(doc: JsPdf, d: DatosGuia, indice: 0 | 1, logo: Logo | null
     casilla(doc, dx + 1.2 + (i % 2) * 22, iy + 3.1 + Math.floor(i / 2) * 2.5, p.etiqueta, p.marcada)
   })
   etiqueta(doc, 'VALOR USD', dx + uw + 1.2, iy + 2.4)
-  fuente(doc, 10, 'bold')
-  doc.text(ajustar(doc, d.valor, dw - uw - 2.4), fin - 1.5, iy + 6.8, { align: 'right' })
+  if (d.adicional) {
+    // Contrato v15: «Costo adicional» en una línea antes del total (que ya lo incluye), dentro de la misma casilla
+    // de 8 mm: el total baja un poco de tamaño para que nada se salga.
+    fuente(doc, 5.5, 'bold')
+    const anchoAdicional = doc.getTextWidth(d.adicional)
+    doc.text(d.adicional, fin - 1.5, iy + 4.6, { align: 'right' })
+    fuente(doc, 4.4, 'bold', AZUL)
+    doc.text(ajustar(doc, 'COSTO ADICIONAL', dw - uw - 3.6 - anchoAdicional), dx + uw + 1.2, iy + 4.6)
+    fuente(doc, 8.5, 'bold')
+    doc.text(ajustar(doc, d.valor, dw - uw - 2.4), fin - 1.5, iy + 7.2, { align: 'right' })
+  } else {
+    fuente(doc, 10, 'bold')
+    doc.text(ajustar(doc, d.valor, dw - uw - 2.4), fin - 1.5, iy + 6.8, { align: 'right' })
+  }
 
   filaGestion(doc, 'REGISTRO', d.registro, dx, iy + 8, dw, 6.5)
   filaGestion(doc, 'ENTREGA', d.entrega, dx, iy + 14.5, dw, 6.5)

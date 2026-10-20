@@ -25,6 +25,7 @@ const envio: Envio = {
   zona: 'RURAL',
   descripcion: null,
   costo: 45,
+  costoAdicional: 0,
   formaPago: 'AL_COBRO',
   estado: 'NO_ENTREGADO',
   registro: { fecha: '2026-10-08T03:24:55.786Z', operador: 'Operador Ibarra' },
@@ -154,5 +155,27 @@ describe('EnvioDetailSheet — repartidor y datos anonimizados (contrato v12)', 
     const bloque = screen.getByTestId('repartidor')
     expect(within(bloque).getByText('Sin asignar')).toBeInTheDocument()
     expect(within(bloque).queryByRole('button')).not.toBeInTheDocument()
+  })
+})
+
+describe('EnvioDetailSheet — costo adicional (contrato v15)', () => {
+  it('con adicional muestra el desglose: tarifa, costo adicional y total', async () => {
+    const conAdicional: Envio = { ...envio, costo: 46.5, costoAdicional: 1.5 }
+    mockFetch((url) => (url.endsWith(`/envios/${envio.id}`) ? jsonResponse(conAdicional) : jsonResponse({}, 404)))
+    renderWithProviders(<EnvioDetailSheet envioId={envio.id} onClose={vi.fn()} />)
+
+    expect(await screen.findByTestId('desglose-tarifa')).toHaveTextContent('Tarifa$45,00')
+    expect(screen.getByTestId('desglose-adicional')).toHaveTextContent('Costo adicional$1,50')
+    const tabla = screen.getByRole('table', { name: 'Ítems del envío' })
+    expect(within(tabla).getByText('Total').closest('tr')).toHaveTextContent('$46,50')
+    expect(screen.getByText('incluye $1,50 adicional')).toBeInTheDocument()
+  })
+
+  it('sin adicional no muestra el desglose', async () => {
+    mockFetch((url) => (url.endsWith(`/envios/${envio.id}`) ? jsonResponse(envio) : jsonResponse({}, 404)))
+    renderWithProviders(<EnvioDetailSheet envioId={envio.id} onClose={vi.fn()} />)
+    expect(await screen.findByText('Guía 7')).toBeInTheDocument()
+    expect(screen.queryByTestId('desglose-adicional')).not.toBeInTheDocument()
+    expect(screen.queryByText(/adicional/)).not.toBeInTheDocument()
   })
 })

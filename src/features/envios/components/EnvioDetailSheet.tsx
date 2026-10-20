@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { errorMessage } from '@/lib/api'
 import { formatCurrency, formatDate, formatDateTime, formatPeso } from '@/lib/format'
 import type { Envio, Estado, Zona } from '@/types/api'
+import { adicionalDe, totalConAdicional } from '../costoAdicional'
 import { esEstadoFinal, ESTADO_LABEL, nombreTipoCarga, piezasLabel, ZONA_LABEL } from '../domain'
 import { useAsignarRepartidor, useCambiarEstado, useEnvio } from '../hooks'
 import { iconoTipoCarga } from '../ui'
@@ -69,6 +70,8 @@ function Parada({
 }
 
 function ItemsTabla({ envio }: { envio: Envio }) {
+  // Contrato v15: `costo` ya incluye el adicional; la tarifa es la diferencia.
+  const adicional = adicionalDe(envio)
   return (
     <div className="overflow-x-auto rounded-lg border">
       <table className="w-full text-xs tabular-nums" aria-label="Ítems del envío">
@@ -101,7 +104,23 @@ function ItemsTabla({ envio }: { envio: Envio }) {
           })}
         </tbody>
         <tfoot className="border-t bg-muted/20 font-medium">
-          <tr>
+          {adicional > 0 && (
+            <>
+              <tr className="font-normal text-muted-foreground" data-testid="desglose-tarifa">
+                <td className="px-2 py-1.5" colSpan={4}>
+                  Tarifa
+                </td>
+                <td className="px-2 py-1.5 text-right">{formatCurrency(totalConAdicional(envio.costo, -adicional))}</td>
+              </tr>
+              <tr className="font-normal text-muted-foreground" data-testid="desglose-adicional">
+                <td className="px-2 py-1.5" colSpan={4}>
+                  Costo adicional
+                </td>
+                <td className="px-2 py-1.5 text-right">{formatCurrency(adicional)}</td>
+              </tr>
+            </>
+          )}
+          <tr className={adicional > 0 ? 'border-t' : undefined}>
             <td className="px-2 py-1.5">Total</td>
             <td className="px-2 py-1.5 text-right">{envio.totalPiezas}</td>
             <td className="px-2 py-1.5 text-right">{formatPeso(envio.pesoTotalKg)}</td>
@@ -210,7 +229,12 @@ export function EnvioDetailSheet({ envioId, onClose }: { envioId: string | null;
                 <FormaPagoBadge formaPago={envio.formaPago} />
                 <OrigenBadge origen={envio.origen} />
               </div>
-              <span className="text-xl font-semibold tabular-nums">{formatCurrency(envio.costo)}</span>
+              <span className="shrink-0 text-right">
+                <span className="block text-xl font-semibold tabular-nums">{formatCurrency(envio.costo)}</span>
+                {adicionalDe(envio) > 0 && (
+                  <span className="block text-xs text-muted-foreground tabular-nums">incluye {formatCurrency(adicionalDe(envio))} adicional</span>
+                )}
+              </span>
             </div>
 
             {envio.anonimizadoEn && (

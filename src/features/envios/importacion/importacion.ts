@@ -2,6 +2,7 @@
 // los envíos que se crean con POST /envios. Se testea sola; la lectura del archivo está en `excel.ts`.
 import type { Envio, FormaPago, ItemSolicitud, NuevoEnvio, Ruta, TipoCargaPublico, Zona } from '@/types/api'
 import { enFrase, FORMA_PAGO_LABEL, FORMAS_PAGO, precioUnitario, ZONA_LABEL } from '../domain'
+import { leerCostoAdicional } from '../costoAdicional'
 import { normalizarGuia } from '../guia'
 import { MAX_CANTIDAD, MAX_ITEMS } from '../schema'
 
@@ -21,6 +22,7 @@ export type ClaveColumna =
   | 'cantidad'
   | 'pesoKg'
   | 'formaPago'
+  | 'costoAdicional'
   | 'descripcion'
 
 export interface Columna {
@@ -56,6 +58,7 @@ export const COLUMNAS: Columna[] = [
   { clave: 'cantidad', titulo: 'Cantidad', requerida: true, ayuda: `Entero de 1 a ${MAX_CANTIDAD}.`, ejemplo: '2', ancho: 9 },
   { clave: 'pesoKg', titulo: 'Peso por unidad (kg)', requerida: true, ayuda: 'Peso de cada unidad en kg (no el total). No puede superar el máximo del tipo.', ejemplo: '1.5', ancho: 11 },
   { clave: 'formaPago', titulo: 'Forma de pago', requerida: true, ayuda: 'Pagado, Al cobro, Contrato o Seguro.', ejemplo: 'Al cobro', ancho: 12 },
+  { clave: 'costoAdicional', titulo: 'Costo adicional', requerida: false, ayuda: 'Recargo acordado en USD que se suma al costo (embalaje, entrega especial…). Opcional: entero o con hasta 2 decimales (2, 1.50 o 1,50), hasta 9999.99. Vacío: 0. Va una vez por envío (en sus filas adicionales puede quedar vacío).', ejemplo: '1.50', ancho: 10 },
   { clave: 'descripcion', titulo: 'Descripción', requerida: false, ayuda: 'Contenido declarado (opcional, hasta 200 caracteres).', ejemplo: 'Ropa', ancho: 20 },
 ]
 
@@ -143,6 +146,7 @@ const CLAVES_ENVIO: ClaveColumna[] = [
   'destino',
   'zona',
   'formaPago',
+  'costoAdicional',
   'descripcion',
 ]
 
@@ -156,7 +160,10 @@ export interface EnvioImportado {
   ruta: Ruta | undefined
   /** Solicitud lista para POST /envios; null si alguna de sus filas tiene errores. */
   solicitud: NuevoEnvio | null
+  /** Tarifa calculada + costo adicional (contrato v15). */
   costo: number
+  /** Costo adicional del envío (0 si no hay). */
+  costoAdicional: number
   totalPiezas: number
   pesoTotalKg: number
 }
@@ -207,27 +214,36 @@ function validarFila(v: ValoresFila, ctx: ContextoValidacion): Partial<Record<Cl
   if (peso === null || peso <= 0) e.pesoKg = 'Peso mayor a 0'
   else if (tipo && peso > tipo.pesoMaxKg) e.pesoKg = `Máx. ${tipo.pesoMaxKg} kg por ${enFrase(tipo.nombre)}`
   if (!resolverFormaPago(v.formaPago)) e.formaPago = v.formaPago.trim() ? 'Pagado, Al cobro, Contrato o Seguro' : 'Falta la forma de pago'
+  const adicional = leerCostoAdicional(v.costoAdicional)
+  if (adicional.error) e.costoAdicional = adicional.error
   if (v.descripcion.trim().length > 200) e.descripcion = 'Máximo 200 caracteres'
   return e
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100
 
-/** Costo del envío con las reglas del contrato (mayoreo por tipo en todo el envío, precio rural). */
-export function calcularCosto(items: ItemSolicitud[], zona: Zona, tipos: TipoCargaPublico[]): number {
+/**
+ * Costo del envío con las reglas del contrato (mayoreo por tipo en todo el envío, precio rural) más el costo
+ * adicional (v15), si lo hay.
+ */
+export function calcularCosto(items: ItemSolicitud[], zona: Zona, tipos: TipoCargaPublico[], adicional = 0): number {
   const unidades = new Map<string, number>()
   for (const i of items) unidades.set(i.tipoCarga, (unidades.get(i.tipoCarga) ?? 0) + i.cantidad)
   return round2(
     items.reduce((s, i) => {
       const tipo = tipos.find((t) => t.codigo === i.tipoCarga)
       return tipo ? s + round2(precioUnitario(tipo, zona, unidades.get(i.tipoCarga)!).precio * i.cantidad) : s
-    }, 0),
+    }, adicional),
   )
 }
 
 /** ¿Mismo dato del envío? La guía se compara por su número («0040461» = «40461»); el resto, sin tildes ni mayúsculas. */
-const mismoDato = (c: ClaveColumna, a: string, b: string) =>
-  c === 'numeroGuia' ? normalizarGuia(a) === normalizarGuia(b) : normalizar(a) === normalizar(b)
+const mismoDato = (c: ClaveColumna, a: string, b: string) => {
+  if (c === 'numeroGuia') return normalizarGuia(a) === normalizarGuia(b)
+  // «1,5» = «1.50»: se compara el monto.
+  if (c === 'costoAdicional') return leerCostoAdicional(a).valor === leerCostoAdicional(b).valor
+  return normalizar(a) === normalizar(b)
+}
 
 /** A qué envío pertenece una fila: por «Envío»; si no, por N.º de guía; si no, a ninguno (va sola). */
 function grupoDeFila(v: ValoresFila): { clave: string; nombre: string } | null {
@@ -310,6 +326,7 @@ export function validarImportacion(filas: FilaImportacion[], ctx: ContextoValida
     // La guía puede venir en cualquier fila del envío (las demás la dejan vacía).
     const numeroGuia = miembros.map((f) => normalizarGuia(f.valores.numeroGuia)).find((g) => g !== null) ?? null
     const formaPago = resolverFormaPago(v.formaPago)
+    const costoAdicional = leerCostoAdicional(v.costoAdicional).valor ?? 0
     const solicitud: NuevoEnvio | null =
       sinErrores && ruta && formaPago
         ? {
@@ -329,6 +346,7 @@ export function validarImportacion(filas: FilaImportacion[], ctx: ContextoValida
             zona,
             descripcion: v.descripcion.trim() || undefined,
             numeroGuia: numeroGuia ?? undefined,
+            ...(costoAdicional > 0 ? { costoAdicional } : {}),
           }
         : null
     envios.push({
@@ -338,7 +356,8 @@ export function validarImportacion(filas: FilaImportacion[], ctx: ContextoValida
       numeroGuia,
       ruta,
       solicitud,
-      costo: calcularCosto(items, zona, ctx.tipos),
+      costo: calcularCosto(items, zona, ctx.tipos, costoAdicional),
+      costoAdicional,
       totalPiezas: items.reduce((s, i) => s + i.cantidad, 0),
       pesoTotalKg: round2(items.reduce((s, i) => s + i.cantidad * i.pesoKg, 0)),
     })
@@ -386,6 +405,7 @@ export function mapearEncabezados(encabezados: string[]): { indices: Partial<Rec
     if (c.clave === 'pesoKg') base.push('Peso (kg)', 'Peso')
     if (c.clave === 'numeroGuia') base.push('Guía', 'N° guía', 'No. guía', 'Numero de guia')
     if (c.clave === 'envio') base.push('N.º envío', 'N° envío', 'No. envío', 'Grupo', 'Pedido')
+    if (c.clave === 'costoAdicional') base.push('Adicional', 'Recargo', 'Costo adicional (USD)', 'Valor adicional')
     return base.map(normalizar)
   }
   encabezados.forEach((h, i) => {
@@ -425,6 +445,7 @@ export function envioBorrador(e: EnvioImportado, tipos: TipoCargaPublico[], oper
     zona: s.zona ?? 'URBANA',
     descripcion: s.descripcion ?? null,
     costo: e.costo,
+    costoAdicional: e.costoAdicional,
     formaPago: s.formaPago,
     estado: 'REGISTRADO',
     registro: { fecha, operador },
