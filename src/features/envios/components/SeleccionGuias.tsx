@@ -5,16 +5,16 @@ import { Button } from '@/components/ui/button'
 import { errorMessage } from '@/lib/api'
 import type { Envio } from '@/types/api'
 import { esEstadoFinal } from '../domain'
-import { generarGuias, MENSAJE_ERROR_GUIA, type AccionGuia } from '../guiaPdf'
+import { generarGuias, GUIAS_POR_HOJA, MENSAJE_ERROR_GUIA, type AccionGuia } from '../guiaPdf'
 import { useAsignarRepartidor } from '../hooks'
 import { AsignarRepartidorMenu } from './AsignarRepartidorMenu'
 
-/** Hojas A4 que ocupan `n` guías impresas dos por hoja. */
-const hojasParaGuias = (n: number) => Math.ceil(n / 2)
+/** Hojas A4 que ocupan `n` guías impresas cuatro por hoja (talonario). */
+const hojasParaGuias = (n: number) => Math.ceil(n / GUIAS_POR_HOJA)
 
 /**
  * Barra flotante de los envíos marcados (región común: todo lo que actúa sobre la selección vive
- * junto, separado del contenido). Imprime o descarga sus guías organizadas dos por hoja y asigna
+ * junto, separado del contenido). Imprime o descarga sus guías organizadas cuatro por hoja y asigna
  * un repartidor a todos a la vez.
  */
 export function SeleccionGuias({ envios, onLimpiar }: { envios: Envio[]; onLimpiar: () => void }) {

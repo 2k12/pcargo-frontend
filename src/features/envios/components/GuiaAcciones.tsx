@@ -3,25 +3,28 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import type { Envio } from '@/types/api'
-import { generarGuia, guardarMitadGuia, leerMitadGuia, MENSAJE_ERROR_GUIA, type AccionGuia, type MitadHoja } from '../guiaPdf'
+import {
+  generarGuia,
+  guardarPosicionGuia,
+  leerPosicionGuia,
+  MENSAJE_ERROR_GUIA,
+  POSICIONES_HOJA,
+  type AccionGuia,
+  type PosicionHoja,
+} from '../guiaPdf'
 
-const MITADES: { valor: MitadHoja; etiqueta: string }[] = [
-  { valor: 'superior', etiqueta: 'Arriba' },
-  { valor: 'inferior', etiqueta: 'Abajo' },
-]
-
-/** Imprime o descarga la guía en PDF (copia paquete + copia entrega en media hoja A4). */
+/** Imprime o descarga la guía en PDF (talonario: un cuarto de hoja A4, en la posición elegida). */
 export function GuiaAcciones({ envio }: { envio: Envio }) {
   const [pendiente, setPendiente] = useState<AccionGuia | null>(null)
-  const [mitad, setMitad] = useState<MitadHoja>(leerMitadGuia)
-  const elegirMitad = (m: MitadHoja) => {
-    setMitad(m)
-    guardarMitadGuia(m)
+  const [posicion, setPosicion] = useState<PosicionHoja>(leerPosicionGuia)
+  const elegirPosicion = (p: PosicionHoja) => {
+    setPosicion(p)
+    guardarPosicionGuia(p)
   }
   const ejecutar = async (accion: AccionGuia) => {
     setPendiente(accion)
     try {
-      await generarGuia(envio, accion, mitad)
+      await generarGuia(envio, accion, posicion)
     } catch {
       toast.error(MENSAJE_ERROR_GUIA)
     } finally {
@@ -30,17 +33,19 @@ export function GuiaAcciones({ envio }: { envio: Envio }) {
   }
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Mitad de la hoja">
-        <span className="text-xs text-muted-foreground">Media hoja:</span>
-        {MITADES.map((m) => (
+      <div className="flex flex-wrap items-center gap-1" role="group" aria-label="Posición en la hoja">
+        <span className="mr-1 text-xs text-muted-foreground">Posición en la hoja:</span>
+        {POSICIONES_HOJA.map((p) => (
           <Button
-            key={m.valor}
-            variant={mitad === m.valor ? 'secondary' : 'ghost'}
+            key={p}
+            variant={posicion === p ? 'secondary' : 'ghost'}
             size="xs"
-            aria-pressed={mitad === m.valor}
-            onClick={() => elegirMitad(m.valor)}
+            className="w-7 tabular-nums"
+            aria-pressed={posicion === p}
+            aria-label={`Posición ${p + 1} de 4${p === 0 ? ' (arriba)' : p === 3 ? ' (abajo)' : ''}`}
+            onClick={() => elegirPosicion(p)}
           >
-            {m.etiqueta}
+            {p + 1}
           </Button>
         ))}
       </div>

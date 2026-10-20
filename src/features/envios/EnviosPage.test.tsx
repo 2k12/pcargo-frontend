@@ -94,7 +94,7 @@ describe('EnviosPage', () => {
     expect(await screen.findByText('41–45 de 45')).toBeInTheDocument()
   })
 
-  it('marca varios envíos (también en otras páginas) e imprime sus guías juntas, dos por hoja', async () => {
+  it('marca varios envíos (también en otras páginas) e imprime sus guías juntas, cuatro por hoja', async () => {
     servidorPaginado()
     renderWithProviders(<EnviosPage />, { route: '/envios', path: '/envios' })
     await screen.findByText('1–20 de 45')
@@ -109,7 +109,7 @@ describe('EnviosPage', () => {
     await userEvent.click(screen.getByRole('checkbox', { name: 'Seleccionar guía 40021' }))
 
     const barra = screen.getByRole('region', { name: 'Guías seleccionadas' })
-    expect(barra).toHaveTextContent('3 guías seleccionadas · 2 hojas A4')
+    expect(barra).toHaveTextContent('3 guías seleccionadas · 1 hoja A4')
     await userEvent.click(within(barra).getByRole('button', { name: /Imprimir guías/ }))
     expect(generarGuias).toHaveBeenCalledWith(
       [expect.objectContaining({ numeroGuia: 40001 }), expect.objectContaining({ numeroGuia: 40002 }), expect.objectContaining({ numeroGuia: 40021 })],
@@ -126,7 +126,7 @@ describe('EnviosPage', () => {
     await screen.findByText('1–20 de 45')
     const todos = screen.getByRole('checkbox', { name: 'Seleccionar todos los envíos de la página' })
     await userEvent.click(todos)
-    expect(screen.getByRole('region', { name: 'Guías seleccionadas' })).toHaveTextContent('20 guías seleccionadas · 10 hojas A4')
+    expect(screen.getByRole('region', { name: 'Guías seleccionadas' })).toHaveTextContent('20 guías seleccionadas · 5 hojas A4')
     await userEvent.click(todos)
     expect(screen.queryByRole('region', { name: 'Guías seleccionadas' })).not.toBeInTheDocument()
   })

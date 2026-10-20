@@ -18,10 +18,11 @@ export const AVISOS_GUIA = [
   'GUÍAS SIN DERECHO A CRÉDITO TRIBUTARIO - NO ENTREGAMOS EN APARTADOS POSTALES',
 ] as const
 
-export const COPIAS_GUIA = [
-  { titulo: 'COPIA PAQUETE', detalle: 'va pegada en la caja' },
-  { titulo: 'COPIA ENTREGA', detalle: 'firma de quien recibe' },
-] as const
+/** Formato talonario: la parte cuadrada va pegada en la caja; el talón lo firma quien recibe. */
+export const PARTES_GUIA = {
+  paquete: { titulo: 'COPIA PAQUETE', detalle: 'va pegada en la caja' },
+  talon: { titulo: 'TALÓN DE ENTREGA', detalle: 'firma de quien recibe' },
+} as const
 
 export const DIGITOS_GUIA_IMPRESA = 7
 
@@ -67,6 +68,10 @@ export interface DatosGuia {
   /** Número de pedido de la empresa (envíos por API, contrato v10); vacío si no hay. */
   referenciaExterna: string
   pago: { etiqueta: string; marcada: boolean }[]
+  /** Etiqueta de la forma de pago del envío («AL COBRO», «PAGADO»…). */
+  formaPago: string
+  /** AL_COBRO: el repartidor cobra al entregar (se resalta en la parte del paquete). */
+  cobrarAlEntregar: boolean
   /** Total del envío (ya incluye el costo adicional). */
   valor: string
   /** Costo adicional formateado (contrato v15); vacío si no hubo: la guía queda igual que antes. */
@@ -78,7 +83,6 @@ export interface DatosGuia {
   registro: FechaHoraOperador
   /** Vacío (se llena a mano) salvo que el envío ya esté ENTREGADO. */
   entrega: FechaHoraOperador & { recibidoPor: string }
-  pie: string
 }
 
 /** 40461 → «0040461». Sin número aún (vista previa de una importación) → «———». */
@@ -177,6 +181,8 @@ export function datosGuia(
     descripcion: envio.descripcion?.trim() ?? '',
     referenciaExterna: envio.referenciaExterna?.trim() ?? '',
     pago: CASILLAS_PAGO.map((c) => ({ etiqueta: c.etiqueta, marcada: c.formaPago === envio.formaPago })),
+    formaPago: CASILLAS_PAGO.find((c) => c.formaPago === envio.formaPago)?.etiqueta ?? '',
+    cobrarAlEntregar: envio.formaPago === 'AL_COBRO',
     valor: formatCurrency(envio.costo),
     adicional: adicionalDe(envio) > 0 ? formatCurrency(adicionalDe(envio)) : '',
     zona: envio.zona === 'RURAL' ? 'ZONA RURAL' : '',
@@ -188,6 +194,5 @@ export function datosGuia(
       operador: entregado ? (envio.entrega?.operador ?? '') : '',
       recibidoPor: entregado ? (envio.evidencia?.recibidoPor ?? '') : '',
     },
-    pie: 'Original: copia paquete · Copia: entrega',
   }
 }

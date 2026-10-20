@@ -1,46 +1,62 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import {
-  ALTO_COPIA,
-  guardarMitadGuia,
-  leerMitadGuia,
+  ALTO_GUIA,
+  ANCHO_TALON,
+  guardarPosicionGuia,
+  GUIAS_POR_HOJA,
+  LADO_PAQUETE,
+  leerPosicionGuia,
   nombreArchivoGuias,
   ordenarParaImprimir,
-  posicionCopias,
+  POSICIONES_HOJA,
+  posicionGuia,
   ubicacionGuia,
+  X_TALON,
 } from './guiaPdf'
 
-const MITAD_A4 = 297 / 2
+describe('formato talonario', () => {
+  it('caben cuatro guías por hoja A4, sin solaparse y con margen al borde', () => {
+    expect(GUIAS_POR_HOJA).toBe(4)
+    const ys = POSICIONES_HOJA.map(posicionGuia)
+    expect(ys[0]).toBeGreaterThanOrEqual(5)
+    expect(ys[3]! + ALTO_GUIA).toBeLessThanOrEqual(297 - 5)
+    for (let i = 1; i < ys.length; i++) expect(ys[i]).toBeGreaterThanOrEqual(ys[i - 1]! + ALTO_GUIA + 4)
+  })
 
-describe('posicionCopias', () => {
-  it.each(['superior', 'inferior'] as const)('las dos copias caben en la mitad %s, con margen al borde de la hoja', (mitad) => {
-    const [y0, y1] = posicionCopias(mitad)
-    const desde = mitad === 'superior' ? 0 : MITAD_A4
-    expect(y0).toBeGreaterThanOrEqual(desde + 2)
-    expect(y1).toBeGreaterThanOrEqual(y0 + ALTO_COPIA)
-    expect(y1 + ALTO_COPIA).toBeLessThanOrEqual(desde + MITAD_A4 - 2)
-    if (mitad === 'superior') expect(y0).toBeGreaterThanOrEqual(5)
-    else expect(y1 + ALTO_COPIA).toBeLessThanOrEqual(297 - 5)
+  it('la parte del paquete es cuadrada y el talón ocupa el resto del ancho', () => {
+    expect(LADO_PAQUETE).toBe(ALTO_GUIA)
+    expect(X_TALON).toBeGreaterThan(6 + LADO_PAQUETE)
+    expect(X_TALON + ANCHO_TALON).toBeLessThanOrEqual(210 - 6)
+    expect(ANCHO_TALON).toBeGreaterThan(120)
   })
 })
 
-describe('mitad de la hoja recordada', () => {
+describe('posición en la hoja recordada', () => {
   afterEach(() => localStorage.clear())
 
-  it('por defecto es la superior y recuerda la última elegida', () => {
-    expect(leerMitadGuia()).toBe('superior')
-    guardarMitadGuia('inferior')
-    expect(leerMitadGuia()).toBe('inferior')
+  it('por defecto es la primera (arriba) y recuerda la última elegida', () => {
+    expect(leerPosicionGuia()).toBe(0)
+    guardarPosicionGuia(2)
+    expect(leerPosicionGuia()).toBe(2)
+  })
+
+  it('ignora valores guardados que no son una posición (p. ej. la «mitad» del formato anterior)', () => {
+    localStorage.setItem('pcargo.guia.posicion', 'inferior')
+    expect(leerPosicionGuia()).toBe(0)
+    localStorage.setItem('pcargo.guia.posicion', '7')
+    expect(leerPosicionGuia()).toBe(0)
   })
 })
 
 describe('varias guías en un PDF', () => {
-  it('van dos por hoja: arriba y abajo, y la siguiente en otra hoja', () => {
-    expect([0, 1, 2, 3, 4].map(ubicacionGuia)).toEqual([
-      { hoja: 0, mitad: 'superior' },
-      { hoja: 0, mitad: 'inferior' },
-      { hoja: 1, mitad: 'superior' },
-      { hoja: 1, mitad: 'inferior' },
-      { hoja: 2, mitad: 'superior' },
+  it('van cuatro por hoja, de arriba abajo, y la quinta en otra hoja', () => {
+    expect([0, 1, 2, 3, 4, 5].map(ubicacionGuia)).toEqual([
+      { hoja: 0, posicion: 0 },
+      { hoja: 0, posicion: 1 },
+      { hoja: 0, posicion: 2 },
+      { hoja: 0, posicion: 3 },
+      { hoja: 1, posicion: 0 },
+      { hoja: 1, posicion: 1 },
     ])
   })
 

@@ -1,7 +1,7 @@
 import { jsPDF, type TextOptionsLight } from 'jspdf'
 import { describe, expect, it, vi } from 'vitest'
 import type { Envio } from '@/types/api'
-import { ALTO_COPIA, componerGuia, posicionCopias } from './guiaPdf'
+import { ALTO_GUIA, ANCHO_TALON, componerGuia, LADO_PAQUETE, POSICIONES_HOJA, posicionGuia, X_TALON, type PosicionHoja } from './guiaPdf'
 import { datosGuia } from './guiaImprimible'
 
 // PNG 1×1 para el QR (el dibujo no necesita uno real).
@@ -27,39 +27,111 @@ const envio = {
   referenciaExterna: null,
 } as unknown as Envio
 
-/** Dibuja la guía y devuelve los textos con su posición y ancho (mm). */
-function textosDibujados(e: Envio) {
+/** Envío con todos los textos al límite: nada debe salirse de su parte. */
+const envioLargo = {
+  ...envio,
+  numeroGuia: 9999999,
+  remitente: { nombre: 'Importadora y Comercializadora Textiles del Norte Atuntaqui Cía. Ltda.', telefono: '0991112233', direccion: 'Av. Julio Andrade y Calle Bolívar, junto al parque central, local 12' },
+  destinatario: {
+    nombre: 'María Fernanda de los Ángeles Villavicencio Benalcázar',
+    telefono: '0994445566',
+    direccion: 'Urbanización Los Arrayanes, calle Las Orquídeas N45-120 y Av. Eloy Alfaro, edificio Torre Azul, departamento 8B',
+  },
+  ruta: { id: 7, origen: 'Atuntaqui', destino: 'Quito' },
+  items: [
+    { tipoCarga: 'SOBRE', cantidad: 12, pesoKg: 1, costoUnitario: 1, subtotal: 12 },
+    { tipoCarga: 'CARTON', cantidad: 25, pesoKg: 80, costoUnitario: 4, subtotal: 100 },
+    { tipoCarga: 'ROLLO_TELA', cantidad: 3, pesoKg: 30, costoUnitario: 5, subtotal: 15 },
+    { tipoCarga: 'CAJA_GRANDE', cantidad: 2, pesoKg: 20, costoUnitario: 8, subtotal: 16 },
+  ],
+  pesoTotalKg: 131.25,
+  zona: 'RURAL',
+  descripcion: 'Prendas de vestir, telas e insumos de confección para la temporada escolar de la Sierra',
+  costo: 9999.99 + 143,
+  costoAdicional: 9999.99,
+  formaPago: 'AL_COBRO',
+  estado: 'ENTREGADO',
+  entrega: { fecha: '2026-10-20T15:00:00.000Z', resultado: 'ENTREGADO', operador: 'Repartidor de la Ruta Norte' },
+  evidencia: { recibidoPor: 'Guardia del edificio Torre Azul, Sr. Bolívar Chiriboga' },
+  referenciaExterna: 'PED-2026-000123456789',
+} as unknown as Envio
+
+interface TextoDibujado {
+  texto: string
+  x: number
+  y: number
+  izquierda: number
+  derecha: number
+}
+
+/** Dibuja la guía y devuelve los textos con su posición y sus bordes izquierdo y derecho (mm). */
+function textosDibujados(e: Envio, posicion: PosicionHoja = 0) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-  const textos: { texto: string; x: number; y: number; ancho: number }[] = []
+  const textos: TextoDibujado[] = []
   const original = doc.text.bind(doc)
   vi.spyOn(doc, 'text').mockImplementation(((t: string | string[], x: number, y: number, opts?: TextOptionsLight) => {
-    const texto = Array.isArray(t) ? t.join(' ') : t
-    textos.push({ texto, x, y, ancho: doc.getTextWidth(texto) })
+    const lineas = Array.isArray(t) ? t : [t]
+    const ancho = Math.max(...lineas.map((l) => doc.getTextWidth(l))) + (opts?.charSpace ?? 0) * Math.max(...lineas.map((l) => l.length - 1))
+    const izquierda = opts?.align === 'right' ? x - ancho : opts?.align === 'center' ? x - ancho / 2 : x
+    textos.push({ texto: lineas.join(' '), x, y, izquierda, derecha: izquierda + ancho })
     return original(t, x, y, opts)
   }) as typeof doc.text)
-  componerGuia(doc, datosGuia(e, 'https://pcargo.ec'), null, QR, 'superior')
+  componerGuia(doc, datosGuia(e, 'https://pcargo.ec'), null, QR, posicion)
   return textos
 }
 
-describe('guía en PDF — costo adicional', () => {
-  it('sin adicional no dibuja la línea extra', () => {
-    expect(textosDibujados(envio).some((t) => t.texto === 'COSTO ADICIONAL')).toBe(false)
+const enPaquete = (t: TextoDibujado) => t.x < X_TALON - 2
+
+describe('guía en PDF — talonario', () => {
+  it.each(POSICIONES_HOJA)('en la posición %s ningún texto se sale de su parte, aun con datos largos', (posicion) => {
+    const T = posicionGuia(posicion)
+    const textos = textosDibujados(envioLargo, posicion)
+    for (const t of textos) {
+      const [desde, hasta] = enPaquete(t) ? [6, 6 + LADO_PAQUETE] : [X_TALON, X_TALON + ANCHO_TALON]
+      expect(t.izquierda, t.texto).toBeGreaterThanOrEqual(desde - 0.01)
+      expect(t.derecha, t.texto).toBeLessThanOrEqual(hasta + 0.01)
+      expect(t.y, t.texto).toBeGreaterThan(T)
+      expect(t.y, t.texto).toBeLessThanOrEqual(T + ALTO_GUIA)
+    }
   })
 
-  it('con adicional dibuja «COSTO ADICIONAL» antes del total, dentro de la casilla del valor y sin desbordar', () => {
+  it('la parte del paquete lleva número, ruta, destinatario, remitente, piezas, peso y pago', () => {
+    const paquete = textosDibujados(envio).filter(enPaquete).map((t) => t.texto)
+    expect(paquete).toEqual(
+      expect.arrayContaining(['COPIA PAQUETE', '0040461', 'IBARRA - QUITO', 'PARA:', 'Luis', 'Quito centro', 'QUITO', 'Telf. 0994445566', 'Ana · 0991112233', '1', '2 kg', 'PAGADO']),
+    )
+    // Lo que se firma va solo en el talón.
+    expect(paquete.some((t) => /FIRMA|ACEPTO/.test(t))).toBe(false)
+  })
+
+  it('el talón lleva las firmas del remitente y de quien recibe', () => {
+    const talon = textosDibujados(envio).filter((t) => !enPaquete(t)).map((t) => t.texto)
+    expect(talon).toEqual(expect.arrayContaining(['TALÓN DE ENTREGA', 'ACEPTO CONDICIONES (REMITENTE)', 'RECIBÍ CONFORME', 'FIRMA DE QUIEN RECIBE']))
+  })
+
+  it('AL COBRO se resalta en la parte del paquete; pagado, no', () => {
+    expect(textosDibujados(envio).some((t) => t.texto === 'COBRAR AL ENTREGAR')).toBe(false)
+    const alCobro = textosDibujados({ ...envio, formaPago: 'AL_COBRO' } as Envio).filter(enPaquete)
+    expect(alCobro.some((t) => t.texto === 'COBRAR AL ENTREGAR')).toBe(true)
+  })
+})
+
+describe('guía en PDF — costo adicional', () => {
+  it('sin adicional no dibuja la línea extra', () => {
+    expect(textosDibujados(envio).some((t) => t.texto === 'ADICIONAL')).toBe(false)
+  })
+
+  it('con adicional dibuja «ADICIONAL» antes del total, dentro de la casilla del valor del talón', () => {
     const textos = textosDibujados({ ...envio, costo: 9999.99 + 6, costoAdicional: 9999.99 })
-    const [y0] = posicionCopias('superior')
-    const rotulos = textos.filter((t) => t.texto === 'COSTO ADICIONAL' && t.y < y0 + ALTO_COPIA)
-    expect(rotulos).toHaveLength(1)
-    const rotulo = rotulos[0]!
+    const rotulo = textos.find((t) => t.texto === 'ADICIONAL')!
+    expect(rotulo).toBeDefined()
     const valor = textos.find((t) => /9\.999,99/.test(t.texto) && t.y === rotulo.y)!
-    const total = textos.find((t) => /10\.005,99/.test(t.texto) && t.y < y0 + ALTO_COPIA)!
+    const total = textos.find((t) => /10\.005,99/.test(t.texto) && !enPaquete(t))!
     expect(valor).toBeDefined()
     expect(total.y).toBeGreaterThan(rotulo.y)
-    // Casilla VALOR USD: de x = 172 a 204 mm; el rótulo no pisa el monto (alineado a la derecha).
-    expect(rotulo.x).toBeGreaterThanOrEqual(172)
-    expect(rotulo.x + rotulo.ancho).toBeLessThan(valor.x - valor.ancho)
-    expect(valor.x).toBeLessThanOrEqual(204)
-    expect(total.x - total.ancho).toBeGreaterThanOrEqual(172)
+    // El rótulo no pisa el monto (alineado a la derecha).
+    expect(rotulo.derecha).toBeLessThan(valor.izquierda)
+    // La parte del paquete muestra solo el total.
+    expect(textos.some((t) => enPaquete(t) && /10\.005,99/.test(t.texto))).toBe(true)
   })
 })

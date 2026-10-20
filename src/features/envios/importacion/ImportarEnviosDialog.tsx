@@ -26,7 +26,7 @@ import { cn } from '@/lib/utils'
 import type { Envio } from '@/types/api'
 import { enviosApi } from '../api'
 import { FORMA_PAGO_LABEL, FORMAS_PAGO, ZONA_LABEL, ZONAS } from '../domain'
-import { crearGuiasPdf, generarGuias, MENSAJE_ERROR_GUIA } from '../guiaPdf'
+import { crearGuiasPdf, generarGuias, GUIAS_POR_HOJA, MENSAJE_ERROR_GUIA } from '../guiaPdf'
 import { enviosKeys, useTiposCarga } from '../hooks'
 import { descargarPlantilla, ErrorPlantilla, leerExcel } from './excel'
 import {
@@ -560,7 +560,7 @@ function TablaEditable({
   )
 }
 
-/** Las guías tal como se imprimirán (dos por hoja), generadas en el navegador. */
+/** Las guías tal como se imprimirán (cuatro por hoja), generadas en el navegador. */
 function VistaGuias({ envios, enfocada, onVerTodas }: { envios: Envio[]; enfocada: boolean; onVerTodas: () => void }) {
   const [url, setUrl] = useState<string | null>(null)
   const [error, setError] = useState(false)
@@ -595,7 +595,7 @@ function VistaGuias({ envios, enfocada, onVerTodas }: { envios: Envio[]; enfocad
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-3 px-5 py-2 text-xs text-muted-foreground">
         <span className="mr-auto">
-          {enfocada ? 'Una guía' : `${plural(envios.length, 'guía', 'guías')} · ${plural(Math.ceil(envios.length / 2), 'hoja A4', 'hojas A4')}`}
+          {enfocada ? 'Una guía' : `${plural(envios.length, 'guía', 'guías')} · ${plural(Math.ceil(envios.length / GUIAS_POR_HOJA), 'hoja A4', 'hojas A4')}`}
           {' · las guías sin número lo reciben al importar'}
         </span>
         {enfocada && (
