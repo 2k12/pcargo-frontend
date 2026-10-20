@@ -12,7 +12,8 @@ export function TablaPrecios({ tipos }: { tipos: TipoCargaPublico[] }) {
   const conMayoreo = tipos.filter((t) => t.mayoreo)
 
   return (
-    <div className="overflow-hidden rounded-2xl border bg-card">
+    // Con el texto muy grande (Android) la tabla se desplaza dentro de la tarjeta en vez de ensanchar la página.
+    <div className="overflow-x-auto rounded-2xl border bg-card">
       <table className="w-full text-sm tabular-nums">
         <caption className="sr-only">Precios por unidad según el tipo de carga y la zona de entrega (USD)</caption>
         <thead>

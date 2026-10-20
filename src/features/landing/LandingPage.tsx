@@ -211,7 +211,7 @@ export function LandingPage() {
           <div className="flex items-center gap-1">
             <ThemeToggle />
             <Button className="hidden sm:inline-flex" nativeButton={false} render={<Link to="/login" />}>
-              <LogIn /> Acceso del personal
+              <LogIn /> Plataforma
             </Button>
             <MenuMovil secciones={NAV_MOVIL} />
           </div>
@@ -222,12 +222,12 @@ export function LandingPage() {
         {/* Portada */}
         <section className="relative overflow-hidden">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,color-mix(in_oklch,var(--brand-blue)_14%,transparent),transparent_55%),radial-gradient(ellipse_at_bottom_right,color-mix(in_oklch,var(--brand-green)_18%,transparent),transparent_55%)]" />
-          <div className="relative mx-auto grid max-w-6xl items-center gap-10 px-4 pt-10 pb-16 sm:px-6 sm:pt-16 lg:grid-cols-[1fr_1.05fr] lg:gap-14 lg:pb-24">
-            <div className="space-y-6">
+          <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-10 px-4 pt-10 pb-16 sm:px-6 sm:pt-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-14 lg:pb-24">
+            <div className="min-w-0 space-y-6">
               <Badge variant="secondary" className="min-h-5 gap-1.5" render={<a href="#cobertura" />}>
                 <MapPin className="size-3" /> {ciudadesTexto || 'Cobertura en el norte del Ecuador'}
               </Badge>
-              <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl">
+              <h1 className="text-4xl font-semibold tracking-tight text-balance break-words hyphens-auto sm:text-5xl lg:text-6xl">
                 Tus encomiendas,{' '}
                 <span className="text-brand-blue-text">
                   puerta a puerta<span className="text-brand-green-text">.</span>
@@ -274,7 +274,8 @@ export function LandingPage() {
               { icon: PackageSearch, k: 'Seguimiento', v: 'En línea' },
             ].map((s) => (
               // <dl> solo admite <div> con <dt>/<dd> dentro: el icono va dentro del <dt> (árbol accesible válido).
-              <div key={s.k} className="relative space-y-0.5 pl-12">
+              // En el teléfono el icono va arriba: a su lado, con el texto grande de Android, «Seguimiento» no cabía.
+              <div key={s.k} className="relative min-w-0 space-y-0.5 pt-11 sm:pt-0 sm:pl-12">
                 <dt className="text-sm text-muted-foreground">
                   <span
                     aria-hidden="true"
@@ -355,8 +356,8 @@ export function LandingPage() {
         >
           {catalogo ? (
             <div className="space-y-10">
-              <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-                <div className="space-y-3">
+              <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+                <div className="min-w-0 space-y-3">
                   <h3 className="font-semibold">Precios por unidad</h3>
                   <TablaPrecios tipos={catalogo.tiposCarga} />
                 </div>
@@ -524,7 +525,7 @@ export function LandingPage() {
               <p className="text-sm">Ingresa al panel de operaciones para registrar y gestionar envíos.</p>
             </div>
             <Button size="lg" className="relative bg-brand-green text-brand-green-foreground hover:bg-brand-green/90" nativeButton={false} render={<Link to="/login" />}>
-              <LogIn /> Acceso del personal
+              <LogIn /> Plataforma
             </Button>
           </div>
         </section>
@@ -546,7 +547,7 @@ export function LandingPage() {
               <a href="#preguntas" className="hover:text-foreground">Preguntas frecuentes</a>
               <a href="#prohibidos" className="hover:text-foreground">Qué no transportamos</a>
               <Link to="/desarrolladores" className="hover:text-foreground">API para empresas</Link>
-              <Link to="/login" className="hover:text-foreground">Acceso del personal</Link>
+              <Link to="/login" className="hover:text-foreground">Plataforma</Link>
             </div>
           </div>
           <CarruselCiudades ciudades={catalogo?.ciudades ?? []} />

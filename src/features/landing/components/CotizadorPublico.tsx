@@ -49,8 +49,9 @@ export function CotizadorPublico({ catalogo }: { catalogo: CatalogoPublico }) {
       : undefined
 
   return (
-    <div className="grid gap-6 rounded-2xl border bg-card p-5 sm:p-8 lg:grid-cols-[1fr_320px]">
-      <div className="space-y-5">
+    // grid-cols-1 = minmax(0, 1fr): con el texto grande de Android la columna no crece más que la pantalla.
+    <div className="grid grid-cols-1 gap-6 rounded-2xl border bg-card p-5 sm:p-8 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="min-w-0 space-y-5">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label>Desde</Label>
@@ -173,6 +174,7 @@ export function CotizadorPublico({ catalogo }: { catalogo: CatalogoPublico }) {
         </div>
         <Button
           size="lg"
+          className="h-auto min-h-9 py-2 text-center whitespace-normal"
           nativeButton={false}
           render={<EnlaceExterno href={whatsappUrl(resumen)} />}
         >

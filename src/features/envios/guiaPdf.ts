@@ -241,40 +241,40 @@ function dibujarPaquete(doc: JsPdf, d: DatosGuia, logo: Logo | null, qr: string,
   doc.text(d.numero, fin - 1.5, T + 12.4, { align: 'right' })
   linea(T + 14)
 
-  // Ruta
-  fuente(doc, 10, 'bold', AZUL)
-  fuenteQueQuepa(doc, d.ruta, L - 3, 10, 6)
-  doc.text(d.ruta, x0 + L / 2, T + 18.4, { align: 'center' })
-  linea(T + 20)
+  // Ruta (discreta: lo importante para entregar es el destinatario)
+  fuente(doc, 7.5, 'bold', AZUL)
+  fuenteQueQuepa(doc, d.ruta, L - 3, 7.5, 5.5)
+  doc.text(d.ruta, x0 + L / 2, T + 17.3, { align: 'center' })
+  linea(T + 18.6)
 
-  // QR grande · destinatario
-  const ladoQr = 24
-  doc.addImage(qr, 'PNG', x0 + 1.5, T + 21.3, ladoQr, ladoQr)
+  // QR · destinatario en letra grande
+  const ladoQr = 22
+  doc.addImage(qr, 'PNG', x0 + 1.5, T + 20.6, ladoQr, ladoQr)
   const xr = x0 + 1.5 + ladoQr + 2
   const wr = fin - 1.5 - xr
-  etiqueta(doc, 'PARA:', xr, T + 23.4, 5.3)
-  let y = T + 26.8
-  fuente(doc, 8, 'bold')
+  etiqueta(doc, 'PARA:', xr, T + 21.8, 5.3)
+  let y = T + 25.8
+  fuente(doc, 10.5, 'bold')
   const nombre = lineasHasta(doc, d.destinatario.nombre, wr, 2)
-  doc.text(nombre, xr, y, { lineHeightFactor: 1.1 })
-  y += nombre.length * 3.1 + 0.3
+  doc.text(nombre, xr, y, { lineHeightFactor: 1.05 })
+  y += nombre.length * 3.9 + 0.3
   if (d.destinatario.direccion) {
-    fuente(doc, 6.2)
+    fuente(doc, 7.2)
     const direccion = lineasHasta(doc, d.destinatario.direccion, wr, nombre.length > 1 ? 2 : 3)
-    doc.text(direccion, xr, y, { lineHeightFactor: 1.15 })
-    y += direccion.length * 2.5 + 0.4
+    doc.text(direccion, xr, y, { lineHeightFactor: 1.12 })
+    y += direccion.length * 2.85 + 0.5
   }
-  fuente(doc, 6.5, 'bold', AZUL)
+  fuente(doc, 7.8, 'bold', AZUL)
   doc.text(ajustar(doc, d.destinatario.ciudad.toLocaleUpperCase('es-EC'), wr), xr, y)
-  fuente(doc, 7.5, 'bold')
-  doc.text(ajustar(doc, `Telf. ${d.destinatario.telefono}`, wr), xr, y + 3.2)
+  fuente(doc, 9, 'bold')
+  doc.text(ajustar(doc, `Telf. ${d.destinatario.telefono}`, wr), xr, y + 3.6)
   linea(T + 46.5)
 
   // Remitente en una línea
-  etiqueta(doc, 'DE:', x0 + 1.5, T + 49.4, 5.3)
-  fuente(doc, 6.3)
+  etiqueta(doc, 'DE:', x0 + 1.5, T + 49.5, 5.3)
+  fuente(doc, 7)
   const remitente = [d.remitente.nombre, d.remitente.telefono].filter(Boolean).join(' · ')
-  doc.text(ajustar(doc, remitente, L - 8), x0 + 6.5, T + 49.4)
+  doc.text(ajustar(doc, remitente, L - 8), x0 + 6.5, T + 49.5)
 
   // Piezas · peso · forma de pago
   const fy = T + 51

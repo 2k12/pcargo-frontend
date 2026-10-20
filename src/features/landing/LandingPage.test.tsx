@@ -69,7 +69,7 @@ describe('LandingPage (pública)', () => {
     expect(screen.getByRole('heading', { name: 'Rollo de tela' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /puerta a puerta/i })).toBeInTheDocument()
 
-    const accesos = screen.getAllByRole('link', { name: /Acceso del personal/ })
+    const accesos = screen.getAllByRole('link', { name: /Plataforma/ })
     expect(accesos.length).toBeGreaterThan(0)
     for (const a of accesos) expect(a).toHaveAttribute('href', '/login')
 

@@ -37,7 +37,7 @@ export function MenuMovil({ secciones }: { secciones: { href: string; label: str
             <MessageCircle /> Escríbenos por WhatsApp
           </Button>
           <Button size="lg" className="w-full" nativeButton={false} render={<Link to="/login" />}>
-            <LogIn /> Acceso del personal
+            <LogIn /> Plataforma
           </Button>
         </div>
       </SheetContent>

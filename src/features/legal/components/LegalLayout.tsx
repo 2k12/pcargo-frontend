@@ -32,8 +32,11 @@ export function LegalLayout({ titulo, resumen, children }: { titulo: string; res
           </Link>
           <div className="flex items-center gap-1">
             <ThemeToggle />
-            <Button variant="ghost" size="sm" nativeButton={false} render={<Link to="/" />}>
-              <ArrowLeft /> Volver al inicio
+            {/* En el teléfono solo «Inicio»: con el texto grande de Android la frase completa ensanchaba la página. */}
+            <Button variant="ghost" size="sm" nativeButton={false} aria-label="Volver al inicio" render={<Link to="/" />}>
+              <ArrowLeft />
+              <span className="sm:hidden">Inicio</span>
+              <span className="max-sm:hidden">Volver al inicio</span>
             </Button>
           </div>
         </div>
