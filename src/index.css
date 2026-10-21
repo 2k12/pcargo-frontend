@@ -154,6 +154,9 @@
   /* En Android el ancho de la página se ajusta al contenido aunque `html` recorte: el recorte va también en el
      contenedor de la app, así nada de lo que hay dentro puede ensanchar la página ni dejarla moverse de lado. */
   #root {
+    /* relative: los textos solo para lectores de pantalla (sr-only, posición absoluta) quedan dentro del
+       recorte; sin un ancestro posicionado se medían contra la página entera y la ensanchaban. */
+    position: relative;
     overflow-x: clip;
     }
 }

@@ -73,7 +73,7 @@ function ItemsTabla({ envio }: { envio: Envio }) {
   // Contrato v15: `costo` ya incluye el adicional; la tarifa es la diferencia.
   const adicional = adicionalDe(envio)
   return (
-    <div className="overflow-x-auto rounded-lg border">
+    <div className="relative overflow-x-auto rounded-lg border">
       <table className="w-full text-xs tabular-nums" aria-label="Ítems del envío">
         <thead className="bg-muted/40 text-muted-foreground">
           <tr>

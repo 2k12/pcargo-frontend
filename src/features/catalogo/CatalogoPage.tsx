@@ -37,7 +37,7 @@ export function CatalogoPage() {
           )
         }
       >
-        <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
+        <div className="-mx-4 relative overflow-x-auto px-4 md:mx-0 md:px-0">
           <TabsList>
             {PESTANAS.map((p) => (
               <TabsTrigger key={p.value} value={p.value}>

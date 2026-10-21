@@ -316,7 +316,7 @@ function FiltrosBar({ f }: { f: ReturnType<typeof useFiltrosResumen> }) {
           value={seleccion}
           onChange={elegir}
           options={OPCIONES_PERIODO}
-          className="overflow-x-auto"
+          className="relative overflow-x-auto"
         />
         <Segmented label="Origen" value={canalSel} onChange={elegirCanal} options={OPCIONES_CANAL} />
         {chipRango}

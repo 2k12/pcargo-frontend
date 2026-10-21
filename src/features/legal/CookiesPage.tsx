@@ -23,7 +23,7 @@ export function CookiesPage() {
       </Apartado>
 
       <Apartado id="que-usamos" titulo="2. Qué guardamos en tu navegador">
-        <div className="overflow-x-auto rounded-xl border">
+        <div className="relative overflow-x-auto rounded-xl border">
           <table className="w-full min-w-[520px] text-left text-sm">
             <caption className="sr-only">Datos que el sitio guarda en tu navegador</caption>
             <thead className="bg-muted">

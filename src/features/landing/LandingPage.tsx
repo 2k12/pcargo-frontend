@@ -371,7 +371,7 @@ export function LandingPage() {
               </div>
               <div className="space-y-3">
                 <h3 className="font-semibold">Tiempos estimados por trayecto</h3>
-                <div className="overflow-x-auto rounded-2xl border">
+                <div className="relative overflow-x-auto rounded-2xl border">
                   <table className="w-full min-w-[520px] text-sm">
                     <caption className="sr-only">Tiempo estimado de entrega por trayecto (origen en filas, destino en columnas)</caption>
                     <thead>

@@ -45,7 +45,7 @@ function Seccion({ id, children }: { id: (typeof SECCIONES)[number]['id']; child
 /** Tabla simple y legible; en móvil se desplaza en horizontal sin romper la página. */
 function Tabla({ etiqueta, columnas, filas }: { etiqueta: string; columnas: string[]; filas: ReactNode[][] }) {
   return (
-    <div className="overflow-x-auto rounded-xl ring-1 ring-foreground/10" tabIndex={0} role="region" aria-label={etiqueta}>
+    <div className="relative overflow-x-auto rounded-xl ring-1 ring-foreground/10" tabIndex={0} role="region" aria-label={etiqueta}>
       <table className="w-full text-left text-sm">
         <thead className="bg-muted/50 text-xs text-muted-foreground">
           <tr>

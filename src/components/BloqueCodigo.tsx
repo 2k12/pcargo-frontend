@@ -20,7 +20,7 @@ export function BloqueCodigo({
         <span className="min-w-0 truncate font-medium">{titulo ?? lenguaje ?? 'Código'}</span>
         <BotonCopiar valor={codigo} etiqueta={titulo ? `Copiar ${titulo}` : 'Copiar código'} texto="Copiar" size="xs" />
       </figcaption>
-      <pre tabIndex={0} className="overflow-x-auto p-3 text-xs leading-5 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+      <pre tabIndex={0} className="relative overflow-x-auto p-3 text-xs leading-5 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
         <code data-lenguaje={lenguaje}>{codigo}</code>
       </pre>
     </figure>
