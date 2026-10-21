@@ -1,7 +1,7 @@
 // Reporte diario de guías: lógica pura (orden de la lista y textos del PDF), sin React ni jsPDF.
 import { fechaEC } from '@/features/dashboard/domain'
 import { FORMA_PAGO_LABEL } from '@/features/envios/domain'
-import { EMPRESA_GUIA, numeroGuiaImpreso, rutaGuia } from '@/features/envios/guiaImprimible'
+import { EMPRESA_GUIA, numeroGuiaImpreso } from '@/features/envios/guiaImprimible'
 import { formatCurrency } from '@/lib/format'
 import type { Envio } from '@/types/api'
 
@@ -40,9 +40,9 @@ export const fechaLarga = (fecha: string): string => fmtDiaLargo.format(new Date
 export interface FilaReporte {
   n: string
   guia: string
-  ruta: string
   remitente: string
   destinatario: string
+  piezas: string
   pago: string
   valor: string
 }
@@ -82,9 +82,9 @@ export function datosReporte(titulo: string, fecha: string, envios: Envio[], aho
     filas: envios.map((e, i) => ({
       n: String(i + 1),
       guia: numeroGuiaImpreso(e.numeroGuia),
-      ruta: rutaGuia(e.ruta),
       remitente: e.remitente.nombre,
       destinatario: e.destinatario.nombre,
+      piezas: String(e.totalPiezas),
       pago: FORMA_PAGO_LABEL[e.formaPago],
       valor: formatCurrency(e.costo),
     })),

@@ -1,8 +1,10 @@
-// Reporte diario en PDF (A4 vertical): arriba el nombre del reporte y los datos de PCargo, luego las
-// guías en el orden elegido y al final el total de guías y la suma de sus valores.
-// jsPDF se carga con import() dinámico: solo se descarga al generar un reporte.
+// Reporte diario en PDF (A4 vertical): arriba el nombre del reporte y los datos de PCargo, luego el listado
+// de las guías en el orden elegido con el total de guías y la suma de sus valores y, a continuación, las
+// guías mismas (cuatro talones por hoja) en ese mismo orden.
+// jsPDF y qrcode se cargan con import() dinámico: solo se descargan al generar un reporte.
 import type { jsPDF as JsPdf } from 'jspdf'
-import { cargarLogo, descargarPdf, type Logo } from '@/features/envios/guiaPdf'
+import { datosGuia, type DatosGuia } from '@/features/envios/guiaImprimible'
+import { cargarLogo, componerGuia, descargarPdf, qrDeGuia, ubicacionGuia, type Logo } from '@/features/envios/guiaPdf'
 import type { Envio } from '@/types/api'
 import { datosReporte, type DatosReporte, type FilaReporte } from './domain'
 
@@ -27,11 +29,11 @@ const LIMITE_FILAS = ALTO - 18
 export const COLUMNAS_REPORTE: { clave: keyof FilaReporte; rotulo: string; ancho: number; derecha?: boolean }[] = [
   { clave: 'n', rotulo: 'N.º', ancho: 9 },
   { clave: 'guia', rotulo: 'GUÍA', ancho: 18 },
-  { clave: 'ruta', rotulo: 'RUTA', ancho: 33 },
-  { clave: 'remitente', rotulo: 'REMITENTE', ancho: 40 },
-  { clave: 'destinatario', rotulo: 'DESTINATARIO', ancho: 42 },
-  { clave: 'pago', rotulo: 'PAGO', ancho: 20 },
-  { clave: 'valor', rotulo: 'VALOR', ancho: 24, derecha: true },
+  { clave: 'remitente', rotulo: 'REMITENTE', ancho: 50 },
+  { clave: 'destinatario', rotulo: 'DESTINATARIO', ancho: 52 },
+  { clave: 'piezas', rotulo: 'PIEZAS', ancho: 15, derecha: true },
+  { clave: 'pago', rotulo: 'PAGO', ancho: 19 },
+  { clave: 'valor', rotulo: 'VALOR', ancho: 23, derecha: true },
 ]
 
 function fuente(doc: JsPdf, tamano: number, estilo: 'normal' | 'bold' = 'normal', color: Rgb = TINTA) {
@@ -161,15 +163,28 @@ export function componerReporte(doc: JsPdf, d: DatosReporte, logo: Logo | null):
   pieDePagina(doc, d)
 }
 
+/** Tras el listado, las guías en el mismo orden: cuatro talones por hoja, empezando en una hoja nueva. */
+export function agregarGuias(doc: JsPdf, d: DatosReporte, guias: DatosGuia[], logo: Logo | null, qrs: string[]): void {
+  guias.forEach((g, i) => {
+    const { posicion } = ubicacionGuia(i)
+    if (posicion === 0) doc.addPage('a4', 'portrait')
+    componerGuia(doc, g, logo, qrs[i]!, posicion)
+  })
+  // componerGuia pone el título de cada guía: el documento conserva el del reporte.
+  doc.setProperties({ title: `${d.titulo} - PCargo`, subject: 'Reporte de guías', creator: 'PCargo' })
+}
+
 export async function crearReportePdf(
   titulo: string,
   fecha: string,
   envios: Envio[],
 ): Promise<{ blob: Blob; nombreArchivo: string; titulo: string }> {
   const d = datosReporte(titulo, fecha, envios)
-  const [{ jsPDF }, logo] = await Promise.all([import('jspdf'), cargarLogo()])
+  const guias = envios.map((e) => datosGuia(e))
+  const [{ jsPDF }, logo, qrs] = await Promise.all([import('jspdf'), cargarLogo(), Promise.all(guias.map((g) => qrDeGuia(g.urlSeguimiento)))])
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
   componerReporte(doc, d, logo)
+  agregarGuias(doc, d, guias, logo, qrs)
   return { blob: doc.output('blob'), nombreArchivo: d.nombreArchivo, titulo: d.titulo }
 }
 

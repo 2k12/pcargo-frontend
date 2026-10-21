@@ -60,6 +60,17 @@ export function puedeTransicionar(desde: Estado, hacia: Estado): boolean {
   return transicionesPermitidas(desde).includes(hacia)
 }
 
+/**
+ * Cambios de estado que se aplican de una vez a varios envíos marcados. Entregado, no entregado y novedad
+ * quedan fuera: piden evidencia o un motivo por cada envío.
+ */
+export const ESTADOS_CAMBIO_RAPIDO: Estado[] = ['EN_TRANSITO', 'EN_REPARTO', 'CANCELADO']
+
+/** Envíos de la selección que pueden pasar a `destino`. */
+export function aplicablesPara<T extends { estado: Estado }>(envios: T[], destino: Estado): T[] {
+  return envios.filter((e) => puedeTransicionar(e.estado, destino))
+}
+
 export function esEstadoFinal(estado: Estado): boolean {
   return transicionesPermitidas(estado).length === 0
 }

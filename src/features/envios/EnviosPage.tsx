@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useClientes } from '@/features/clientes/api'
+import { esFecha, fechaEC } from '@/features/dashboard/domain'
 import { rutaLabel, useRutas } from '@/features/rutas/hooks'
 import { useRepartidores } from '@/features/usuarios/hooks'
 import { useDebounced } from '@/hooks/useDebounced'
@@ -21,6 +22,7 @@ import { OPCIONES_POR_PAGINA } from '@/lib/paginacion'
 import { formatCurrency, formatDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { Envio, Estado, FormaPago } from '@/types/api'
+import { CambioEstadoRapido } from './components/CambioEstadoRapido'
 import { ConEvidencia } from './components/ConEvidencia'
 import { EnvioDetailSheet } from './components/EnvioDetailSheet'
 import { EscanearGuiaDialog } from './components/EscanearGuiaDialog'
@@ -51,6 +53,9 @@ export function EnviosPage() {
   const estado = params.get('estado') ?? TODOS
   const rutaId = params.get('rutaId') ?? TODOS
   const formaPago = params.get('formaPago') ?? TODOS
+  // Fecha de registro (contrato v16): solo los envíos de ese día.
+  const fechaUrl = params.get('fecha')
+  const fecha = esFecha(fechaUrl) ? fechaUrl : ''
   // La página también vive en la URL (se puede compartir y "Atrás" vuelve a la anterior).
   const pagina = enteroPositivo(params.get('pagina'), 1)
   const porPaginaUrl = enteroPositivo(params.get('porPagina'), POR_PAGINA_DEFECTO)
@@ -88,6 +93,7 @@ export function EnviosPage() {
   const setEstado = setFiltro('estado')
   const setRutaId = setFiltro('rutaId')
   const setFormaPago = setFiltro('formaPago')
+  const setFecha = setFiltro('fecha')
   // Repartidor (contrato v12): un id o `ninguno` (sin asignar).
   const repartidorId = params.get('repartidorId') ?? TODOS
   const setRepartidor = setFiltro('repartidorId')
@@ -126,6 +132,7 @@ export function EnviosPage() {
   const [busqueda, setBusqueda] = useState('')
   const hayFiltros =
     estado !== TODOS ||
+    !!fecha ||
     rutaId !== TODOS ||
     formaPago !== TODOS ||
     canal !== TODOS ||
@@ -136,12 +143,13 @@ export function EnviosPage() {
     setBusqueda('')
     setParams({}, { replace: true })
   }
-  // Filtros de la hoja móvil: estado, pago, ruta, repartidor y origen (la búsqueda y el cliente tienen su propio control).
-  const filtrosHoja = [estado, formaPago, rutaId, repartidorId, canal].filter((v) => v !== TODOS).length + (integracionId ? 1 : 0)
+  // Filtros de la hoja móvil: fecha, estado, pago, ruta, repartidor y origen (la búsqueda y el cliente tienen su propio control).
+  const filtrosHoja =
+    [estado, formaPago, rutaId, repartidorId, canal].filter((v) => v !== TODOS).length + (integracionId ? 1 : 0) + (fecha ? 1 : 0)
   const limpiarHoja = () =>
     setParams(
       (p) => {
-        for (const clave of ['estado', 'formaPago', 'rutaId', 'repartidorId', 'canal', 'integracionId', 'pagina']) p.delete(clave)
+        for (const clave of ['fecha', 'estado', 'formaPago', 'rutaId', 'repartidorId', 'canal', 'integracionId', 'pagina']) p.delete(clave)
         return p
       },
       { replace: true },
@@ -193,11 +201,15 @@ export function EnviosPage() {
     canal: canal === TODOS ? undefined : canal,
     integracionId: canal === 'API' ? integracionId : undefined,
     repartidorId: repartidorId === TODOS ? undefined : repartidorId,
+    desde: fecha || undefined,
+    hasta: fecha || undefined,
     q: q || undefined,
     pagina,
     porPagina,
   })
   const envios = resultado?.datos
+  // La selección se guarda al marcar: se toma el estado más reciente de la página para los cambios rápidos.
+  const seleccion = [...marcados.values()].map((m) => envios?.find((e) => e.id === m.id) ?? m)
   const marcadosEnPagina = envios?.filter((e) => marcados.has(e.id)).length ?? 0
   const paginaMarcada = !!envios?.length && marcadosEnPagina === envios.length
   const marcarPagina = (marcar: boolean) =>
@@ -224,7 +236,7 @@ export function EnviosPage() {
     )
   }, [isPlaceholderData, totalPaginas, pagina, setParams])
 
-  const estadoItems = { [TODOS]: 'Todos los estados', ...ESTADO_LABEL }
+  const estadoItems = { [TODOS]: 'Estado', ...ESTADO_LABEL }
   const pagoItems = { [TODOS]: 'Pago', ...FORMA_PAGO_LABEL }
   // Arreglo ordenado: un objeto pondría las claves numéricas ("1", "2"…) antes de TODOS.
   const opcionesRuta = rutas
@@ -269,24 +281,36 @@ export function EnviosPage() {
           activo ? 'bg-muted font-medium text-foreground' : 'text-muted-foreground',
         )
 
-  const filtroEstado = (
-    <Select items={estadoItems} value={estado} onValueChange={(v) => setEstado(v)}>
-      <SelectTrigger className="w-full" aria-label="Filtrar por estado">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value={TODOS}>Todos los estados</SelectItem>
-        {ESTADOS.map((e) => (
-          <SelectItem key={e} value={e}>
-            {ESTADO_LABEL[e]}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  )
-
   const filtrosSecundarios = (
     <>
+      {campo(
+        'Fecha',
+        <Input
+          type="date"
+          aria-label="Filtrar por fecha de registro"
+          title="Fecha de registro"
+          value={fecha}
+          max={fechaEC(Date.now())}
+          onChange={(e) => setFecha(e.target.value || null)}
+          className={esMovil ? 'w-full' : cn('h-8 w-auto', fecha ? 'bg-muted font-medium' : 'text-muted-foreground')}
+        />,
+      )}
+      {campo(
+        'Estado',
+        <Select items={estadoItems} value={estado} onValueChange={(v) => setEstado(v)}>
+          <SelectTrigger className={trigger(estado !== TODOS)} aria-label="Filtrar por estado">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={TODOS}>Todo estado</SelectItem>
+            {ESTADOS.map((e) => (
+              <SelectItem key={e} value={e}>
+                {ESTADO_LABEL[e]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>,
+      )}
       {campo(
         'Forma de pago',
         <Select items={pagoItems} value={formaPago} onValueChange={(v) => setFormaPago(v)}>
@@ -391,28 +415,8 @@ export function EnviosPage() {
       />
 
       <div className="space-y-3">
-        {/* Estado: el filtro principal, como pestañas de texto (escritorio). */}
-        {!esMovil && (
-          <div role="group" aria-label="Estado" className="-mx-1 flex gap-1 overflow-x-auto border-b">
-            {[TODOS, ...ESTADOS].map((e) => {
-              const activo = estado === e
-              return (
-                <button
-                  key={e}
-                  type="button"
-                  aria-pressed={activo}
-                  onClick={() => setEstado(e)}
-                  className={cn(
-                    '-mb-px shrink-0 border-b-2 px-2.5 pt-1 pb-2.5 text-sm whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
-                    activo ? 'border-foreground font-medium text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground',
-                  )}
-                >
-                  {e === TODOS ? 'Todos' : ESTADO_LABEL[e as Estado]}
-                </button>
-              )
-            })}
-          </div>
-        )}
+        {/* Cambio rápido de estado de las guías marcadas (donde antes iban las pestañas de estado). */}
+        <CambioEstadoRapido envios={seleccion} onHecho={() => setMarcados(new Map())} className="border-b pb-3" />
 
         <div className="flex items-center gap-2">
           <div className={esMovil ? 'relative min-w-0 flex-1' : 'relative w-full max-w-sm'}>
@@ -430,8 +434,7 @@ export function EnviosPage() {
             />
           </div>
           {esMovil ? (
-            <FiltrosMovil activos={filtrosHoja} onLimpiar={limpiarHoja} descripcion="Estado, forma de pago, ruta, repartidor y origen">
-              {campo('Estado', filtroEstado)}
+            <FiltrosMovil activos={filtrosHoja} onLimpiar={limpiarHoja} descripcion="Fecha, estado, forma de pago, ruta, repartidor y origen">
               {filtrosSecundarios}
             </FiltrosMovil>
           ) : (
@@ -617,7 +620,7 @@ export function EnviosPage() {
         />
       )}
 
-      <SeleccionGuias envios={[...marcados.values()]} onLimpiar={() => setMarcados(new Map())} />
+      <SeleccionGuias envios={seleccion} onLimpiar={() => setMarcados(new Map())} />
       <EnvioDetailSheet envioId={seleccionado} onClose={() => setSeleccionado(null)} />
     </>
   )

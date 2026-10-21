@@ -400,12 +400,16 @@ function lineaCorte(doc: JsPdf, y: number) {
   doc.line(x + 0.5, y + 0.6, x + 4.5, y - 0.9)
 }
 
-async function cargarRecursos() {
-  const [{ jsPDF }, qrMod, logo] = await Promise.all([import('jspdf'), import('qrcode'), cargarLogo()])
+/** QR (PNG en data URL) con el enlace de seguimiento de la guía. */
+export async function qrDeGuia(url: string): Promise<string> {
+  const qrMod = await import('qrcode')
   const QR = qrMod.default ?? qrMod
-  const qrDe = (url: string) =>
-    QR.toDataURL(url, { errorCorrectionLevel: 'M', margin: 0, width: 300, color: { dark: '#1b2a59', light: '#ffffff' } })
-  return { jsPDF, qrDe, logo }
+  return QR.toDataURL(url, { errorCorrectionLevel: 'M', margin: 0, width: 300, color: { dark: '#1b2a59', light: '#ffffff' } })
+}
+
+async function cargarRecursos() {
+  const [{ jsPDF }, logo] = await Promise.all([import('jspdf'), cargarLogo()])
+  return { jsPDF, qrDe: qrDeGuia, logo }
 }
 
 /** Orden de impresión de varias guías: por número, de menor a mayor. */

@@ -44,19 +44,3 @@ export function MenuMovil({ secciones }: { secciones: { href: string; label: str
     </Sheet>
   )
 }
-
-/** Botón flotante de WhatsApp: el canal más familiar para los clientes. */
-export function WhatsAppFlotante() {
-  return (
-    <a
-      href={whatsappUrl()}
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label="¿Dudas? Escríbenos por WhatsApp (se abre en una pestaña nueva)"
-      className="fixed right-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-40 inline-flex items-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-medium text-primary-foreground shadow-lg shadow-primary/30 transition-transform hover:scale-105 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
-    >
-      <MessageCircle className="size-5" />
-      <span className="hidden sm:inline">¿Dudas? Escríbenos</span>
-    </a>
-  )
-}

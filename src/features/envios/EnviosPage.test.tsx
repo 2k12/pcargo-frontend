@@ -243,3 +243,51 @@ describe('EnviosPage — repartidor (contrato v12)', () => {
     await vi.waitFor(() => expect(urlsEnvios(fetch).at(-1)).toContain('repartidorId=u3'))
   })
 })
+
+describe('EnviosPage — fecha, estado y cambio rápido de estado', () => {
+  it('filtra por la fecha elegida (desde = hasta) y por estado desde el desplegable', async () => {
+    const fetch = mockFetch((url) => jsonResponse(url.includes('/envios') ? vacia : []))
+    renderWithProviders(<EnviosPage />, { route: '/envios?fecha=2026-10-20&estado=EN_REPARTO', path: '/envios' })
+    expect(await screen.findByText('No hay envíos')).toBeInTheDocument()
+    const u = new URL(urlsEnvios(fetch).at(-1)!, 'http://x').searchParams
+    expect([u.get('desde'), u.get('hasta'), u.get('estado')]).toEqual(['2026-10-20', '2026-10-20', 'EN_REPARTO'])
+    expect(screen.getByLabelText('Filtrar por fecha de registro')).toHaveValue('2026-10-20')
+    expect(screen.getByRole('combobox', { name: 'Filtrar por estado' })).toHaveTextContent('En reparto')
+    // Ya no hay pestañas de estado: en su lugar van los cambios rápidos.
+    expect(screen.queryByRole('group', { name: 'Estado' })).not.toBeInTheDocument()
+  })
+
+  it('los cambios rápidos se habilitan al marcar y solo cambian las guías que pueden pasar a ese estado', async () => {
+    const user = userEvent.setup()
+    const cambios: { url: string; body: unknown }[] = []
+    const registrado = { ...envio(2), estado: 'REGISTRADO' } as Envio
+    mockFetch((url, init) => {
+      if (init?.method === 'PATCH') {
+        cambios.push({ url, body: JSON.parse(String(init.body)) })
+        return jsonResponse({ ...envio(1), estado: 'EN_REPARTO' })
+      }
+      if (url.includes('/envios')) return jsonResponse({ ...vacia, datos: [envio(1), registrado], total: 2, totalPaginas: 1 })
+      return jsonResponse([])
+    })
+    renderWithProviders(<EnviosPage />, { route: '/envios', path: '/envios' })
+    await screen.findByText('Cliente 1')
+
+    const grupo = screen.getByRole('group', { name: 'Cambiar estado de las guías marcadas' })
+    const boton = (nombre: RegExp) => within(grupo).getByRole('button', { name: nombre })
+    expect(boton(/Despachar/)).toBeDisabled()
+    expect(boton(/Enviar a reparto/)).toBeDisabled()
+    expect(within(grupo).queryByRole('button', { name: /entregado|novedad/i })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('checkbox', { name: 'Seleccionar guía 40001' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Seleccionar guía 40002' }))
+    expect(boton(/Despachar/)).toBeEnabled()
+    expect(boton(/Cancelar envío/)).toBeEnabled()
+
+    await user.click(boton(/Enviar a reparto/))
+    await vi.waitFor(() => expect(cambios).toHaveLength(1))
+    expect(cambios[0]!.url).toContain('/envios/e1/estado')
+    expect(cambios[0]!.body).toEqual({ estado: 'EN_REPARTO' })
+    // Tras el cambio se limpia la selección.
+    await vi.waitFor(() => expect(screen.getByRole('checkbox', { name: 'Seleccionar guía 40001' })).not.toBeChecked())
+  })
+})

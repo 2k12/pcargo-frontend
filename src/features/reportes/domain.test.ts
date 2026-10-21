@@ -2,7 +2,8 @@ import { jsPDF, type TextOptionsLight } from 'jspdf'
 import { describe, expect, it, vi } from 'vitest'
 import type { Envio } from '@/types/api'
 import { datosReporte, hoyEC, mover, nombreArchivoReporte, valorTotal } from './domain'
-import { COLUMNAS_REPORTE, componerReporte, MARGEN_REPORTE } from './reportePdf'
+import { datosGuia } from '@/features/envios/guiaImprimible'
+import { agregarGuias, COLUMNAS_REPORTE, componerReporte, MARGEN_REPORTE } from './reportePdf'
 
 const envio = (numeroGuia: number, costo: number, extra: Partial<Envio> = {}) =>
   ({
@@ -14,6 +15,11 @@ const envio = (numeroGuia: number, costo: number, extra: Partial<Envio> = {}) =>
     remitente: { nombre: 'Ana', telefono: '0991112233', direccion: null },
     destinatario: { nombre: 'Luis', telefono: '0994445566', direccion: 'Quito centro' },
     ruta: { id: 7, origen: 'Ibarra', destino: 'Quito' },
+    items: [{ tipoCarga: 'PAQUETE', cantidad: 3, pesoKg: 2, costoUnitario: 1, subtotal: 3 }],
+    totalPiezas: 3,
+    pesoTotalKg: 2,
+    zona: 'URBANA',
+    registro: { fecha: '2026-10-20T15:00:00.000Z', operador: 'Operador' },
     ...extra,
   }) as unknown as Envio
 
@@ -44,7 +50,8 @@ describe('datos del reporte', () => {
       ['1', '0040462', 'Pagado'],
       ['2', '0040460', 'Al cobro'],
     ])
-    expect(d.filas[0]!.ruta).toBe('IBARRA - QUITO')
+    expect(d.filas[0]!.piezas).toBe('3')
+    expect(d.filas[0]).not.toHaveProperty('ruta')
     expect(d.totalGuias).toBe('2')
     expect(d.totalValor).toMatch(/15,50/)
     expect(d.nombreArchivo).toBe('entregas-del-martes-2026-10-20.pdf')
@@ -61,7 +68,7 @@ describe('datos del reporte', () => {
 })
 
 /** Dibuja el reporte y devuelve los textos con su hoja y su posición. */
-function textosDelReporte(envios: Envio[]) {
+function textosDelReporte(envios: Envio[], conGuias = false) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
   const textos: { texto: string; hoja: number; x: number; y: number; derecha: number }[] = []
   const original = doc.text.bind(doc)
@@ -72,9 +79,23 @@ function textosDelReporte(envios: Envio[]) {
     textos.push({ texto: lineas.join(' '), hoja: doc.getCurrentPageInfo().pageNumber, x: izquierda, y, derecha: izquierda + ancho })
     return original(t, x, y, opts)
   }) as typeof doc.text)
-  componerReporte(doc, datosReporte('Reporte diario', '2026-10-20', envios), null)
-  return { textos, hojas: doc.getNumberOfPages() }
+  let titulo: string | undefined
+  const setProperties = doc.setProperties.bind(doc)
+  vi.spyOn(doc, 'setProperties').mockImplementation((p) => {
+    titulo = p.title
+    return setProperties(p)
+  })
+  const d = datosReporte('Reporte diario', '2026-10-20', envios)
+  componerReporte(doc, d, null)
+  const hojasListado = doc.getNumberOfPages()
+  if (conGuias) {
+    agregarGuias(doc, d, envios.map((e) => datosGuia(e, 'https://pcargo.ec')), null, envios.map(() => QR))
+  }
+  return { textos, hojas: doc.getNumberOfPages(), hojasListado, titulo }
 }
+
+// PNG 1×1 para el QR de las guías.
+const QR = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
 
 describe('reporte en PDF', () => {
   it('las columnas ocupan justo el ancho útil de la hoja', () => {
@@ -90,6 +111,16 @@ describe('reporte en PDF', () => {
     expect(y('0040460')).toBeLessThan(y('Total de guías'))
     expect(textos.find((t) => t.y === y('Total de guías') && t.texto === '2')).toBeDefined()
     expect(textos.some((t) => /15,50/.test(t.texto) && t.y > y('Total de guías'))).toBe(true)
+  })
+
+  it('después del listado van las guías en el mismo orden, cuatro talones por hoja', () => {
+    const envios = [40465, 40460, 40463, 40461, 40462].map((n) => envio(n, 2))
+    const { textos, hojas, hojasListado, titulo } = textosDelReporte(envios, true)
+    expect(hojas).toBe(hojasListado + 2)
+    const talones = textos.filter((t) => t.hoja > hojasListado && /^GUÍA N\.º \d+$/.test(t.texto))
+    expect(talones.map((t) => t.texto.slice(-7))).toEqual(['0040465', '0040460', '0040463', '0040461', '0040462'])
+    expect(talones.map((t) => t.hoja - hojasListado)).toEqual([1, 1, 1, 1, 2])
+    expect(titulo).toBe('Reporte diario - PCargo')
   })
 
   it('con muchas guías sigue en otra hoja y ningún texto se sale de los márgenes', () => {

@@ -265,3 +265,14 @@ describe('tipos de carga configurables (contrato v11)', () => {
     expect(peso.error!.issues[0]!.message).toBe('Máx. 40 kg por caja grande')
   })
 })
+
+describe('cambio rápido de estado', () => {
+  it('solo ofrece despachar, enviar a reparto y cancelar; cada uno aplica a las guías que pueden', async () => {
+    const { aplicablesPara, ESTADOS_CAMBIO_RAPIDO } = await import('./domain')
+    expect(ESTADOS_CAMBIO_RAPIDO).toEqual(['EN_TRANSITO', 'EN_REPARTO', 'CANCELADO'])
+    const envios = (['REGISTRADO', 'EN_TRANSITO', 'NO_ENTREGADO', 'ENTREGADO'] as Estado[]).map((estado) => ({ estado }))
+    expect(aplicablesPara(envios, 'EN_TRANSITO').map((e) => e.estado)).toEqual(['REGISTRADO'])
+    expect(aplicablesPara(envios, 'EN_REPARTO').map((e) => e.estado)).toEqual(['EN_TRANSITO', 'NO_ENTREGADO'])
+    expect(aplicablesPara(envios, 'CANCELADO').map((e) => e.estado)).toEqual(['REGISTRADO'])
+  })
+})

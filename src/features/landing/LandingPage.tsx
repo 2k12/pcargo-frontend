@@ -42,7 +42,7 @@ import { CarruselCiudades } from './components/CarruselCiudades'
 import { CreditoDesarrollador } from './components/CreditoDesarrollador'
 import { matrizRutas, resumenCobertura } from './cobertura'
 import { preguntasFrecuentes } from './contenido'
-import { MenuMovil, WhatsAppFlotante } from './components/MenuMovil'
+import { MenuMovil } from './components/MenuMovil'
 import { PreguntasFrecuentes } from './components/PreguntasFrecuentes'
 import { TablaPrecios } from './components/TablaPrecios'
 import { HeroPaisaje } from './ilustraciones/HeroPaisaje'
@@ -552,10 +552,9 @@ export function LandingPage() {
           </div>
           <CarruselCiudades ciudades={catalogo?.ciudades ?? []} />
         </div>
-        {/* Franja legal: copyright a la izquierda; políticas y crédito del desarrollador a la derecha (en móvil, apilados).
-            El espacio inferior extra en móvil deja libre el botón flotante de WhatsApp. */}
+        {/* Franja legal: copyright a la izquierda; políticas y crédito del desarrollador a la derecha (en móvil, apilados). */}
         <div className="border-t">
-          <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 pt-5 pb-24 text-xs text-muted-foreground sm:px-6 sm:pb-5 md:flex-row md:items-center md:justify-between">
+          <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 pt-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] text-xs text-muted-foreground sm:px-6 sm:pb-5 md:flex-row md:items-center md:justify-between">
             <p>{lineaCopyright(ANIO)}</p>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6 md:justify-end">
               <EnlacesLegales />
@@ -565,7 +564,6 @@ export function LandingPage() {
         </div>
       </footer>
 
-      <WhatsAppFlotante />
     </div>
   )
 }

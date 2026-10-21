@@ -122,7 +122,52 @@ export function ReportesPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Reportes" description="Arma el reporte diario: elige las guías, ordénalas como quieras y envíalo." />
+      <PageHeader title="Reportes" />
+
+      {/* Acciones arriba y siempre a mano (quedan fijas bajo la barra superior al bajar por la lista). */}
+      <section
+        aria-label="Totales"
+        className="sticky top-16 z-20 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border bg-background/95 px-4 py-2.5 shadow-sm backdrop-blur"
+      >
+        <dl className="mr-auto flex gap-5">
+          <div>
+            <dt className="text-xs text-muted-foreground">Total de guías</dt>
+            <dd className="text-lg font-semibold tabular-nums">{lista.length}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-muted-foreground">Valor total</dt>
+            <dd className="text-lg font-semibold tabular-nums">{formatCurrency(total)}</dd>
+          </div>
+        </dl>
+        <div className="flex gap-2">
+          <Button size="lg" disabled={lista.length === 0 || !!generando} onClick={() => generar('enviar')}>
+            {icono('enviar', Send)}
+            Enviar reporte
+          </Button>
+          <Button
+            size="lg"
+            variant="outline"
+            disabled={lista.length === 0 || !!generando}
+            onClick={() => generar('descargar')}
+            aria-label="Descargar PDF"
+            title="Descargar PDF"
+          >
+            {icono('descargar', Download)}
+            <span className="hidden sm:inline">Descargar PDF</span>
+          </Button>
+          <Button
+            size="lg"
+            variant="outline"
+            disabled={lista.length === 0 || !!generando}
+            onClick={() => generar('imprimir')}
+            aria-label="Imprimir"
+            title="Imprimir"
+          >
+            {icono('imprimir', Printer)}
+            <span className="hidden sm:inline">Imprimir</span>
+          </Button>
+        </div>
+      </section>
 
       <section className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_12rem]" aria-label="Datos del reporte">
         <div className="space-y-1.5">
@@ -235,32 +280,6 @@ export function ReportesPage() {
         )}
       </section>
 
-      <section className="space-y-4 rounded-xl bg-muted/40 p-4" aria-label="Totales">
-        <dl className="grid grid-cols-2 gap-3">
-          <div>
-            <dt className="text-xs text-muted-foreground">Total de guías</dt>
-            <dd className="text-xl font-semibold tabular-nums">{lista.length}</dd>
-          </div>
-          <div className="text-right">
-            <dt className="text-xs text-muted-foreground">Valor total</dt>
-            <dd className="text-xl font-semibold tabular-nums">{formatCurrency(total)}</dd>
-          </div>
-        </dl>
-        <div className="flex flex-wrap gap-2">
-          <Button className="flex-1 sm:flex-none" disabled={lista.length === 0 || !!generando} onClick={() => generar('enviar')}>
-            {icono('enviar', Send)}
-            Enviar reporte
-          </Button>
-          <Button variant="outline" disabled={lista.length === 0 || !!generando} onClick={() => generar('descargar')}>
-            {icono('descargar', Download)}
-            Descargar PDF
-          </Button>
-          <Button variant="outline" disabled={lista.length === 0 || !!generando} onClick={() => generar('imprimir')}>
-            {icono('imprimir', Printer)}
-            Imprimir
-          </Button>
-        </div>
-      </section>
     </div>
   )
 }
