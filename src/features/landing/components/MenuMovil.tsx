@@ -16,7 +16,7 @@ export function MenuMovil({ secciones }: { secciones: { href: string; label: str
       <SheetTrigger render={<Button variant="ghost" size="icon" className="lg:hidden" aria-label="Abrir menú" />}>
         <Menu />
       </SheetTrigger>
-      <SheetContent side="right" className="w-[85%] max-w-xs">
+      <SheetContent side="left" className="w-[85%] max-w-xs">
         <SheetHeader>
           <SheetTitle>
             <Logo markClassName="size-8" />
