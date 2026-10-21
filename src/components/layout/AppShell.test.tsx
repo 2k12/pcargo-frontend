@@ -105,6 +105,7 @@ describe('AppShell — opciones solo para ADMIN', () => {
     expect(await within(menu).findByRole('link', { name: 'Integraciones' })).toHaveAttribute('href', '/integraciones')
     const { mas, nombres } = await abrirMas()
     expect(nombres).toEqual([
+      'Reportes',
       'Cobertura y tarifas',
       'Tarifas y tipos de carga',
       'Integraciones',
@@ -130,7 +131,7 @@ describe('AppShell — opciones solo para ADMIN', () => {
     sesion('OPERADOR')
     await screen.findByRole('button', { name: /Usuario OPERADOR/ })
     const { nombres } = await abrirMas()
-    expect(nombres).toEqual(['Cobertura y tarifas', 'Rastreo de envíos', expect.stringContaining('Mi perfil')])
+    expect(nombres).toEqual(['Reportes', 'Cobertura y tarifas', 'Rastreo de envíos', expect.stringContaining('Mi perfil')])
     expect(within(document.getElementById('menu-lateral')!).queryByRole('link', { name: 'Tarifas y tipos de carga' })).not.toBeInTheDocument()
     expect(within(document.getElementById('menu-lateral')!).queryByRole('link', { name: 'Integraciones' })).not.toBeInTheDocument()
   })

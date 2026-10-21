@@ -13,7 +13,7 @@ import {
   type PosicionHoja,
 } from '../guiaPdf'
 
-/** Imprime o descarga la guía en PDF (talonario: un cuarto de hoja A4, en la posición elegida). */
+/** Imprime o descarga la guía en PDF (un talón por cuarto de hoja A4, en la posición elegida). */
 export function GuiaAcciones({ envio }: { envio: Envio }) {
   const [pendiente, setPendiente] = useState<AccionGuia | null>(null)
   const [posicion, setPosicion] = useState<PosicionHoja>(leerPosicionGuia)

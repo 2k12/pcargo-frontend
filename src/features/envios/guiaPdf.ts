@@ -1,11 +1,11 @@
-// Dibujo de la guía imprimible en PDF (A4 vertical), formato talonario: cuatro guías por hoja.
-// Cada guía es una franja con la parte cuadrada que va pegada en el paquete y, a su derecha, el
-// talón que firma quien recibe. Una guía sola va en la posición elegida (1 a 4) para reutilizar la hoja.
+// Dibujo de la guía imprimible en PDF (A4 vertical): cuatro guías por hoja, cada una solo con el talón
+// que firman el remitente y quien recibe, a lo ancho de la hoja. Una guía sola va en la posición elegida
+// (1 a 4) para reutilizar la hoja.
 // jsPDF y qrcode se cargan con import() dinámico: solo se descargan al imprimir una guía.
 // Los textos vienen ya formateados de `datosGuia` (lógica pura y testeada).
 import type { jsPDF as JsPdf } from 'jspdf'
 import type { Envio } from '@/types/api'
-import { AVISOS_GUIA, datosGuia, EMPRESA_GUIA, PARTES_GUIA, type DatosGuia, type ParteGuia } from './guiaImprimible'
+import { AVISOS_GUIA, datosGuia, EMPRESA_GUIA, TALON_GUIA, type DatosGuia, type ParteGuia } from './guiaImprimible'
 
 type Rgb = [number, number, number]
 // Azul marino sobre blanco, como la guía de imprenta; se imprime bien en blanco y negro.
@@ -24,16 +24,13 @@ const ALTO = 297
 const M = 6 // margen lateral
 const FIN = ANCHO - M
 export const GUIAS_POR_HOJA = 4
-/** Alto de cada guía; la parte del paquete es un cuadrado de este lado. */
+/** Alto de cada guía (un talón a lo ancho de la hoja). */
 export const ALTO_GUIA = 68
-export const LADO_PAQUETE = ALTO_GUIA
 /** Margen hacia el borde de la hoja (zona que la impresora no alcanza). */
 const MARGEN_BORDE = 5
 /** Separación entre guías, con su línea de corte en el medio (5 mm). */
 const SEPARACION = (ALTO - 2 * MARGEN_BORDE - GUIAS_POR_HOJA * ALTO_GUIA) / (GUIAS_POR_HOJA - 1)
-/** Separación entre la parte cuadrada y el talón, con el corte vertical en el medio. */
-const SEPARACION_TALON = 4
-export const X_TALON = M + LADO_PAQUETE + SEPARACION_TALON
+export const X_TALON = M
 export const ANCHO_TALON = FIN - X_TALON
 
 /** Posición de la guía en la hoja, de arriba (0) a abajo (3). */
@@ -55,7 +52,7 @@ export interface Logo {
 }
 
 /** Rasteriza el isotipo SVG a PNG (jsPDF no dibuja SVG). Sin logo, la guía muestra solo el nombre. */
-async function cargarLogo(): Promise<Logo | null> {
+export async function cargarLogo(): Promise<Logo | null> {
   try {
     const lado = 512
     const res = await fetch(RUTA_LOGO)
@@ -190,7 +187,7 @@ function filaGestion(
 ) {
   caja(doc, x, y, w, h)
   etiqueta(doc, titulo, x + 1, y + h / 2 + 0.7, 4.4)
-  const anchos = [14, 8, w - 34]
+  const anchos = [17, 10, w - 39]
   const rotulos = ['FECHA', 'HORA', 'OPERADOR']
   const datos = [valores.fecha, valores.hora, valores.operador]
   let cx = x + 12
@@ -205,114 +202,6 @@ function filaGestion(
   })
 }
 
-/** Parte cuadrada que va pegada en el paquete: lo necesario para moverlo y entregarlo. */
-function dibujarPaquete(doc: JsPdf, d: DatosGuia, logo: Logo | null, qr: string, T: number) {
-  const x0 = M
-  const L = LADO_PAQUETE
-  const fin = x0 + L
-  const linea = (y: number) => {
-    doc.setDrawColor(...AZUL)
-    doc.setLineWidth(0.2)
-    doc.line(x0, y, fin, y)
-  }
-
-  // Banda: rótulo de la parte · zona rural
-  doc.setFillColor(...AZUL)
-  doc.rect(x0, T, L, 4, 'F')
-  fuente(doc, 5.8, 'bold', BLANCO)
-  doc.text(PARTES_GUIA.paquete.titulo, x0 + 1.5, T + 2.8)
-  if (d.zona) {
-    fuente(doc, 5.3, 'bold', BLANCO)
-    doc.text(d.zona, fin - 1.5, T + 2.8, { align: 'right' })
-  }
-  caja(doc, x0, T, L, L)
-
-  // Logo con «PCargo» · número de guía
-  let xNombre = x0 + 1.5
-  if (logo) {
-    doc.addImage(logo.data, 'PNG', x0 + 1.2, T + 5, 8, 8)
-    xNombre = x0 + 1.2 + 8 + 1.2
-  }
-  fuente(doc, 12, 'bold', AZUL_MARCA)
-  doc.text('PCargo', xNombre, T + 11.3)
-  fuente(doc, 5.3, 'bold', AZUL)
-  doc.text('GUÍA N.º', fin - 1.5, T + 6.8, { align: 'right' })
-  fuente(doc, 13, 'bold', ROJO)
-  doc.text(d.numero, fin - 1.5, T + 12.4, { align: 'right' })
-  linea(T + 14)
-
-  // Ruta (discreta: lo importante para entregar es el destinatario)
-  fuente(doc, 7.5, 'bold', AZUL)
-  fuenteQueQuepa(doc, d.ruta, L - 3, 7.5, 5.5)
-  doc.text(d.ruta, x0 + L / 2, T + 17.3, { align: 'center' })
-  linea(T + 18.6)
-
-  // QR · destinatario en letra grande
-  const ladoQr = 22
-  doc.addImage(qr, 'PNG', x0 + 1.5, T + 20.6, ladoQr, ladoQr)
-  const xr = x0 + 1.5 + ladoQr + 2
-  const wr = fin - 1.5 - xr
-  etiqueta(doc, 'PARA:', xr, T + 21.8, 5.3)
-  let y = T + 25.8
-  fuente(doc, 10.5, 'bold')
-  const nombre = lineasHasta(doc, d.destinatario.nombre, wr, 2)
-  doc.text(nombre, xr, y, { lineHeightFactor: 1.05 })
-  y += nombre.length * 3.9 + 0.3
-  if (d.destinatario.direccion) {
-    fuente(doc, 7.2)
-    const direccion = lineasHasta(doc, d.destinatario.direccion, wr, nombre.length > 1 ? 2 : 3)
-    doc.text(direccion, xr, y, { lineHeightFactor: 1.12 })
-    y += direccion.length * 2.85 + 0.5
-  }
-  fuente(doc, 7.8, 'bold', AZUL)
-  doc.text(ajustar(doc, d.destinatario.ciudad.toLocaleUpperCase('es-EC'), wr), xr, y)
-  fuente(doc, 9, 'bold')
-  doc.text(ajustar(doc, `Telf. ${d.destinatario.telefono}`, wr), xr, y + 3.6)
-  linea(T + 46.5)
-
-  // Remitente en una línea
-  etiqueta(doc, 'DE:', x0 + 1.5, T + 49.5, 5.3)
-  fuente(doc, 7)
-  const remitente = [d.remitente.nombre, d.remitente.telefono].filter(Boolean).join(' · ')
-  doc.text(ajustar(doc, remitente, L - 8), x0 + 6.5, T + 49.5)
-
-  // Piezas · peso · forma de pago
-  const fy = T + 51
-  const cw = L / 3
-  const celdas: [string, string][] = [
-    ['PIEZAS', d.piezas.total || '0'],
-    ['PESO', d.peso],
-    ['PAGO', d.formaPago],
-  ]
-  celdas.forEach(([rotulo, valor], i) => {
-    const cx = x0 + i * cw
-    caja(doc, cx, fy, cw, 7.5)
-    etiqueta(doc, rotulo, cx + 1.2, fy + 2.2, 4.4)
-    if (valor) {
-      fuente(doc, 8, 'bold')
-      fuenteQueQuepa(doc, valor, cw - 2, 8, 5)
-      doc.text(valor, cx + cw / 2, fy + 6.3, { align: 'center' })
-    }
-  })
-
-  // Valor: AL COBRO va resaltado (el repartidor cobra al entregar)
-  const vy = fy + 7.5
-  const vh = T + L - vy
-  if (d.cobrarAlEntregar) {
-    doc.setFillColor(...VERDE_MARCA)
-    doc.rect(x0, vy, L, vh, 'F')
-    caja(doc, x0, vy, L, vh)
-    fuente(doc, 5.8, 'bold', TEXTO_SOBRE_VERDE)
-    doc.text('COBRAR AL ENTREGAR', x0 + 1.5, vy + vh / 2 + 1)
-    fuente(doc, 11, 'bold', TEXTO_SOBRE_VERDE)
-  } else {
-    caja(doc, x0, vy, L, vh)
-    etiqueta(doc, 'VALOR USD', x0 + 1.5, vy + vh / 2 + 1, 5.3)
-    fuente(doc, 10, 'bold')
-  }
-  doc.text(ajustar(doc, d.valor, L - 26), fin - 1.5, vy + vh / 2 + 1.6, { align: 'right' })
-}
-
 /** Talón: la guía completa con las firmas del remitente y de quien recibe. */
 function dibujarTalon(doc: JsPdf, d: DatosGuia, logo: Logo | null, qr: string, T: number) {
   const x0 = X_TALON
@@ -323,10 +212,10 @@ function dibujarTalon(doc: JsPdf, d: DatosGuia, logo: Logo | null, qr: string, T
   doc.setFillColor(...AZUL)
   doc.rect(x0, T, w, 3.6, 'F')
   fuente(doc, 6, 'bold', BLANCO)
-  doc.text(PARTES_GUIA.talon.titulo, x0 + 1.5, T + 2.6)
-  const anchoTitulo = doc.getTextWidth(PARTES_GUIA.talon.titulo)
+  doc.text(TALON_GUIA.titulo, x0 + 1.5, T + 2.6)
+  const anchoTitulo = doc.getTextWidth(TALON_GUIA.titulo)
   fuente(doc, 5.2, 'normal', BLANCO)
-  doc.text(` (${PARTES_GUIA.talon.detalle})`, x0 + 1.5 + anchoTitulo, T + 2.6)
+  doc.text(` (${TALON_GUIA.detalle})`, x0 + 1.5 + anchoTitulo, T + 2.6)
   fuente(doc, 6.3, 'bold', BLANCO)
   textoEspaciado(doc, d.ruta, x0 + w / 2 + 4, T + 2.7, 0.5)
   fuente(doc, 6, 'bold', BLANCO)
@@ -380,14 +269,14 @@ function dibujarTalon(doc: JsPdf, d: DatosGuia, logo: Logo | null, qr: string, T
 
   // Columna izquierda: piezas, peso y descripción, observaciones, aceptación del remitente
   const iy = py + 14.5 + 3
-  const iw = 78
+  const iw = 120
   const columnas: [string, string, number][] = [
-    ['PIEZAS', d.piezas.total, 13],
-    ['SOBRE(S)', d.piezas.sobres, 11],
-    ['VALIJA(S)', d.piezas.valijas, 11],
-    ['PAQUETE(S)', d.piezas.paquetes, 12.5],
-    ['CARTÓN(ES)', d.piezas.cartones, 12.5],
-    ['OTROS', d.piezas.otros, iw - 60],
+    ['PIEZAS', d.piezas.total, 16],
+    ['SOBRE(S)', d.piezas.sobres, 14],
+    ['VALIJA(S)', d.piezas.valijas, 14],
+    ['PAQUETE(S)', d.piezas.paquetes, 16],
+    ['CARTÓN(ES)', d.piezas.cartones, 16],
+    ['OTROS', d.piezas.otros, iw - 76],
   ]
   let x = x0
   for (const [rotulo, valor, cw] of columnas) {
@@ -441,35 +330,43 @@ function dibujarTalon(doc: JsPdf, d: DatosGuia, logo: Logo | null, qr: string, T
   fuente(doc, 4.6, 'normal', TINTA)
   doc.text(lineasHasta(doc, d.aceptacion, iw - 2.4, 2), x0 + 1.2, ry + 2.3, { lineHeightFactor: 1.15 })
   fuente(doc, 4.4, 'italic', GRIS)
-  doc.text(lineasHasta(doc, d.seguro, 33, 2), x0 + 1.2, ry + rh - 3.6, { lineHeightFactor: 1.15 })
-  lineaEscritura(doc, x0 + 37, x0 + iw - 2, ry + rh - 3.4)
+  doc.text(lineasHasta(doc, d.seguro, 46, 2), x0 + 1.2, ry + rh - 3.6, { lineHeightFactor: 1.15 })
+  lineaEscritura(doc, x0 + 50, x0 + iw - 2, ry + rh - 3.4)
   fuente(doc, 4.4, 'bold', AZUL)
-  doc.text('ACEPTO CONDICIONES (REMITENTE)', (x0 + 37 + x0 + iw - 2) / 2, ry + rh - 1.2, { align: 'center' })
+  doc.text('ACEPTO CONDICIONES (REMITENTE)', (x0 + 50 + x0 + iw - 2) / 2, ry + rh - 1.2, { align: 'center' })
 
   // Columna derecha: uso interno y valor, registro, entrega, recibí conforme
   const dx = x0 + iw
   const dw = fin - dx
-  const uw = 26
-  caja(doc, dx, iy, dw, 8)
-  separadorVertical(doc, dx + uw, iy, iy + 8)
-  etiqueta(doc, 'USO INTERNO', dx + 1, iy + 2.3, 4.2)
-  d.pago.forEach((p, i) => {
-    casilla(doc, dx + 1 + (i % 2) * 12.4, iy + 3.1 + Math.floor(i / 2) * 2.5, p.etiqueta, p.marcada)
-  })
+  const uw = 30
   const vx = dx + uw
   const vw = fin - vx
-  etiqueta(doc, 'VALOR USD', vx + 1, iy + 2.3, 4.2)
+  // AL COBRO: la casilla del valor va en verde (el repartidor cobra al entregar).
+  const tinta = d.cobrarAlEntregar ? TEXTO_SOBRE_VERDE : TINTA
+  const rotulos = d.cobrarAlEntregar ? TEXTO_SOBRE_VERDE : AZUL
+  if (d.cobrarAlEntregar) {
+    doc.setFillColor(...VERDE_MARCA)
+    doc.rect(vx, iy, vw, 8, 'F')
+  }
+  caja(doc, dx, iy, dw, 8)
+  separadorVertical(doc, vx, iy, iy + 8)
+  etiqueta(doc, 'USO INTERNO', dx + 1, iy + 2.3, 4.2)
+  d.pago.forEach((p, i) => {
+    casilla(doc, dx + 1 + (i % 2) * 14, iy + 3.1 + Math.floor(i / 2) * 2.5, p.etiqueta, p.marcada)
+  })
+  fuente(doc, 4.2, 'bold', rotulos)
+  doc.text(d.cobrarAlEntregar ? 'COBRAR AL ENTREGAR (USD)' : 'VALOR USD', vx + 1, iy + 2.3)
   if (d.adicional) {
     // Contrato v15: el costo adicional en una línea antes del total (que ya lo incluye), en la misma casilla.
-    fuente(doc, 4.8, 'bold')
+    fuente(doc, 4.8, 'bold', tinta)
     const anchoAdicional = doc.getTextWidth(d.adicional)
     doc.text(d.adicional, fin - 1, iy + 4.6, { align: 'right' })
-    fuente(doc, 3.8, 'bold', AZUL)
+    fuente(doc, 3.8, 'bold', rotulos)
     doc.text(ajustar(doc, 'ADICIONAL', vw - 3 - anchoAdicional), vx + 1, iy + 4.6)
-    fuente(doc, 7.5, 'bold')
+    fuente(doc, 7.5, 'bold', tinta)
     doc.text(ajustar(doc, d.valor, vw - 2), fin - 1, iy + 7.3, { align: 'right' })
   } else {
-    fuente(doc, 9, 'bold')
+    fuente(doc, 9, 'bold', tinta)
     doc.text(ajustar(doc, d.valor, vw - 2), fin - 1, iy + 6.9, { align: 'right' })
   }
 
@@ -503,16 +400,6 @@ function lineaCorte(doc: JsPdf, y: number) {
   doc.line(x + 0.5, y + 0.6, x + 4.5, y - 0.9)
 }
 
-/** Corte vertical punteado entre la parte cuadrada y el talón. */
-function corteVertical(doc: JsPdf, T: number) {
-  const x = M + LADO_PAQUETE + SEPARACION_TALON / 2
-  doc.setDrawColor(...GRIS)
-  doc.setLineWidth(0.25)
-  doc.setLineDashPattern([1.5, 1.2], 0)
-  doc.line(x, T, x, T + ALTO_GUIA)
-  doc.setLineDashPattern([], 0)
-}
-
 async function cargarRecursos() {
   const [{ jsPDF }, qrMod, logo] = await Promise.all([import('jspdf'), import('qrcode'), cargarLogo()])
   const QR = qrMod.default ?? qrMod
@@ -539,7 +426,7 @@ export function nombreArchivoGuias(datos: Pick<DatosGuia, 'numero' | 'nombreArch
 
 /**
  * Genera el PDF de una o varias guías. Una guía sola va en la posición elegida; varias se organizan
- * cuatro por hoja (cada una con su parte del paquete y su talón).
+ * cuatro talones por hoja.
  */
 export async function crearGuiasPdf(
   envios: Envio[],
@@ -568,14 +455,12 @@ export function crearGuiaPdf(envio: Envio, origen?: string, posicion: PosicionHo
 }
 
 /**
- * Dibuja la guía en la posición indicada de un A4 ya creado: la parte cuadrada del paquete, el corte
- * vertical y el talón, con las líneas de corte hacia las guías vecinas. El resto de la hoja queda en blanco.
+ * Dibuja el talón de la guía en la posición indicada de un A4 ya creado, con las líneas de corte hacia
+ * las guías vecinas. El resto de la hoja queda en blanco.
  */
 export function componerGuia(doc: JsPdf, d: DatosGuia, logo: Logo | null, qr: string, posicion: PosicionHoja = 0): void {
   doc.setProperties({ title: `Guía ${d.numero} - PCargo`, subject: 'Guía de encomienda', creator: 'PCargo' })
   const T = posicionGuia(posicion)
-  dibujarPaquete(doc, d, logo, qr, T)
-  corteVertical(doc, T)
   dibujarTalon(doc, d, logo, qr, T)
   if (posicion > 0) lineaCorte(doc, T - SEPARACION / 2)
   if (posicion < GUIAS_POR_HOJA - 1) lineaCorte(doc, T + ALTO_GUIA + SEPARACION / 2)

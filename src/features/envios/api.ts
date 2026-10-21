@@ -21,6 +21,8 @@ export const enviosApi = {
       canal: filtros.canal,
       integracionId: filtros.integracionId,
       repartidorId: filtros.repartidorId,
+      desde: filtros.desde,
+      hasta: filtros.hasta,
       q: filtros.q,
       pagina: filtros.pagina,
       porPagina: filtros.porPagina,

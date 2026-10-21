@@ -18,11 +18,8 @@ export const AVISOS_GUIA = [
   'GUÍAS SIN DERECHO A CRÉDITO TRIBUTARIO - NO ENTREGAMOS EN APARTADOS POSTALES',
 ] as const
 
-/** Formato talonario: la parte cuadrada va pegada en la caja; el talón lo firma quien recibe. */
-export const PARTES_GUIA = {
-  paquete: { titulo: 'COPIA PAQUETE', detalle: 'va pegada en la caja' },
-  talon: { titulo: 'TALÓN DE ENTREGA', detalle: 'firma de quien recibe' },
-} as const
+/** Rótulo de la guía impresa: el talón que firman el remitente y quien recibe. */
+export const TALON_GUIA = { titulo: 'TALÓN DE ENTREGA', detalle: 'firma de quien recibe' } as const
 
 export const DIGITOS_GUIA_IMPRESA = 7
 
@@ -70,7 +67,7 @@ export interface DatosGuia {
   pago: { etiqueta: string; marcada: boolean }[]
   /** Etiqueta de la forma de pago del envío («AL COBRO», «PAGADO»…). */
   formaPago: string
-  /** AL_COBRO: el repartidor cobra al entregar (se resalta en la parte del paquete). */
+  /** AL_COBRO: el repartidor cobra al entregar (se resalta la casilla del valor). */
   cobrarAlEntregar: boolean
   /** Total del envío (ya incluye el costo adicional). */
   valor: string

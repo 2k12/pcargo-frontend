@@ -9,7 +9,7 @@ import { generarGuias, GUIAS_POR_HOJA, MENSAJE_ERROR_GUIA, type AccionGuia } fro
 import { useAsignarRepartidor } from '../hooks'
 import { AsignarRepartidorMenu } from './AsignarRepartidorMenu'
 
-/** Hojas A4 que ocupan `n` guías impresas cuatro por hoja (talonario). */
+/** Hojas A4 que ocupan `n` guías impresas cuatro por hoja. */
 const hojasParaGuias = (n: number) => Math.ceil(n / GUIAS_POR_HOJA)
 
 /**

@@ -27,6 +27,7 @@ const IntegracionDetallePage = lazy(() =>
 const DesarrolladoresPage = lazy(() =>
   import('@/features/desarrolladores/DesarrolladoresPage').then((m) => ({ default: m.DesarrolladoresPage })),
 )
+const ReportesPage = lazy(() => import('@/features/reportes/ReportesPage').then((m) => ({ default: m.ReportesPage })))
 const CajaPage = lazy(() => import('@/features/caja/CajaPage').then((m) => ({ default: m.CajaPage })))
 const UsuariosPage = lazy(() => import('@/features/usuarios/UsuariosPage').then((m) => ({ default: m.UsuariosPage })))
 const DatosPersonalesPage = lazy(() =>
@@ -87,6 +88,7 @@ export function AppRoutes() {
             <Route path="/envios" element={<EnviosPage />} />
             <Route path="/clientes" element={<ClientesPage />} />
             <Route path="/caja" element={<CajaPage />} />
+            <Route path="/reportes" element={<ReportesPage />} />
             <Route path="/rutas" element={<RutasPage />} />
             <Route path="/perfil" element={<PerfilPage />} />
             <Route element={<SoloAdmin />}>

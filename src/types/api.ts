@@ -319,6 +319,9 @@ export interface FiltrosEnvios {
   integracionId?: string
   /** v12: id de un repartidor o `ninguno` (sin asignar). */
   repartidorId?: string
+  /** v16: fecha de registro `AAAA-MM-DD` (hora de Ecuador), ambas inclusive. */
+  desde?: string
+  hasta?: string
   q?: string
   /** Paginación en el servidor (contrato v5): página desde 1, 1–100 por página (20 por defecto). */
   pagina?: number

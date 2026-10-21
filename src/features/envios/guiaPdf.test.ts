@@ -4,7 +4,6 @@ import {
   ANCHO_TALON,
   guardarPosicionGuia,
   GUIAS_POR_HOJA,
-  LADO_PAQUETE,
   leerPosicionGuia,
   nombreArchivoGuias,
   ordenarParaImprimir,
@@ -14,7 +13,7 @@ import {
   X_TALON,
 } from './guiaPdf'
 
-describe('formato talonario', () => {
+describe('cuatro talones por hoja', () => {
   it('caben cuatro guías por hoja A4, sin solaparse y con margen al borde', () => {
     expect(GUIAS_POR_HOJA).toBe(4)
     const ys = POSICIONES_HOJA.map(posicionGuia)
@@ -23,11 +22,10 @@ describe('formato talonario', () => {
     for (let i = 1; i < ys.length; i++) expect(ys[i]).toBeGreaterThanOrEqual(ys[i - 1]! + ALTO_GUIA + 4)
   })
 
-  it('la parte del paquete es cuadrada y el talón ocupa el resto del ancho', () => {
-    expect(LADO_PAQUETE).toBe(ALTO_GUIA)
-    expect(X_TALON).toBeGreaterThan(6 + LADO_PAQUETE)
-    expect(X_TALON + ANCHO_TALON).toBeLessThanOrEqual(210 - 6)
-    expect(ANCHO_TALON).toBeGreaterThan(120)
+  it('solo va el talón, a lo ancho de la hoja con margen a los lados', () => {
+    expect(X_TALON).toBeGreaterThanOrEqual(5)
+    expect(X_TALON + ANCHO_TALON).toBeLessThanOrEqual(210 - 5)
+    expect(ANCHO_TALON).toBeGreaterThan(190)
   })
 })
 

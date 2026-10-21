@@ -1,5 +1,6 @@
 import {
   ArrowUpRight,
+  FileText,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -66,6 +67,7 @@ const GRUPOS: { titulo: string; items: ItemNav[] }[] = [
       { to: '/envios', label: 'Envíos', corto: 'Envíos', icon: Package, end: false },
       { to: '/clientes', label: 'Clientes', corto: 'Clientes', icon: Users, end: false },
       { to: '/caja', label: 'Caja', corto: 'Caja', icon: Wallet, end: false },
+      { to: '/reportes', label: 'Reportes', corto: 'Reportes', icon: FileText, end: false, movil: false },
     ],
   },
   {

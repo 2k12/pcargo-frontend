@@ -1,7 +1,7 @@
 import { jsPDF, type TextOptionsLight } from 'jspdf'
 import { describe, expect, it, vi } from 'vitest'
 import type { Envio } from '@/types/api'
-import { ALTO_GUIA, ANCHO_TALON, componerGuia, LADO_PAQUETE, POSICIONES_HOJA, posicionGuia, X_TALON, type PosicionHoja } from './guiaPdf'
+import { ALTO_GUIA, ANCHO_TALON, componerGuia, POSICIONES_HOJA, posicionGuia, X_TALON, type PosicionHoja } from './guiaPdf'
 import { datosGuia } from './guiaImprimible'
 
 // PNG 1×1 para el QR (el dibujo no necesita uno real).
@@ -80,39 +80,28 @@ function textosDibujados(e: Envio, posicion: PosicionHoja = 0) {
   return textos
 }
 
-const enPaquete = (t: TextoDibujado) => t.x < X_TALON - 2
-
-describe('guía en PDF — talonario', () => {
-  it.each(POSICIONES_HOJA)('en la posición %s ningún texto se sale de su parte, aun con datos largos', (posicion) => {
+describe('guía en PDF — talón', () => {
+  it.each(POSICIONES_HOJA)('en la posición %s ningún texto se sale del talón, aun con datos largos', (posicion) => {
     const T = posicionGuia(posicion)
-    const textos = textosDibujados(envioLargo, posicion)
-    for (const t of textos) {
-      const [desde, hasta] = enPaquete(t) ? [6, 6 + LADO_PAQUETE] : [X_TALON, X_TALON + ANCHO_TALON]
-      expect(t.izquierda, t.texto).toBeGreaterThanOrEqual(desde - 0.01)
-      expect(t.derecha, t.texto).toBeLessThanOrEqual(hasta + 0.01)
+    for (const t of textosDibujados(envioLargo, posicion)) {
+      expect(t.izquierda, t.texto).toBeGreaterThanOrEqual(X_TALON - 0.01)
+      expect(t.derecha, t.texto).toBeLessThanOrEqual(X_TALON + ANCHO_TALON + 0.01)
       expect(t.y, t.texto).toBeGreaterThan(T)
       expect(t.y, t.texto).toBeLessThanOrEqual(T + ALTO_GUIA)
     }
   })
 
-  it('la parte del paquete lleva número, ruta, destinatario, remitente, piezas, peso y pago', () => {
-    const paquete = textosDibujados(envio).filter(enPaquete).map((t) => t.texto)
-    expect(paquete).toEqual(
-      expect.arrayContaining(['COPIA PAQUETE', '0040461', 'IBARRA - QUITO', 'PARA:', 'Luis', 'Quito centro', 'QUITO', 'Telf. 0994445566', 'Ana · 0991112233', '1', '2 kg', 'PAGADO']),
+  it('solo imprime el talón: datos del envío y las firmas del remitente y de quien recibe', () => {
+    const textos = textosDibujados(envio).map((t) => t.texto)
+    expect(textos).toEqual(
+      expect.arrayContaining(['TALÓN DE ENTREGA', '0040461', 'Luis', 'Quito centro', 'Ana', 'ACEPTO CONDICIONES (REMITENTE)', 'RECIBÍ CONFORME', 'FIRMA DE QUIEN RECIBE']),
     )
-    // Lo que se firma va solo en el talón.
-    expect(paquete.some((t) => /FIRMA|ACEPTO/.test(t))).toBe(false)
+    expect(textos).not.toContain('COPIA PAQUETE')
   })
 
-  it('el talón lleva las firmas del remitente y de quien recibe', () => {
-    const talon = textosDibujados(envio).filter((t) => !enPaquete(t)).map((t) => t.texto)
-    expect(talon).toEqual(expect.arrayContaining(['TALÓN DE ENTREGA', 'ACEPTO CONDICIONES (REMITENTE)', 'RECIBÍ CONFORME', 'FIRMA DE QUIEN RECIBE']))
-  })
-
-  it('AL COBRO se resalta en la parte del paquete; pagado, no', () => {
-    expect(textosDibujados(envio).some((t) => t.texto === 'COBRAR AL ENTREGAR')).toBe(false)
-    const alCobro = textosDibujados({ ...envio, formaPago: 'AL_COBRO' } as Envio).filter(enPaquete)
-    expect(alCobro.some((t) => t.texto === 'COBRAR AL ENTREGAR')).toBe(true)
+  it('AL COBRO se resalta en la casilla del valor; pagado, no', () => {
+    expect(textosDibujados(envio).some((t) => t.texto === 'COBRAR AL ENTREGAR (USD)')).toBe(false)
+    expect(textosDibujados({ ...envio, formaPago: 'AL_COBRO' } as Envio).some((t) => t.texto === 'COBRAR AL ENTREGAR (USD)')).toBe(true)
   })
 })
 
@@ -126,12 +115,10 @@ describe('guía en PDF — costo adicional', () => {
     const rotulo = textos.find((t) => t.texto === 'ADICIONAL')!
     expect(rotulo).toBeDefined()
     const valor = textos.find((t) => /9\.999,99/.test(t.texto) && t.y === rotulo.y)!
-    const total = textos.find((t) => /10\.005,99/.test(t.texto) && !enPaquete(t))!
+    const total = textos.find((t) => /10\.005,99/.test(t.texto))!
     expect(valor).toBeDefined()
     expect(total.y).toBeGreaterThan(rotulo.y)
     // El rótulo no pisa el monto (alineado a la derecha).
     expect(rotulo.derecha).toBeLessThan(valor.izquierda)
-    // La parte del paquete muestra solo el total.
-    expect(textos.some((t) => enPaquete(t) && /10\.005,99/.test(t.texto))).toBe(true)
   })
 })
