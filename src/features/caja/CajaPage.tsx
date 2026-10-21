@@ -114,11 +114,11 @@ function Historial() {
             ))}
           </SelectContent>
         </Select>
-        <div className="flex flex-1 gap-2 sm:flex-none">
+        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
           <Input
             type="date"
             aria-label="Desde"
-            className="min-w-0 flex-1 sm:w-40"
+            className="w-full min-w-0 sm:w-40"
             value={desde}
             max={hasta || undefined}
             onChange={(e) => filtrar(() => setDesde(e.target.value))}
@@ -126,7 +126,7 @@ function Historial() {
           <Input
             type="date"
             aria-label="Hasta"
-            className="min-w-0 flex-1 sm:w-40"
+            className="w-full min-w-0 sm:w-40"
             value={hasta}
             min={desde || undefined}
             onChange={(e) => filtrar(() => setHasta(e.target.value))}

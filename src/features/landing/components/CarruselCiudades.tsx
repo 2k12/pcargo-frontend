@@ -28,7 +28,9 @@ export function CarruselCiudades({ ciudades, className }: { ciudades: Pick<Ciuda
   const estilo = { '--duracion-marquesina': `${vuelta.length * SEGUNDOS_POR_NOMBRE}s` } as CSSProperties
 
   return (
-    <div role="region" aria-label="Ciudades con cobertura" className={cn('min-w-0', className)}>
+    // La pista animada es mucho más ancha que la pantalla: el carrusel la recorta en dos niveles (y `contain`)
+    // para que nunca ensanche la página en el teléfono.
+    <div role="region" aria-label="Ciudades con cobertura" className={cn('relative w-full max-w-full min-w-0 overflow-hidden', className)}>
       {/* Para lectores de pantalla y para quien pide reducir el movimiento: la lista, una sola vez y quieta. */}
       <ul className="flex flex-wrap gap-x-8 gap-y-2 motion-safe:sr-only">
         {ciudades.map((c) => (
@@ -38,7 +40,7 @@ export function CarruselCiudades({ ciudades, className }: { ciudades: Pick<Ciuda
       <div
         aria-hidden="true"
         data-testid="carrusel-ciudades"
-        className="group hidden overflow-hidden py-1 [mask-image:linear-gradient(to_right,transparent_0%,transparent_8%,black_45%,black_92%,transparent_100%)] motion-safe:block"
+        className="group hidden w-full max-w-full overflow-hidden py-1 [contain:paint] [mask-image:linear-gradient(to_right,transparent_0%,transparent_8%,black_45%,black_92%,transparent_100%)] motion-safe:block"
       >
         <div className="flex w-max animate-marquesina group-hover:[animation-play-state:paused]" style={estilo}>
           {[0, 1].map((copia) => (

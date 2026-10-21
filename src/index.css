@@ -147,6 +147,9 @@
     }
   html {
     @apply font-sans;
+    /* Red de seguridad en el teléfono: nada puede ensanchar la página (ni desplazarla de lado, ni dejar
+       los menús laterales fuera de la pantalla). `clip` no rompe los elementos `sticky`, a diferencia de `hidden`. */
+    overflow-x: clip;
     }
 }
 /* Carrusel de ciudades del footer: desplaza la pista la mitad de su ancho (contenido duplicado → bucle sin saltos). */
