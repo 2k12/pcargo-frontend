@@ -151,6 +151,11 @@
        los menús laterales fuera de la pantalla). `clip` no rompe los elementos `sticky`, a diferencia de `hidden`. */
     overflow-x: clip;
     }
+  /* En Android el ancho de la página se ajusta al contenido aunque `html` recorte: el recorte va también en el
+     contenedor de la app, así nada de lo que hay dentro puede ensanchar la página ni dejarla moverse de lado. */
+  #root {
+    overflow-x: clip;
+    }
 }
 /* Carrusel de ciudades del footer: desplaza la pista la mitad de su ancho (contenido duplicado → bucle sin saltos). */
 @theme {
