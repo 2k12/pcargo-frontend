@@ -7,10 +7,18 @@ const MIN_POR_VUELTA = 10
 /** Segundos que tarda cada nombre en cruzar: la velocidad no cambia con el número de ciudades. */
 const SEGUNDOS_POR_NOMBRE = 3
 
-/** Solo el nombre, en mayúsculas y en el azul de marca. 1.575rem = 25,2 px: un 80 % más que el texto base (14 px). */
-function NombreCiudad({ nombre }: { nombre: string }) {
+/**
+ * Solo el nombre, en mayúsculas y en el azul de marca. 1.575rem = 25,2 px: un 80 % más que el texto base (14 px).
+ * En la pista animada va en una línea; en la lista quieta («reducir movimiento») puede partirse para no salirse.
+ */
+function NombreCiudad({ nombre, enPista = false }: { nombre: string; enPista?: boolean }) {
   return (
-    <li className="shrink-0 text-[1.575rem] leading-tight font-semibold tracking-wide whitespace-nowrap text-brand-blue-text uppercase">
+    <li
+      className={cn(
+        'text-[1.575rem] leading-tight font-semibold tracking-wide text-brand-blue-text uppercase',
+        enPista ? 'shrink-0 whitespace-nowrap' : 'max-w-full min-w-0 break-words',
+      )}
+    >
       {nombre}
     </li>
   )
@@ -46,7 +54,7 @@ export function CarruselCiudades({ ciudades, className }: { ciudades: Pick<Ciuda
           {[0, 1].map((copia) => (
             <ul key={copia} className="flex shrink-0 gap-12 pr-12">
               {vuelta.map((c, i) => (
-                <NombreCiudad key={`${copia}-${c.id}-${i}`} nombre={c.nombre} />
+                <NombreCiudad key={`${copia}-${c.id}-${i}`} nombre={c.nombre} enPista />
               ))}
             </ul>
           ))}

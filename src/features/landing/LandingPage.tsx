@@ -94,7 +94,7 @@ function Seccion({ id, titulo, subtitulo, children, className }: { id?: string; 
     <section id={id} className={cn('scroll-mt-20 py-16 sm:py-24', className)}>
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="mb-10 max-w-2xl space-y-3">
-          <h2 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">{titulo}</h2>
+          <h2 className="text-3xl font-semibold tracking-tight text-balance break-words hyphens-auto sm:text-4xl">{titulo}</h2>
           {subtitulo && <p className="text-muted-foreground text-pretty">{subtitulo}</p>}
         </div>
         {children}
@@ -224,8 +224,14 @@ export function LandingPage() {
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,color-mix(in_oklch,var(--brand-blue)_14%,transparent),transparent_55%),radial-gradient(ellipse_at_bottom_right,color-mix(in_oklch,var(--brand-green)_18%,transparent),transparent_55%)]" />
           <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-10 px-4 pt-10 pb-16 sm:px-6 sm:pt-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-14 lg:pb-24">
             <div className="min-w-0 space-y-6">
-              <Badge variant="secondary" className="min-h-5 gap-1.5" render={<a href="#cobertura" />}>
-                <MapPin className="size-3" /> {ciudadesTexto || 'Cobertura en el norte del Ecuador'}
+              {/* El texto cambia al llegar el catálogo (nombres reales de ciudades): puede partirse en dos líneas
+                  en vez de ensanchar la página en el teléfono. */}
+              <Badge
+                variant="secondary"
+                className="h-auto min-h-5 max-w-full shrink justify-start gap-1.5 text-left whitespace-normal"
+                render={<a href="#cobertura" />}
+              >
+                <MapPin className="size-3" /> <span className="min-w-0 break-words">{ciudadesTexto || 'Cobertura en el norte del Ecuador'}</span>
               </Badge>
               <h1 className="text-4xl font-semibold tracking-tight text-balance break-words hyphens-auto sm:text-5xl lg:text-6xl">
                 Tus encomiendas,{' '}
@@ -297,7 +303,7 @@ export function LandingPage() {
             {(catalogo?.tiposCarga ?? []).map((t) => {
               const Icon = iconoTipoCarga(t.codigo)
               return (
-                <article key={t.codigo} className="space-y-3 rounded-2xl border bg-card p-4 max-lg:last:odd:col-span-2 sm:space-y-4 sm:p-6">
+                <article key={t.codigo} className="min-w-0 space-y-3 rounded-2xl border bg-card p-4 max-lg:last:odd:col-span-2 sm:space-y-4 sm:p-6">
                   <span className="flex size-11 items-center justify-center rounded-xl bg-accent text-accent-foreground">
                     <Icon className="size-5" />
                   </span>
@@ -317,8 +323,8 @@ export function LandingPage() {
 
         {/* Cómo funciona */}
         <Seccion id="como-funciona" titulo="Así de simple" subtitulo="De tu mano a la puerta de quien lo recibe, en tres pasos." className="bg-muted/30">
-          <div className="grid items-center gap-10 lg:grid-cols-2">
-            <ol className="relative space-y-8">
+          <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2">
+            <ol className="relative min-w-0 space-y-8">
               {/* línea que une los pasos (continuidad) */}
               <span aria-hidden="true" className="absolute top-5 bottom-5 left-5 w-0.5 -translate-x-1/2 bg-brand-green/50" />
               {PASOS.map((p, i) => (
@@ -326,7 +332,7 @@ export function LandingPage() {
                   <span className="relative z-10 flex size-10 shrink-0 items-center justify-center rounded-full border-2 border-brand-green bg-background">
                     <p.icon className="size-4" />
                   </span>
-                  <div className="space-y-1 pt-1.5">
+                  <div className="min-w-0 space-y-1 pt-1.5">
                     <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Paso {i + 1}</p>
                     <h3 className="font-semibold">{p.titulo}</h3>
                     <p className="text-sm text-muted-foreground">{p.texto}</p>
@@ -425,7 +431,7 @@ export function LandingPage() {
 
         {/* Confianza */}
         <Seccion titulo="¿Por qué PCargo?" subtitulo="Somos una empresa de Ibarra, con oficina física y precios a la vista.">
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             {[
               { icon: ShieldCheck, t: 'Precios publicados', d: 'El precio se calcula con la tabla de precios de esta página. Pagas al registrar el envío o lo paga el destinatario al recibirlo.' },
               { icon: PackageSearch, t: 'Seguimiento en línea', d: 'Cada cambio de estado que registramos aparece en el seguimiento con tu número de guía.' },
@@ -461,7 +467,7 @@ export function LandingPage() {
 
         {/* Contacto */}
         <Seccion id="contacto" titulo="Contáctanos" subtitulo={`Visítanos en nuestra oficina principal en ${MARCA.oficina.ciudad}.`} className="bg-muted/30">
-          <div className={cn('grid gap-4 sm:grid-cols-2', MARCA.oficina.horario && MARCA.email && 'lg:grid-cols-4')}>
+          <div className={cn('grid grid-cols-1 gap-4 sm:grid-cols-2', MARCA.oficina.horario && MARCA.email && 'lg:grid-cols-4')}>
             <div className="space-y-2 rounded-2xl border bg-card p-6">
               <MapPin className="size-4 text-brand-blue-text" />
               <p className="text-sm font-medium">Oficina</p>
@@ -533,8 +539,8 @@ export function LandingPage() {
 
       <footer className="border-t">
         {/* Datos de PCargo a la izquierda; a la derecha, centradas verticalmente, las ciudades con cobertura. */}
-        <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 text-sm text-muted-foreground sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center sm:gap-10 sm:px-6">
-          <div className="space-y-3">
+        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 px-4 py-10 text-sm text-muted-foreground sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center sm:gap-10 sm:px-6">
+          <div className="min-w-0 space-y-3 break-words">
             <Logo markClassName="size-8" />
             <p>{MARCA.oficina.direccion}</p>
             <p>

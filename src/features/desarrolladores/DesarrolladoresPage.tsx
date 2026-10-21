@@ -127,7 +127,7 @@ export function DesarrolladoresPage() {
             </p>
             <nav aria-label="Contenido" className="rounded-xl bg-muted p-4 text-sm">
               <p className="mb-2 font-medium">En esta página</p>
-              <ol className="grid gap-1 sm:grid-cols-2">
+              <ol className="grid grid-cols-1 gap-1 sm:grid-cols-2">
                 {SECCIONES.map((s) => (
                   <li key={s.id}>
                     <a href={`#${s.id}`} className="underline-offset-4 hover:underline">
@@ -235,7 +235,7 @@ export function DesarrolladoresPage() {
             </p>
 
             <h3>Crear un envío</h3>
-            <div className="grid gap-3">
+            <div className="grid grid-cols-1 gap-3">
               <BloqueCodigo titulo="curl" lenguaje="bash" codigo={ejemploCurl(opciones)} />
               <BloqueCodigo titulo="JavaScript (fetch)" lenguaje="js" codigo={ejemploFetch(opciones)} />
               <BloqueCodigo titulo="Body: NuevoEnvioApi" lenguaje="json" codigo={ejemploNuevoEnvio()} />
@@ -243,7 +243,7 @@ export function DesarrolladoresPage() {
             </div>
 
             <h3>Cobertura y cotización</h3>
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <BloqueCodigo titulo="GET /cobertura" lenguaje="json" codigo={ejemploCobertura()} />
               <BloqueCodigo titulo="POST /cotizar (body)" lenguaje="json" codigo={ejemploCotizarRequest()} />
             </div>
@@ -308,7 +308,7 @@ export function DesarrolladoresPage() {
               columnas={['Evento', 'Cuándo']}
               filas={EVENTOS_DOC.map((e) => [<C key="e">{e.evento}</C>, e.cuando])}
             />
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <BloqueCodigo titulo="Cabeceras" lenguaje="http" codigo={ejemploCabecerasWebhook()} />
               <BloqueCodigo titulo="Body" lenguaje="json" codigo={ejemploWebhook()} />
             </div>

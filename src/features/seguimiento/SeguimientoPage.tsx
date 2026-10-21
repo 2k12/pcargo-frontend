@@ -207,7 +207,7 @@ export function SeguimientoPage({ embebido = false }: { embebido?: boolean }) {
 
         {data && (
           // Escritorio: datos a la izquierda y el personaje del estado, grande, a la derecha.
-          <div className="grid items-start gap-6 md:grid-cols-[minmax(0,1fr)_18rem] lg:grid-cols-[minmax(0,1fr)_22rem]">
+          <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-[minmax(0,1fr)_18rem] lg:grid-cols-[minmax(0,1fr)_22rem]">
             <Card>
               <CardHeader className="flex flex-row items-start justify-between gap-3">
                 <div className="min-w-0 space-y-1">

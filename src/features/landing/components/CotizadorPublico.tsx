@@ -52,7 +52,7 @@ export function CotizadorPublico({ catalogo }: { catalogo: CatalogoPublico }) {
     // grid-cols-1 = minmax(0, 1fr): con el texto grande de Android la columna no crece más que la pantalla.
     <div className="grid grid-cols-1 gap-6 rounded-2xl border bg-card p-5 sm:p-8 lg:grid-cols-[minmax(0,1fr)_320px]">
       <div className="min-w-0 space-y-5">
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label>Desde</Label>
             <Select items={ciudadItems} value={origen} onValueChange={(v) => setOrigen(v as string | null)}>
@@ -100,7 +100,7 @@ export function CotizadorPublico({ catalogo }: { catalogo: CatalogoPublico }) {
           </div>
         )}
 
-        <div className="grid gap-4 sm:max-w-sm sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:max-w-sm sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="cotizador-cantidad">Cantidad</Label>
             <Input
