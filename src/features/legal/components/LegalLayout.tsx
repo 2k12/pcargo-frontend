@@ -45,7 +45,7 @@ export function LegalLayout({ titulo, resumen, children }: { titulo: string; res
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
         <article
           className={cn(
-            'max-w-[70ch] space-y-8 text-[15px] leading-7',
+            'max-w-[70ch] space-y-8 text-[15px] leading-7 break-words hyphens-auto',
             '[&_h2]:scroll-mt-6 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:tracking-tight',
             '[&_h3]:font-semibold [&_p]:text-pretty',
             '[&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:space-y-1.5 [&_ol]:pl-5',
@@ -53,7 +53,7 @@ export function LegalLayout({ titulo, resumen, children }: { titulo: string; res
           )}
         >
           <header className="space-y-3">
-            <h1 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">{titulo}</h1>
+            <h1 className="text-3xl font-semibold tracking-tight text-balance break-words hyphens-auto sm:text-4xl">{titulo}</h1>
             <p className="text-sm text-muted-foreground">
               Vigente desde el <time dateTime={DATOS_LEGALES.vigenteDesde}>{fechaVigencia()}</time>
             </p>

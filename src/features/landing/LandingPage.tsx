@@ -281,7 +281,7 @@ export function LandingPage() {
             ].map((s) => (
               // <dl> solo admite <div> con <dt>/<dd> dentro: el icono va dentro del <dt> (árbol accesible válido).
               // En el teléfono el icono va arriba: a su lado, con el texto grande de Android, «Seguimiento» no cabía.
-              <div key={s.k} className="relative min-w-0 space-y-0.5 pt-11 sm:pt-0 sm:pl-12">
+              <div key={s.k} className="relative min-w-0 space-y-0.5 pt-11 break-words hyphens-auto sm:pt-0 sm:pl-12">
                 <dt className="text-sm text-muted-foreground">
                   <span
                     aria-hidden="true"
@@ -303,7 +303,7 @@ export function LandingPage() {
             {(catalogo?.tiposCarga ?? []).map((t) => {
               const Icon = iconoTipoCarga(t.codigo)
               return (
-                <article key={t.codigo} className="min-w-0 space-y-3 rounded-2xl border bg-card p-4 max-lg:last:odd:col-span-2 sm:space-y-4 sm:p-6">
+                <article key={t.codigo} className="min-w-0 space-y-3 rounded-2xl break-words hyphens-auto border bg-card p-4 max-lg:last:odd:col-span-2 sm:space-y-4 sm:p-6">
                   <span className="flex size-11 items-center justify-center rounded-xl bg-accent text-accent-foreground">
                     <Icon className="size-5" />
                   </span>
@@ -332,7 +332,7 @@ export function LandingPage() {
                   <span className="relative z-10 flex size-10 shrink-0 items-center justify-center rounded-full border-2 border-brand-green bg-background">
                     <p.icon className="size-4" />
                   </span>
-                  <div className="min-w-0 space-y-1 pt-1.5">
+                  <div className="min-w-0 space-y-1 pt-1.5 break-words hyphens-auto">
                     <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Paso {i + 1}</p>
                     <h3 className="font-semibold">{p.titulo}</h3>
                     <p className="text-sm text-muted-foreground">{p.texto}</p>

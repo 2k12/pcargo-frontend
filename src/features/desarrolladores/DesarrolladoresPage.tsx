@@ -119,7 +119,7 @@ export function DesarrolladoresPage() {
         >
           <header className="space-y-4">
             <p className="text-sm font-medium text-brand-blue-text">Desarrolladores</p>
-            <h1 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">API para empresas</h1>
+            <h1 className="text-3xl font-semibold tracking-tight text-balance break-words hyphens-auto sm:text-4xl">API para empresas</h1>
             <p className="text-muted-foreground">
               Si tienes una tienda en línea o distribuyes productos, puedes registrar tus envíos con {MARCA.nombre} directamente desde
               tu sistema, sin escribirlos a mano en el panel. Te devolvemos el número de guía y el enlace de rastreo, y te avisamos
