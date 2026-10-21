@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { EnlacesLegales } from '@/features/legal/components/EnlacesLegales'
 import { errorMessage } from '@/lib/api'
+import { DETALLE_VERSION, VERSION_APP } from '@/lib/version'
 import type { Usuario } from '@/types/api'
 import { useAuth } from './hooks'
 import { destinoTrasLogin, espacioDeRol } from './roles'
@@ -245,9 +246,12 @@ export function LoginPage() {
         </div>
       </main>
 
-      {/* Pie discreto, fuera del formulario: solo las políticas que aplican al personal. */}
-      <footer className="flex justify-center px-4 pt-2 pb-[max(1.25rem,env(safe-area-inset-bottom))] text-xs text-muted-foreground">
+      {/* Pie discreto, fuera del formulario: solo las políticas que aplican al personal y la versión de la app. */}
+      <footer className="flex flex-col items-center gap-1.5 px-4 pt-2 pb-[max(1.25rem,env(safe-area-inset-bottom))] text-xs text-muted-foreground">
         <EnlacesLegales rutas={['/privacidad', '/terminos', '/cookies']} />
+        <p className="text-[11px] text-muted-foreground/70 tabular-nums" title={DETALLE_VERSION}>
+          {VERSION_APP}
+        </p>
       </footer>
     </div>
   )

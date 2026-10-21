@@ -210,3 +210,13 @@ describe('LoginPage — código único', () => {
     getItem.mockRestore()
   })
 })
+
+describe('LoginPage — versión de la app', () => {
+  it('muestra la versión de package.json al pie, discreta', async () => {
+    const { version } = (await import('../../../package.json')).default
+    mockFetch(() => jsonResponse({}))
+    renderWithProviders(<LoginPage />, { route: '/login', path: '/login' })
+    expect(screen.getByText(`v${version}`)).toBeInTheDocument()
+    expect(version).toMatch(/^\d+\.\d+\.\d+$/)
+  })
+})
