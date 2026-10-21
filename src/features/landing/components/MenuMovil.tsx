@@ -22,7 +22,16 @@ export function MenuMovil({ secciones }: { secciones: { href: string; label: str
             <Logo markClassName="size-8" />
           </SheetTitle>
         </SheetHeader>
-        <nav className="flex flex-col px-4" aria-label="Secciones">
+        {/* Acciones arriba, a mano apenas se abre el menú; las secciones debajo (con desplazamiento si no caben). */}
+        <div className="space-y-2 border-b px-4 pb-4">
+          <Button size="lg" className="w-full" nativeButton={false} render={<Link to="/login" />}>
+            <LogIn /> Plataforma
+          </Button>
+          <Button size="lg" variant="outline" className="w-full" nativeButton={false} render={<EnlaceExterno href={whatsappUrl()} />}>
+            <MessageCircle /> Escríbenos por WhatsApp
+          </Button>
+        </div>
+        <nav className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-[max(1rem,env(safe-area-inset-bottom))]" aria-label="Secciones">
           {secciones.map((s) => (
             <a key={s.href} href={s.href} onClick={cerrar} className="rounded-lg px-3 py-3 text-base hover:bg-accent">
               {s.label}
@@ -32,14 +41,6 @@ export function MenuMovil({ secciones }: { secciones: { href: string; label: str
             <PackageSearch className="size-4" /> Rastrear envío
           </Link>
         </nav>
-        <div className="mt-auto space-y-2 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-          <Button size="lg" variant="outline" className="w-full" nativeButton={false} render={<EnlaceExterno href={whatsappUrl()} />}>
-            <MessageCircle /> Escríbenos por WhatsApp
-          </Button>
-          <Button size="lg" className="w-full" nativeButton={false} render={<Link to="/login" />}>
-            <LogIn /> Plataforma
-          </Button>
-        </div>
       </SheetContent>
     </Sheet>
   )
