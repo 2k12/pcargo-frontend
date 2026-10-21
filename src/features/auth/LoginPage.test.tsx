@@ -110,3 +110,103 @@ describe('LoginPage — seguridad', () => {
     expect(screen.queryByText(/Admin123|Operador123|credenciales de demostración/i)).not.toBeInTheDocument()
   })
 })
+
+describe('LoginPage — código único', () => {
+  afterEach(() => {
+    localStorage.clear()
+  })
+
+  it('por defecto muestra «Credenciales» y la pestaña de código tiene un solo campo', async () => {
+    mockConCatalogo(() => jsonResponse({}))
+    const user = userEvent.setup()
+    renderWithProviders(<LoginPage />, { route: '/login', path: '/login' })
+
+    expect(screen.getByRole('tab', { name: 'Credenciales' })).toHaveAttribute('aria-selected', 'true')
+    await user.click(screen.getByRole('tab', { name: 'Código único' }))
+
+    const codigo = await screen.findByLabelText('Código de acceso')
+    expect(codigo).toHaveAttribute('type', 'password')
+    expect(codigo).toHaveAttribute('autocomplete', 'off')
+    expect(screen.queryByLabelText('Correo')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Contraseña')).not.toBeInTheDocument()
+
+    await user.type(codigo, 'Rita#2026')
+    await user.click(screen.getByRole('button', { name: 'Mostrar código' }))
+    expect(codigo).toHaveAttribute('type', 'text')
+    expect(codigo).toHaveValue('Rita#2026')
+  })
+
+  it('envía { codigo }, guarda el token y redirige según el rol', async () => {
+    const fetchMock = mockConCatalogo((url) =>
+      url.endsWith('/auth/login/codigo')
+        ? jsonResponse({ token: 'jwt-codigo', usuario: { id: 'u3', nombre: 'Rita', email: 'rita@pcargo.ec', rol: 'REPARTIDOR', clienteId: null } })
+        : jsonResponse({}),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<LoginPage />, {
+      route: '/login',
+      path: '/login',
+      extraRoutes: [{ path: '/repartidor', element: <p>Mis entregas</p> }],
+    })
+
+    await user.click(screen.getByRole('tab', { name: 'Código único' }))
+    await user.type(await screen.findByLabelText('Código de acceso'), 'Rita#2026')
+    await user.click(screen.getByRole('button', { name: 'Ingresar' }))
+
+    expect(await screen.findByText('Mis entregas')).toBeInTheDocument()
+    expect(tokenStorage.get()).toBe('jwt-codigo')
+    const [[url, init]] = llamadasA(fetchMock, '/auth/login/codigo') as [[string, RequestInit]]
+    expect(url).toBe('/api/auth/login/codigo')
+    expect(init.method).toBe('POST')
+    expect(JSON.parse(init.body as string)).toEqual({ codigo: 'Rita#2026' })
+    expect(llamadasA(fetchMock, '/auth/login')).toHaveLength(0)
+  })
+
+  it('muestra el error del backend con un código inválido', async () => {
+    mockConCatalogo(() => jsonResponse({ error: { code: 'CREDENCIALES_INVALIDAS', message: 'Código inválido' } }, 401))
+    const user = userEvent.setup()
+    renderWithProviders(<LoginPage />, { route: '/login', path: '/login' })
+
+    await user.click(screen.getByRole('tab', { name: 'Código único' }))
+    await user.type(await screen.findByLabelText('Código de acceso'), 'noexiste')
+    await user.click(screen.getByRole('button', { name: 'Ingresar' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Código inválido')
+    expect(tokenStorage.get()).toBeNull()
+  })
+
+  it('no envía un código vacío', async () => {
+    const fetchMock = mockConCatalogo(() => jsonResponse({}))
+    const user = userEvent.setup()
+    renderWithProviders(<LoginPage />, { route: '/login', path: '/login' })
+
+    await user.click(screen.getByRole('tab', { name: 'Código único' }))
+    await user.click(await screen.findByRole('button', { name: 'Ingresar' }))
+
+    expect(await screen.findByText('Ingresa tu código')).toBeInTheDocument()
+    expect(llamadasA(fetchMock, '/auth/login/codigo')).toHaveLength(0)
+  })
+
+  it('recuerda la última pestaña usada', async () => {
+    mockConCatalogo(() => jsonResponse({}))
+    const user = userEvent.setup()
+    const { unmount } = renderWithProviders(<LoginPage />, { route: '/login', path: '/login' })
+    await user.click(screen.getByRole('tab', { name: 'Código único' }))
+    unmount()
+
+    renderWithProviders(<LoginPage />, { route: '/login', path: '/login' })
+    expect(screen.getByRole('tab', { name: 'Código único' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByLabelText('Código de acceso')).toBeInTheDocument()
+  })
+
+  it('si localStorage falla, sigue funcionando con «Credenciales»', () => {
+    const original = Storage.prototype.getItem
+    const getItem = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(function (this: Storage, clave: string) {
+      if (clave === 'pcargo.login.metodo') throw new Error('bloqueado')
+      return original.call(this, clave)
+    })
+    renderWithProviders(<LoginPage />, { route: '/login', path: '/login' })
+    expect(screen.getByRole('tab', { name: 'Credenciales' })).toHaveAttribute('aria-selected', 'true')
+    getItem.mockRestore()
+  })
+})

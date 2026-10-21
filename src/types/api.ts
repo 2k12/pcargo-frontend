@@ -44,6 +44,19 @@ export interface CambioContrasena {
   nueva: string
 }
 
+/** Estado del código único de acceso del usuario (contrato v17). */
+export interface CodigoAcceso {
+  activo: boolean
+  /** ISO; null si no está activo. */
+  actualizadoEn: string | null
+}
+
+/** PUT /auth/me/codigo (v17): `password` es la contraseña actual. */
+export interface ActivarCodigoAcceso {
+  password: string
+  codigo: string
+}
+
 export interface Ciudad {
   id: number
   nombre: string

@@ -34,3 +34,23 @@ export function cambiosPerfil(usuario: Pick<Usuario, 'nombre' | 'email'>, v: { n
   if (email !== usuario.email.toLowerCase()) cambios.email = email
   return cambios
 }
+
+// Código único de acceso (contrato v17): mismas reglas que el servidor.
+export const MENSAJE_CODIGO_REGLAS = 'Entre 6 y 32 caracteres, sin espacios. Letras, números o símbolos; distingue mayúsculas.'
+
+export const codigoAccesoSchema = z
+  .object({
+    codigo: z
+      .string()
+      .min(6, 'Mínimo 6 caracteres')
+      .max(32, 'Máximo 32 caracteres')
+      .regex(/^\S+$/u, 'No puede tener espacios'),
+    confirmar: z.string().min(1, 'Repite el código'),
+    password: z.string().min(1, 'Escribe tu contraseña actual'),
+  })
+  .refine((v) => v.confirmar === v.codigo, { path: ['confirmar'], message: 'Los códigos no coinciden' })
+  .refine((v) => v.password === '' || v.codigo !== v.password, {
+    path: ['codigo'],
+    message: 'No puede ser igual a tu contraseña',
+  })
+export type CodigoAccesoValues = z.infer<typeof codigoAccesoSchema>

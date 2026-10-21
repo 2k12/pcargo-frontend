@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { KeyRound, Loader2, UserRound } from 'lucide-react'
-import { useEffect, type ReactNode } from 'react'
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -8,12 +8,14 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { useAuth } from '@/features/auth/hooks'
 import { ROL_LABEL } from '@/features/auth/roles'
 import { ApiError, errorMessage } from '@/lib/api'
 import { iniciales } from '@/lib/format'
 import type { Usuario } from '@/types/api'
+import { CodigoAccesoForm } from './CodigoAccesoForm'
+import { Campo } from './components/Campo'
+import { describir } from './components/describir'
 import { useActualizarPerfil, useCambiarContrasena } from './hooks'
 import {
   cambiosPerfil,
@@ -23,41 +25,6 @@ import {
   type ContrasenaValues,
   type PerfilValues,
 } from './schema'
-
-function Campo({
-  id,
-  label,
-  error,
-  ayuda,
-  children,
-}: {
-  id: string
-  label: string
-  error?: string
-  ayuda?: string
-  children: ReactNode
-}) {
-  return (
-    <div className="space-y-1.5">
-      <Label htmlFor={id}>{label}</Label>
-      {children}
-      {error ? (
-        <p id={`${id}-error`} className="text-xs text-destructive">
-          {error}
-        </p>
-      ) : (
-        ayuda && (
-          <p id={`${id}-ayuda`} className="text-xs text-muted-foreground">
-            {ayuda}
-          </p>
-        )
-      )}
-    </div>
-  )
-}
-
-const describir = (id: string, error?: unknown, ayuda?: boolean) =>
-  error ? `${id}-error` : ayuda ? `${id}-ayuda` : undefined
 
 export function DatosForm({ usuario }: { usuario: Usuario }) {
   const actualizar = useActualizarPerfil()
@@ -248,6 +215,7 @@ export function PerfilPage() {
       <div className="grid items-start gap-4 lg:grid-cols-2">
         <DatosForm usuario={usuario} />
         <ContrasenaForm />
+        <CodigoAccesoForm />
       </div>
     </>
   )

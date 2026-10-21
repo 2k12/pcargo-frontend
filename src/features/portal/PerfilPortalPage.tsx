@@ -1,5 +1,6 @@
 import { PageHeader } from '@/components/layout/PageHeader'
 import { useAuth } from '@/features/auth/hooks'
+import { CodigoAccesoForm } from '@/features/perfil/CodigoAccesoForm'
 import { ContrasenaForm, DatosForm } from '@/features/perfil/PerfilPage'
 import { useClientePortal } from './hooks'
 
@@ -14,6 +15,7 @@ export function PerfilPortalPage() {
       <div className="grid items-start gap-4 lg:grid-cols-2">
         <DatosForm usuario={usuario} />
         <ContrasenaForm />
+        <CodigoAccesoForm />
       </div>
     </>
   )

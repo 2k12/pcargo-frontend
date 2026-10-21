@@ -37,13 +37,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized)
   }, [])
 
-  const login = useCallback(async (email: string, password: string) => {
-    const { token, usuario: u } = await authApi.login(email, password)
+  const iniciarSesion = useCallback(({ token, usuario: u }: LoginResponse) => {
     tokenStorage.set(token)
     setUsuario(u)
     setStatus('authenticated')
     return u
   }, [])
+
+  const login = useCallback(
+    async (email: string, password: string) => iniciarSesion(await authApi.login(email, password)),
+    [iniciarSesion],
+  )
+
+  const loginConCodigo = useCallback(
+    async (codigo: string) => iniciarSesion(await authApi.loginConCodigo(codigo)),
+    [iniciarSesion],
+  )
 
   const logout = useCallback(() => {
     tokenStorage.clear()
@@ -51,15 +60,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus('anonymous')
   }, [])
 
-  const actualizarSesion = useCallback(({ token, usuario: u }: LoginResponse) => {
-    tokenStorage.set(token)
-    setUsuario(u)
-    setStatus('authenticated')
-  }, [])
+  const actualizarSesion = useCallback((sesion: LoginResponse) => {
+    iniciarSesion(sesion)
+  }, [iniciarSesion])
 
   const value = useMemo(
-    () => ({ usuario, status, login, logout, actualizarSesion }),
-    [usuario, status, login, logout, actualizarSesion],
+    () => ({ usuario, status, login, loginConCodigo, logout, actualizarSesion }),
+    [usuario, status, login, loginConCodigo, logout, actualizarSesion],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
