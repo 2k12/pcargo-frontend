@@ -26,7 +26,7 @@ export function LegalLayout({ titulo, resumen, children }: { titulo: string; res
   return (
     <div className="min-h-svh bg-background">
       <header className="border-b">
-        <div className="mx-auto flex h-14 max-w-3xl items-center justify-between gap-3 px-4 sm:px-6">
+        <div className="mx-auto flex min-h-14 max-w-3xl flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 py-2 sm:px-6">
           <Link to="/" aria-label={`${MARCA.nombre} — ir al inicio`}>
             <Logo markClassName="size-8" />
           </Link>
@@ -66,8 +66,14 @@ export function LegalLayout({ titulo, resumen, children }: { titulo: string; res
           <p className="mb-3 text-sm font-medium">Otras políticas</p>
           <ul className="flex flex-wrap gap-2">
             {PAGINAS_LEGALES.filter((p) => p.ruta !== pathname).map((p) => (
-              <li key={p.ruta}>
-                <Button variant="outline" size="sm" nativeButton={false} render={<Link to={p.ruta} />}>
+              <li key={p.ruta} className="max-w-full">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-auto min-h-7 max-w-full py-1 whitespace-normal"
+                  nativeButton={false}
+                  render={<Link to={p.ruta} />}
+                >
                   {p.titulo}
                 </Button>
               </li>

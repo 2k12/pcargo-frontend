@@ -66,7 +66,7 @@ export function PreguntasFrecuentes({ preguntas }: { preguntas: PreguntaFrecuent
                   onKeyDown={(e) => moverFoco(e, i)}
                   className="flex w-full items-center justify-between gap-4 px-4 py-4 text-left font-medium transition-colors outline-none hover:bg-muted/40 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset sm:px-6"
                 >
-                  {p.pregunta}
+                  <span className="min-w-0 break-words">{p.pregunta}</span>
                   <ChevronDown
                     aria-hidden="true"
                     className={cn('size-4 shrink-0 text-muted-foreground transition-transform', abierta && 'rotate-180')}

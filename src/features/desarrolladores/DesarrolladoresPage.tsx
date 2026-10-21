@@ -91,7 +91,7 @@ export function DesarrolladoresPage() {
   return (
     <div className="min-h-svh bg-background">
       <header className="border-b">
-        <div className="mx-auto flex h-14 max-w-4xl items-center justify-between gap-3 px-4 sm:px-6">
+        <div className="mx-auto flex min-h-14 max-w-4xl flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 py-2 sm:px-6">
           <Link to="/" aria-label={`${MARCA.nombre} — ir al inicio`}>
             <Logo markClassName="size-8" />
           </Link>
@@ -157,7 +157,7 @@ export function DesarrolladoresPage() {
                 <strong>Recibe avisos.</strong> Si nos das una URL, te enviamos un webhook firmado en cada cambio de estado.
               </li>
             </ol>
-            <Button nativeButton={false} render={<EnlaceExterno href={whatsappUrl(MENSAJE_ACCESO)} />}>
+            <Button className="h-auto min-h-9 max-w-full shrink py-2 whitespace-normal" nativeButton={false} render={<EnlaceExterno href={whatsappUrl(MENSAJE_ACCESO)} />}>
               <MessageCircle />
               Pedir acceso por WhatsApp
             </Button>
@@ -334,11 +334,16 @@ export function DesarrolladoresPage() {
               Insomnia o en un generador de clientes.
             </p>
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline" nativeButton={false} render={<EnlaceExterno href={`${base}/openapi.json`} />}>
+              <Button
+                variant="outline"
+                className="h-auto min-h-9 max-w-full shrink py-2 whitespace-normal"
+                nativeButton={false}
+                render={<EnlaceExterno href={`${base}/openapi.json`} />}
+              >
                 <FileJson />
                 Abrir openapi.json
               </Button>
-              <Button variant="ghost" nativeButton={false} render={<EnlaceExterno href={whatsappUrl(MENSAJE_ACCESO)} />}>
+              <Button variant="ghost" className="h-auto min-h-9 max-w-full shrink py-2 whitespace-normal" nativeButton={false} render={<EnlaceExterno href={whatsappUrl(MENSAJE_ACCESO)} />}>
                 <MessageCircle />
                 Hablar con PCargo
               </Button>

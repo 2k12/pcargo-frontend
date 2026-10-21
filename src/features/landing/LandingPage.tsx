@@ -127,8 +127,8 @@ function Rastreador({ className }: { className?: string }) {
         <p className="font-medium">Rastrea tu encomienda</p>
         <p className="text-sm text-muted-foreground">Ingresa el número de tu guía (con o sin ceros adelante).</p>
       </div>
-      <div className="flex gap-2">
-        <div className="relative flex-1">
+      <div className="flex flex-wrap gap-2">
+        <div className="relative min-w-0 flex-1 basis-32">
           <PackageSearch className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             name="numeroGuia"
@@ -146,7 +146,7 @@ function Rastreador({ className }: { className?: string }) {
             }}
           />
         </div>
-        <Button type="submit" size="lg" className="h-10">
+        <Button type="submit" size="lg" className="h-10 max-w-full shrink">
           <Search /> Rastrear
         </Button>
       </div>
@@ -197,7 +197,7 @@ export function LandingPage() {
   return (
     <div className="min-h-svh bg-background">
       <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+        <div className="mx-auto flex min-h-16 max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2 sm:px-6">
           <a href="#inicio" aria-label={`${MARCA.nombre} — inicio`}>
             <Logo className="text-lg" markClassName="size-9" />
           </a>
@@ -244,10 +244,10 @@ export function LandingPage() {
                 hasta el domicilio de tu destinatario, con precio claro y seguimiento en línea.
               </p>
               <div className="flex flex-wrap gap-3">
-                <Button size="lg" nativeButton={false} render={<a href="#cotizar" />}>
+                <Button size="lg" className="h-auto min-h-9 max-w-full shrink py-2 whitespace-normal" nativeButton={false} render={<a href="#cotizar" />}>
                   Cotizar mi envío <ArrowRight />
                 </Button>
-                <Button size="lg" variant="outline" nativeButton={false} render={<EnlaceExterno href={whatsappUrl()} />}>
+                <Button size="lg" variant="outline" className="h-auto min-h-9 max-w-full shrink py-2 whitespace-normal" nativeButton={false} render={<EnlaceExterno href={whatsappUrl()} />}>
                   <MessageCircle /> Escríbenos por WhatsApp
                 </Button>
               </div>

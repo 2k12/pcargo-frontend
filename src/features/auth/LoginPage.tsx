@@ -204,9 +204,11 @@ export function LoginPage() {
   return (
     <div className="relative flex min-h-svh flex-col bg-muted/30">
       <div className="absolute top-4 right-4 left-4 flex items-center justify-between">
-        <Button variant="ghost" size="sm" nativeButton={false} render={<Link to="/" />}>
+        {/* En el teléfono solo «Inicio», como en las páginas públicas: con el texto grande la frase no cabe. */}
+        <Button variant="ghost" size="sm" nativeButton={false} aria-label="Volver al inicio" render={<Link to="/" />}>
           <ArrowLeft />
-          Volver al inicio
+          <span className="sm:hidden">Inicio</span>
+          <span className="max-sm:hidden">Volver al inicio</span>
         </Button>
         <ThemeToggle />
       </div>
@@ -225,9 +227,14 @@ export function LoginPage() {
             </CardHeader>
             <CardContent>
               <Tabs value={metodo} onValueChange={cambiarMetodo} className="gap-4">
-                <TabsList className="w-full" aria-label="Forma de ingresar">
-                  <TabsTrigger value="credenciales">Credenciales</TabsTrigger>
-                  <TabsTrigger value="codigo">Código único</TabsTrigger>
+                {/* Con el texto grande de Android las pestañas pasan a dos líneas en vez de salirse de la pantalla. */}
+                <TabsList className="h-auto min-h-8 w-full" aria-label="Forma de ingresar">
+                  <TabsTrigger value="credenciales" className="h-auto min-w-0 py-1 whitespace-normal">
+                    Credenciales
+                  </TabsTrigger>
+                  <TabsTrigger value="codigo" className="h-auto min-w-0 py-1 whitespace-normal">
+                    Código único
+                  </TabsTrigger>
                 </TabsList>
                 <TabsContent value="credenciales">
                   <FormCredenciales />
