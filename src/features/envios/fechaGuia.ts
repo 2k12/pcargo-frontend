@@ -2,7 +2,7 @@
 import { esFecha, fechaEC } from '@/features/dashboard/domain'
 import type { Envio } from '@/types/api'
 
-/** Días hacia adelante que admite la fecha de la guía. */
+/** Días hacia adelante que admite la fecha de la guía (igual que el backend). */
 export const MAX_DIAS_FECHA_GUIA = 90
 
 const DIA_MS = 24 * 60 * 60 * 1000
