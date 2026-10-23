@@ -1,4 +1,4 @@
-// Fecha de la guía (contrato v18): `AAAA-MM-DD` de Ecuador, hoy o posterior hasta hoy + 90 días.
+// Fecha de la guía (contrato v18): `AAAA-MM-DD` de Ecuador, hoy o una fecha posterior, hasta hoy + 90 días.
 import { esFecha, fechaEC } from '@/features/dashboard/domain'
 import type { Envio } from '@/types/api'
 
