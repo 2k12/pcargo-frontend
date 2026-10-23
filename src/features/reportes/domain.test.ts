@@ -19,6 +19,7 @@ const envio = (numeroGuia: number, costo: number, extra: Partial<Envio> = {}) =>
     totalPiezas: 3,
     pesoTotalKg: 2,
     zona: 'URBANA',
+    fechaGuia: '2026-10-20',
     registro: { fecha: '2026-10-20T15:00:00.000Z', operador: 'Operador' },
     ...extra,
   }) as unknown as Envio

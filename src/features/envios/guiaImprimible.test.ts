@@ -27,6 +27,7 @@ const base: Envio = {
   formaPago: 'AL_COBRO',
   estado: 'EN_TRANSITO',
   // 03:24 UTC = 22:24 del día anterior en Ecuador (UTC−5)
+  fechaGuia: '2026-10-07',
   registro: { fecha: '2026-10-08T03:24:55.786Z', operador: 'Operador Ibarra' },
   entrega: null,
   evidencia: null,
@@ -184,8 +185,23 @@ describe('datosGuia', () => {
     expect(d.entrega).toEqual({ fecha: '08/10/2026', hora: '10:05', operador: 'Repartidor Quito', recibidoPor: 'María Andrade' })
   })
 
+  it('imprime la fecha de la guía (contrato v18), con la hora del registro', () => {
+    // Registrada el 07/10 a las 22:24 (Ecuador) con fecha de guía posterior.
+    expect(datosGuia({ ...base, fechaGuia: '2026-10-15' }, ORIGEN).registro).toEqual({
+      fecha: '15/10/2026',
+      hora: '22:24',
+      operador: 'Operador Ibarra',
+    })
+    // Misma fecha que el registro: igual que antes.
+    expect(datosGuia(base, ORIGEN).registro.fecha).toBe('07/10/2026')
+    // Respaldo: sin fechaGuia (respuesta antigua) usa la fecha de registro.
+    const sinFecha = { ...base } as Partial<Envio>
+    delete sinFecha.fechaGuia
+    expect(datosGuia(sinFecha as Envio, ORIGEN).registro.fecha).toBe('07/10/2026')
+  })
+
   it('operador desconocido o fecha inválida quedan en blanco', () => {
-    expect(datosGuia({ ...base, registro: { fecha: 'x', operador: null } }, ORIGEN).registro).toEqual({
+    expect(datosGuia({ ...base, fechaGuia: '', registro: { fecha: 'x', operador: null } }, ORIGEN).registro).toEqual({
       fecha: '',
       hora: '',
       operador: '',

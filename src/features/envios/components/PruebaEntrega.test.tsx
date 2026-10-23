@@ -47,6 +47,7 @@ const entregado: Envio = {
   costoAdicional: 0,
   formaPago: 'PAGADO',
   estado: 'ENTREGADO',
+  fechaGuia: '2026-10-07',
   registro: { fecha: '2026-10-08T03:00:00.000Z', operador: 'Operador' },
   entrega: { resultado: 'ENTREGADO', fecha: '2026-10-08T15:05:00.000Z', operador: 'Repartidor Quito', nota: null },
   evidencia: null,

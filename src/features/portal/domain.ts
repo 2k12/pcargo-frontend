@@ -1,5 +1,6 @@
 // Portal de clientes empresa (contrato v12): lógica pura.
 import { z } from 'zod'
+import { fechaEC } from '@/features/dashboard/domain'
 import { itemsSchema, telefonoSchema } from '@/features/envios/schema'
 import type { ClientePortal, Envio, EnvioPortal, FormaPagoPortal, NuevoEnvioPortal, TipoCarga, TipoCargaPublico } from '@/types/api'
 
@@ -29,6 +30,8 @@ export function envioDesdePortal(e: EnvioPortal, cliente: ClientePortal): Envio 
     costoAdicional: 0,
     formaPago: e.formaPago,
     estado: e.estado,
+    // El portal no elige fecha de guía (contrato v18): es el día de creación.
+    fechaGuia: fechaEC(Date.parse(e.creadoEn)),
     registro: { fecha: e.creadoEn, operador: null },
     entrega: e.entrega ? { ...e.entrega, operador: null } : null,
     evidencia: e.evidencia

@@ -1,14 +1,14 @@
 // Reporte diario de guías: lógica pura (orden de la lista y textos del PDF), sin React ni jsPDF.
-import { fechaEC } from '@/features/dashboard/domain'
 import { FORMA_PAGO_LABEL } from '@/features/envios/domain'
+import { fechaLarga } from '@/features/envios/fechaGuia'
 import { EMPRESA_GUIA, numeroGuiaImpreso } from '@/features/envios/guiaImprimible'
 import { formatCurrency } from '@/lib/format'
 import type { Envio } from '@/types/api'
 
-export const NOMBRE_REPORTE_DEFECTO = 'Reporte diario'
+// Viven en `envios/fechaGuia` (contrato v18); se reexportan para no romper imports.
+export { fechaLarga, hoyEC } from '@/features/envios/fechaGuia'
 
-/** Fecha de hoy en Ecuador (`AAAA-MM-DD`). */
-export const hoyEC = (ahora: number = Date.now()): string => fechaEC(ahora)
+export const NOMBRE_REPORTE_DEFECTO = 'Reporte diario'
 
 /** Mueve el elemento de la posición `desde` a la posición `hacia` (devuelve una lista nueva). */
 export function mover<T>(lista: T[], desde: number, hacia: number): T[] {
@@ -23,7 +23,6 @@ export function mover<T>(lista: T[], desde: number, hacia: number): T[] {
 export const valorTotal = (envios: Pick<Envio, 'costo'>[]): number =>
   envios.reduce((s, e) => s + Math.round(e.costo * 100), 0) / 100
 
-const fmtDiaLargo = new Intl.DateTimeFormat('es-EC', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
 const fmtGenerado = new Intl.DateTimeFormat('es-EC', {
   timeZone: 'America/Guayaquil',
   day: '2-digit',
@@ -34,8 +33,6 @@ const fmtGenerado = new Intl.DateTimeFormat('es-EC', {
   hourCycle: 'h23',
 })
 
-/** «martes, 20 de octubre de 2026» a partir de `AAAA-MM-DD`. */
-export const fechaLarga = (fecha: string): string => fmtDiaLargo.format(new Date(`${fecha}T00:00:00Z`))
 
 export interface FilaReporte {
   n: string

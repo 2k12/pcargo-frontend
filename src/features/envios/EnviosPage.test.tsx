@@ -28,6 +28,7 @@ const envio = (n: number) =>
     costo: 4,
     formaPago: 'PAGADO',
     estado: 'EN_TRANSITO',
+    fechaGuia: '2026-10-07',
     registro: { fecha: '2026-10-07T10:00:00.000Z', operador: 'Operador' },
     entrega: null,
     creadoEn: '2026-10-07T10:00:00.000Z',
@@ -251,7 +252,7 @@ describe('EnviosPage — fecha, estado y cambio rápido de estado', () => {
     expect(await screen.findByText('No hay envíos')).toBeInTheDocument()
     const u = new URL(urlsEnvios(fetch).at(-1)!, 'http://x').searchParams
     expect([u.get('desde'), u.get('hasta'), u.get('estado')]).toEqual(['2026-10-20', '2026-10-20', 'EN_REPARTO'])
-    expect(screen.getByLabelText('Filtrar por fecha de registro')).toHaveValue('2026-10-20')
+    expect(screen.getByLabelText('Filtrar por fecha de la guía')).toHaveValue('2026-10-20')
     expect(screen.getByRole('combobox', { name: 'Filtrar por estado' })).toHaveTextContent('En reparto')
     // Ya no hay pestañas de estado: en su lugar van los cambios rápidos.
     expect(screen.queryByRole('group', { name: 'Estado' })).not.toBeInTheDocument()

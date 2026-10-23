@@ -12,26 +12,28 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useClientes } from '@/features/clientes/api'
-import { esFecha, fechaEC } from '@/features/dashboard/domain'
+import { esFecha } from '@/features/dashboard/domain'
 import { rutaLabel, useRutas } from '@/features/rutas/hooks'
 import { useRepartidores } from '@/features/usuarios/hooks'
 import { useDebounced } from '@/hooks/useDebounced'
 import { useEsMovil } from '@/hooks/useMediaQuery'
 import { errorMessage } from '@/lib/api'
 import { OPCIONES_POR_PAGINA } from '@/lib/paginacion'
-import { formatCurrency, formatDate } from '@/lib/format'
+import { formatCurrency } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { Envio, Estado, FormaPago } from '@/types/api'
 import { CambioEstadoRapido } from './components/CambioEstadoRapido'
 import { ConEvidencia } from './components/ConEvidencia'
 import { EnvioDetailSheet } from './components/EnvioDetailSheet'
 import { EscanearGuiaDialog } from './components/EscanearGuiaDialog'
+import { FechaGuiaTexto } from './components/FechaGuiaTexto'
 import { EstadoPunto } from './components/EstadoBadge'
 import { NuevoEnvioDialog } from './components/NuevoEnvioDialog'
 import { OrigenBadge } from './components/OrigenBadge'
 import { SeleccionGuias } from './components/SeleccionGuias'
 import { enviosApi } from './api'
 import { ESTADO_LABEL, ESTADOS, FORMA_PAGO_LABEL, FORMAS_PAGO, piezasLabel, resumenItems } from './domain'
+import { rangoFechaGuia } from './fechaGuia'
 import { normalizarGuia } from './guia'
 import { useEnvios, useOpcionesIntegracion } from './hooks'
 import { ImportarEnviosDialog } from './importacion/ImportarEnviosDialog'
@@ -53,7 +55,7 @@ export function EnviosPage() {
   const estado = params.get('estado') ?? TODOS
   const rutaId = params.get('rutaId') ?? TODOS
   const formaPago = params.get('formaPago') ?? TODOS
-  // Fecha de registro (contrato v16): solo los envíos de ese día.
+  // Fecha de la guía (contrato v18; antes, de registro): solo los envíos de ese día.
   const fechaUrl = params.get('fecha')
   const fecha = esFecha(fechaUrl) ? fechaUrl : ''
   // La página también vive en la URL (se puede compartir y "Atrás" vuelve a la anterior).
@@ -287,10 +289,10 @@ export function EnviosPage() {
         'Fecha',
         <Input
           type="date"
-          aria-label="Filtrar por fecha de registro"
-          title="Fecha de registro"
+          aria-label="Filtrar por fecha de la guía"
+          title="Fecha de la guía"
           value={fecha}
-          max={fechaEC(Date.now())}
+          max={rangoFechaGuia().max}
           onChange={(e) => setFecha(e.target.value || null)}
           className={esMovil ? 'w-full' : cn('h-8 w-auto', fecha ? 'bg-muted font-medium' : 'text-muted-foreground')}
         />,
@@ -595,7 +597,7 @@ export function EnviosPage() {
                     <PagoTexto formaPago={e.formaPago} />
                   </TableCell>
                   <TableCell className="hidden py-3 text-right align-top xl:table-cell">
-                    <span className="block text-muted-foreground tabular-nums">{formatDate(e.registro.fecha)}</span>
+                    <FechaGuiaTexto envio={e} className="flex justify-end text-muted-foreground" />
                     {e.registro.operador && <span className="block text-xs text-muted-foreground">{e.registro.operador}</span>}
                   </TableCell>
                 </TableRow>

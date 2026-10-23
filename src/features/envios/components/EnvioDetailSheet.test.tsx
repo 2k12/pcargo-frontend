@@ -28,6 +28,7 @@ const envio: Envio = {
   costoAdicional: 0,
   formaPago: 'AL_COBRO',
   estado: 'NO_ENTREGADO',
+  fechaGuia: '2026-10-07',
   registro: { fecha: '2026-10-08T03:24:55.786Z', operador: 'Operador Ibarra' },
   entrega: {
     resultado: 'NO_ENTREGADO',

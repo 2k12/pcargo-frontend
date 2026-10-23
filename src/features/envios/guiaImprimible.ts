@@ -4,6 +4,7 @@ import { formatCurrency } from '@/lib/format'
 import type { Envio, FormaPago, TipoCarga, TipoCargaCodigo } from '@/types/api'
 import { adicionalDe } from './costoAdicional'
 import { nombreTipo } from './domain'
+import { fechaCorta, fechaGuiaDe } from './fechaGuia'
 
 /** Datos fijos de la guía de imprenta que esta reemplaza. */
 export const EMPRESA_GUIA = {
@@ -150,7 +151,10 @@ export function datosGuia(
 ): DatosGuia {
   const numero = numeroGuiaImpreso(envio.numeroGuia)
   const base = origen.replace(/\/+$/, '')
+  // Contrato v18: la guía lleva su fecha (puede ser posterior al registro); la hora es la del registro.
   const registro = fechaHoraEcuador(envio.registro.fecha)
+  const fechaGuia = fechaCorta(fechaGuiaDe(envio))
+  if (fechaGuia) registro.fecha = fechaGuia
   const entregado = envio.estado === 'ENTREGADO' && envio.entrega?.resultado === 'ENTREGADO'
   const entrega = entregado && envio.entrega ? fechaHoraEcuador(envio.entrega.fecha) : { fecha: '', hora: '' }
 

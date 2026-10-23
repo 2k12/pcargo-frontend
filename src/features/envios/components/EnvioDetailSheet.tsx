@@ -1,4 +1,4 @@
-import { Bike, Copy, Loader2, ShieldCheck } from 'lucide-react'
+import { Bike, CalendarClock, Copy, Loader2, ShieldCheck } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { BotonCopiar } from '@/components/BotonCopiar'
@@ -11,6 +11,7 @@ import { formatCurrency, formatDate, formatDateTime, formatPeso } from '@/lib/fo
 import type { Envio, Estado, Zona } from '@/types/api'
 import { adicionalDe, totalConAdicional } from '../costoAdicional'
 import { esEstadoFinal, ESTADO_LABEL, nombreTipoCarga, piezasLabel, ZONA_LABEL } from '../domain'
+import { fechaGuiaDe, fechaGuiaDistinta, fechaMedia } from '../fechaGuia'
 import { useAsignarRepartidor, useCambiarEstado, useEnvio } from '../hooks'
 import { iconoTipoCarga } from '../ui'
 import { AsignarRepartidorMenu } from './AsignarRepartidorMenu'
@@ -294,6 +295,12 @@ export function EnvioDetailSheet({ envioId, onClose }: { envioId: string | null;
                   <p className="text-xs text-muted-foreground">Registrado</p>
                   <p className="text-sm">{formatDateTime(envio.registro.fecha)}</p>
                   <p className="text-xs text-muted-foreground">{envio.registro.operador ?? 'Operador no disponible'}</p>
+                  {fechaGuiaDistinta(envio) && (
+                    <p className="flex items-center gap-1 pt-1 text-xs" data-testid="fecha-guia">
+                      <CalendarClock aria-hidden className="size-3 shrink-0 text-muted-foreground" />
+                      <span className="text-muted-foreground">Fecha de la guía:</span> {fechaMedia(fechaGuiaDe(envio))}
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-0.5 rounded-xl bg-muted/40 p-3" data-testid="gestion-entrega">
                   <p className="flex items-center justify-between gap-2 text-xs text-muted-foreground">

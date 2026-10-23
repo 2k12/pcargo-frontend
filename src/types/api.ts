@@ -252,6 +252,9 @@ export interface Envio {
   costoAdicional: number
   formaPago: FormaPago
   estado: Estado
+  /** v18: fecha de la guía `AAAA-MM-DD` (Ecuador); por ella filtran `desde`/`hasta` y el reporte diario. */
+  fechaGuia: string
+  /** Momento real de creación (auditoría, caja, dashboard). */
   registro: Gestion
   entrega: GestionEntrega | null
   /** Foto de la guía firmada (solo en ENTREGADO); null si aún no se sube. */
@@ -290,6 +293,8 @@ export interface NuevoEnvio {
   guardarCliente?: boolean
   /** Obligatorio (true) junto con guardarCliente: el remitente aceptó que guardemos sus datos. */
   consentimientoCliente?: boolean
+  /** v18: `AAAA-MM-DD`, hoy..hoy+90 (Ecuador); vacío o null → hoy. Solo panel. */
+  fechaGuia?: string | null
 }
 
 export interface CotizacionRequest {

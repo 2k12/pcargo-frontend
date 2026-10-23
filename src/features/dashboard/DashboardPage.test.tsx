@@ -76,6 +76,7 @@ const envio = {
   costo: 4,
   formaPago: 'PAGADO',
   estado: 'EN_TRANSITO',
+  fechaGuia: '2026-10-07',
   registro: { fecha: '2026-10-07T10:00:00.000Z', operador: 'Operador' },
   entrega: null,
   creadoEn: '2026-10-07T10:00:00.000Z',

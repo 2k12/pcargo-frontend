@@ -30,6 +30,7 @@ import { enumerar } from '@/lib/format'
 import type { Cliente, CotizacionRequest, TipoCarga } from '@/types/api'
 import { leerCostoAdicional } from '../costoAdicional'
 import { dependeDeZona, enFrase, pluralizar, TIPOS_CARGA_DEFAULT, zonaInfluye } from '../domain'
+import { fechaLarga, hoyEC, rangoFechaGuia } from '../fechaGuia'
 import { generarGuia, MENSAJE_ERROR_GUIA } from '../guiaPdf'
 import { useCrearEnvio, useTiposCarga } from '../hooks'
 import { crearEnvioSchema, itemsCotizables, itemVacio, toNuevoEnvio, type EnvioFormValues } from '../schema'
@@ -38,7 +39,7 @@ import { FormaPagoPicker } from './FormaPagoPicker'
 import { ItemsEditor } from './ItemsEditor'
 import { ZonaPicker } from './ZonaPicker'
 
-const DEFAULTS = {
+const BASE = {
   rutaId: '',
   zona: 'URBANA',
   descripcion: '',
@@ -51,9 +52,12 @@ const DEFAULTS = {
   items: [itemVacio()],
 } as unknown as Partial<EnvioFormValues>
 
+/** Valores iniciales; la fecha de la guía arranca en hoy (Ecuador) cada vez que se abre. */
+const defaults = (): Partial<EnvioFormValues> => ({ ...BASE, fechaGuia: hoyEC() })
+
 const conCliente = (c: Cliente) =>
   ({
-    ...DEFAULTS,
+    ...defaults(),
     clienteId: c.id,
     remitenteNombre: c.nombre,
     remitenteTelefono: c.telefono,
@@ -143,11 +147,11 @@ export function NuevoEnvioDialog({
     formState: { errors },
   } = useForm<EnvioFormValues>({
     resolver: zodResolver(schema),
-    defaultValues: DEFAULTS,
+    defaultValues: defaults(),
   })
 
   useEffect(() => {
-    if (open) reset(cliente ? conCliente(cliente) : DEFAULTS)
+    if (open) reset(cliente ? conCliente(cliente) : defaults())
   }, [open, cliente, reset])
 
   const [clienteId, remitenteTelefono, guardarCliente] = useWatch({
@@ -186,7 +190,13 @@ export function NuevoEnvioDialog({
     if (!c.direccion) setFocus('destinatarioDireccion')
   }
 
-  const [rutaId, items, zona, costoAdicionalTexto] = useWatch({ control, name: ['rutaId', 'items', 'zona', 'costoAdicional'] })
+  const [rutaId, items, zona, costoAdicionalTexto, fechaGuia] = useWatch({
+    control,
+    name: ['rutaId', 'items', 'zona', 'costoAdicional', 'fechaGuia'],
+  })
+  // Contrato v18: hoy por defecto; una fecha posterior se avisa para que no pase desapercibida.
+  const limitesFecha = rangoFechaGuia()
+  const fechaPosterior = !!fechaGuia && fechaGuia > limitesFecha.min && !errors.fechaGuia
   // Contrato v15: el total en vivo suma el adicional mientras sea un monto válido.
   const adicional = leerCostoAdicional(costoAdicionalTexto).valor ?? 0
   // JSON estable: useWatch devuelve un array nuevo en cada render del field array.
@@ -222,7 +232,7 @@ export function NuevoEnvioDialog({
       })
       if (values.guardarCliente && !values.clienteId) toast.success(`${values.remitenteNombre} quedó guardado como cliente`)
       qc.invalidateQueries({ queryKey: ['clientes'] })
-      reset(DEFAULTS)
+      reset(defaults())
       setOpen(false)
     } catch (e) {
       toast.error(errorMessage(e))
@@ -351,12 +361,36 @@ export function NuevoEnvioDialog({
           </Paso>
 
           <Paso n={3} titulo="Carga">
-            <Campo label="N.º de guía (opcional)" htmlFor="numeroGuia" error={errors.numeroGuia?.message}>
-              <Input id="numeroGuia" inputMode="numeric" autoComplete="off" placeholder="Ej. 0040425" className="font-mono" {...register('numeroGuia')} />
-              {!errors.numeroGuia && (
-                <p className="text-xs text-muted-foreground">Escribe el número impreso en la guía. Si lo dejas vacío, se asigna el siguiente.</p>
-              )}
-            </Campo>
+            <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_11rem]">
+              <Campo label="N.º de guía (opcional)" htmlFor="numeroGuia" error={errors.numeroGuia?.message}>
+                <Input id="numeroGuia" inputMode="numeric" autoComplete="off" placeholder="Ej. 0040425" className="font-mono" {...register('numeroGuia')} />
+                {!errors.numeroGuia && (
+                  <p className="text-xs text-muted-foreground">Escribe el número impreso en la guía. Si lo dejas vacío, se asigna el siguiente.</p>
+                )}
+              </Campo>
+              <Campo label="Fecha de la guía" htmlFor="fechaGuia" error={errors.fechaGuia?.message}>
+                <Input
+                  id="fechaGuia"
+                  type="date"
+                  min={limitesFecha.min}
+                  max={limitesFecha.max}
+                  aria-invalid={!!errors.fechaGuia}
+                  aria-describedby="fechaGuia-ayuda"
+                  className="tabular-nums"
+                  {...register('fechaGuia')}
+                />
+                {!errors.fechaGuia &&
+                  (fechaPosterior ? (
+                    <p id="fechaGuia-ayuda" className="text-xs font-medium text-foreground">
+                      Guía con fecha posterior: {fechaLarga(fechaGuia!)}
+                    </p>
+                  ) : (
+                    <p id="fechaGuia-ayuda" className="text-xs text-muted-foreground">
+                      Hoy, o una fecha posterior.
+                    </p>
+                  ))}
+              </Campo>
+            </div>
             <Campo label="Ruta" error={errors.rutaId?.message}>
               <Controller
                 control={control}

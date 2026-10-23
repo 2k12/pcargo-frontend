@@ -21,6 +21,7 @@ const envio = {
   costoAdicional: 0,
   formaPago: 'PAGADO',
   estado: 'REGISTRADO',
+  fechaGuia: '2026-10-19',
   registro: { fecha: '2026-10-19T15:00:00.000Z', operador: 'Operador' },
   entrega: null,
   evidencia: null,

@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type { ItemSolicitud, NuevoEnvio, TipoCarga } from '@/types/api'
 import { leerCostoAdicional } from './costoAdicional'
 import { enFrase } from './domain'
+import { validarFechaGuia } from './fechaGuia'
 import { MENSAJE_GUIA_INVALIDA, normalizarGuia } from './guia'
 
 export const MAX_ITEMS = 20
@@ -74,6 +75,14 @@ export function crearEnvioSchema(tipos: TipoCarga[]) {
         const r = leerCostoAdicional(v)
         if (r.error) ctx.addIssue({ code: 'custom', message: r.error })
       }),
+    // Contrato v18: fecha de la guía, hoy..hoy+90 (Ecuador); vacío → hoy.
+    fechaGuia: z
+      .string()
+      .optional()
+      .superRefine((v, ctx) => {
+        const error = validarFechaGuia(v)
+        if (error) ctx.addIssue({ code: 'custom', message: error })
+      }),
     // Cliente frecuente elegido, o guardar al remitente como cliente nuevo.
     clienteId: z.string().optional(),
     guardarCliente: z.boolean().optional(),
@@ -129,6 +138,8 @@ export function toNuevoEnvio(v: EnvioFormValues): NuevoEnvio {
     descripcion: v.descripcion || undefined,
     ...(v.numeroGuia?.trim() ? { numeroGuia: normalizarGuia(v.numeroGuia)! } : {}),
     ...(costoAdicional > 0 ? { costoAdicional } : {}),
+    // Contrato v18: siempre se envía (null → hoy en el servidor).
+    fechaGuia: v.fechaGuia?.trim() || null,
     ...(v.clienteId ? { clienteId: v.clienteId } : v.guardarCliente ? { guardarCliente: true, consentimientoCliente: v.consentimientoCliente === true } : {}),
   }
 }

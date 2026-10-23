@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { enviosApi } from '@/features/envios/api'
 import { FORMA_PAGO_LABEL } from '@/features/envios/domain'
+import { rangoFechaGuia } from '@/features/envios/fechaGuia'
 import { normalizarGuia } from '@/features/envios/guia'
 import { descargarPdf, imprimirPdf } from '@/features/envios/guiaPdf'
 import { numeroGuiaImpreso, rutaGuia } from '@/features/envios/guiaImprimible'
@@ -176,7 +177,7 @@ export function ReportesPage() {
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="reporte-fecha">Guías del día</Label>
-          <Input id="reporte-fecha" type="date" value={fecha} max={hoyEC()} onChange={(e) => e.target.value && setFecha(e.target.value)} />
+          <Input id="reporte-fecha" type="date" value={fecha} max={rangoFechaGuia().max} onChange={(e) => e.target.value && setFecha(e.target.value)} />
         </div>
       </section>
 

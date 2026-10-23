@@ -3,6 +3,7 @@
 import type { Envio, FormaPago, ItemSolicitud, NuevoEnvio, Ruta, TipoCargaPublico, Zona } from '@/types/api'
 import { enFrase, FORMA_PAGO_LABEL, FORMAS_PAGO, precioUnitario, ZONA_LABEL } from '../domain'
 import { leerCostoAdicional } from '../costoAdicional'
+import { hoyEC } from '../fechaGuia'
 import { normalizarGuia } from '../guia'
 import { MAX_CANTIDAD, MAX_ITEMS } from '../schema'
 
@@ -448,6 +449,7 @@ export function envioBorrador(e: EnvioImportado, tipos: TipoCargaPublico[], oper
     costoAdicional: e.costoAdicional,
     formaPago: s.formaPago,
     estado: 'REGISTRADO',
+    fechaGuia: hoyEC(ahora.getTime()),
     registro: { fecha, operador },
     entrega: null,
     evidencia: null,

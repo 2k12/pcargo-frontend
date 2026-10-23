@@ -1,11 +1,12 @@
 import { ArrowRight } from 'lucide-react'
 import { INTERACTIVA, SUPERFICIE } from '@/lib/estilos'
-import { formatCurrency, formatDate } from '@/lib/format'
+import { formatCurrency } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { Envio } from '@/types/api'
 import { piezasLabel, resumenItems } from '../domain'
 import { ConEvidencia } from './ConEvidencia'
 import { EstadoBadge } from './EstadoBadge'
+import { FechaGuiaTexto } from './FechaGuiaTexto'
 import { OrigenBadge } from './OrigenBadge'
 
 /** Tarjeta compacta de un envío; toda la tarjeta es un botón que abre el detalle. */
@@ -50,7 +51,7 @@ export function EnvioCard({ envio: e, onSelect, className }: { envio: Envio; onS
         </span>
         <span className="shrink-0 text-right">
           <span className="block font-medium tabular-nums">{formatCurrency(e.costo)}</span>
-          <span className="block text-xs text-muted-foreground">{formatDate(e.registro.fecha)}</span>
+          <FechaGuiaTexto envio={e} className="flex justify-end text-xs text-muted-foreground" />
         </span>
       </span>
     </button>
