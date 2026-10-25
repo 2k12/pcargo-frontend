@@ -25,12 +25,14 @@ import { ConsentimientoDatos } from '@/features/clientes/components/Consentimien
 import { clientePorTelefono, digitos } from '@/features/clientes/domain'
 import { rutaLabel, useRutas } from '@/features/rutas/hooks'
 import { useDebounced } from '@/hooks/useDebounced'
-import { errorMessage } from '@/lib/api'
+import type { GuiaParaRegistrar } from '@/features/talonarios/domain'
+import { ApiError, errorMessage } from '@/lib/api'
 import { enumerar } from '@/lib/format'
 import type { Cliente, CotizacionRequest, TipoCarga } from '@/types/api'
 import { leerCostoAdicional } from '../costoAdicional'
 import { dependeDeZona, enFrase, pluralizar, TIPOS_CARGA_DEFAULT, zonaInfluye } from '../domain'
-import { fechaLarga, hoyEC, rangoFechaGuia } from '../fechaGuia'
+import { fechaLarga, fechaMedia, hoyEC, rangoFechaGuia } from '../fechaGuia'
+import { numeroGuiaImpreso } from '../guiaImprimible'
 import { generarGuia, MENSAJE_ERROR_GUIA } from '../guiaPdf'
 import { useCrearEnvio, useTiposCarga } from '../hooks'
 import { crearEnvioSchema, itemsCotizables, itemVacio, toNuevoEnvio, type EnvioFormValues } from '../schema'
@@ -52,12 +54,22 @@ const BASE = {
   items: [itemVacio()],
 } as unknown as Partial<EnvioFormValues>
 
-/** Valores iniciales; la fecha de la guía arranca en hoy (Ecuador) cada vez que se abre. */
-const defaults = (): Partial<EnvioFormValues> => ({ ...BASE, fechaGuia: hoyEC() })
+/**
+ * Valores iniciales; la fecha de la guía arranca en hoy (Ecuador) cada vez que se abre.
+ * Con una guía de talonario (v20), su número va ya puesto.
+ */
+const defaults = (numeroFijo?: number): Partial<EnvioFormValues> => ({
+  ...BASE,
+  fechaGuia: hoyEC(),
+  ...(numeroFijo ? { numeroGuia: numeroGuiaImpreso(numeroFijo) } : {}),
+})
 
-const conCliente = (c: Cliente) =>
+/** Mensaje del 422 GUIA_ANULADA (contrato v20): el número es de un talonario y se anuló. */
+export const MENSAJE_GUIA_ANULADA = 'Esta guía está anulada en su talonario: no se puede registrar. Usa otra guía.'
+
+const conCliente = (c: Cliente, numeroFijo?: number) =>
   ({
-    ...defaults(),
+    ...defaults(numeroFijo),
     clienteId: c.id,
     remitenteNombre: c.nombre,
     remitenteTelefono: c.telefono,
@@ -117,6 +129,7 @@ export function NuevoEnvioDialog({
   variant = 'default',
   abierto,
   onAbiertoChange,
+  guiaTalonario,
 }: {
   /** Abre el formulario con este cliente como remitente. */
   cliente?: Cliente
@@ -125,6 +138,11 @@ export function NuevoEnvioDialog({
   /** Modo controlado (p. ej. desde el menú de un cliente): sin botón propio. */
   abierto?: boolean
   onAbiertoChange?: (abierto: boolean) => void
+  /**
+   * Guía en blanco de un talonario (contrato v20): se registra con ese número (fijo) y la fecha de la guía
+   * puede ir desde el día del talonario.
+   */
+  guiaTalonario?: GuiaParaRegistrar
 } = {}) {
   const [openInterno, setOpenInterno] = useState(false)
   const controlado = abierto !== undefined
@@ -135,7 +153,9 @@ export function NuevoEnvioDialog({
   const { data: tipos = TIPOS_CARGA_DEFAULT } = useTiposCarga()
   const { data: rutas = [] } = useRutas(true)
   const crear = useCrearEnvio()
-  const schema = useMemo(() => crearEnvioSchema(tipos), [tipos])
+  const numeroFijo = guiaTalonario?.numeroGuia
+  const fechaMinima = guiaTalonario?.fechaMinima || undefined
+  const schema = useMemo(() => crearEnvioSchema(tipos, { fechaMinima }), [tipos, fechaMinima])
 
   const {
     register,
@@ -144,15 +164,16 @@ export function NuevoEnvioDialog({
     reset,
     setValue,
     setFocus,
+    setError,
     formState: { errors },
   } = useForm<EnvioFormValues>({
     resolver: zodResolver(schema),
-    defaultValues: defaults(),
+    defaultValues: defaults(numeroFijo),
   })
 
   useEffect(() => {
-    if (open) reset(cliente ? conCliente(cliente) : defaults())
-  }, [open, cliente, reset])
+    if (open) reset(cliente ? conCliente(cliente, numeroFijo) : defaults(numeroFijo))
+  }, [open, cliente, reset, numeroFijo])
 
   const [clienteId, remitenteTelefono, guardarCliente] = useWatch({
     control,
@@ -195,8 +216,12 @@ export function NuevoEnvioDialog({
     name: ['rutaId', 'items', 'zona', 'costoAdicional', 'fechaGuia'],
   })
   // Contrato v18: hoy por defecto; una fecha posterior se avisa para que no pase desapercibida.
-  const limitesFecha = rangoFechaGuia()
-  const fechaPosterior = !!fechaGuia && fechaGuia > limitesFecha.min && !errors.fechaGuia
+  // v20: una guía de talonario admite desde el día del talonario (se llenó en el camino).
+  const limitesFecha = rangoFechaGuia(undefined, fechaMinima)
+  const hoy = hoyEC()
+  const fechaPosterior = !!fechaGuia && fechaGuia > hoy && !errors.fechaGuia
+  const fechaAnterior = !!fechaGuia && fechaGuia < hoy && !errors.fechaGuia
+  const desdeTalonario = limitesFecha.min < hoy
   // Contrato v15: el total en vivo suma el adicional mientras sea un monto válido.
   const adicional = leerCostoAdicional(costoAdicionalTexto).valor ?? 0
   // JSON estable: useWatch devuelve un array nuevo en cada render del field array.
@@ -232,9 +257,14 @@ export function NuevoEnvioDialog({
       })
       if (values.guardarCliente && !values.clienteId) toast.success(`${values.remitenteNombre} quedó guardado como cliente`)
       qc.invalidateQueries({ queryKey: ['clientes'] })
-      reset(defaults())
+      reset(defaults(numeroFijo))
       setOpen(false)
     } catch (e) {
+      if (e instanceof ApiError && e.code === 'GUIA_ANULADA') {
+        setError('numeroGuia', { message: MENSAJE_GUIA_ANULADA })
+        toast.error(MENSAJE_GUIA_ANULADA)
+        return
+      }
       toast.error(errorMessage(e))
     }
   }
@@ -249,10 +279,12 @@ export function NuevoEnvioDialog({
       )}
       <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Nuevo envío</DialogTitle>
+          <DialogTitle>{numeroFijo ? `Registrar guía ${numeroGuiaImpreso(numeroFijo)}` : 'Nuevo envío'}</DialogTitle>
           <DialogDescription>
-            Registra la encomienda con el número de su guía física. Los datos del remitente y del destinatario se usan solo para este
-            envío, según la política de privacidad.
+            {numeroFijo
+              ? 'Pasa los datos de la guía del talonario que se llenó a mano. '
+              : 'Registra la encomienda con el número de su guía física. '}
+            Los datos del remitente y del destinatario se usan solo para este envío, según la política de privacidad.
           </DialogDescription>
         </DialogHeader>
 
@@ -362,10 +394,23 @@ export function NuevoEnvioDialog({
 
           <Paso n={3} titulo="Carga">
             <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_11rem]">
-              <Campo label="N.º de guía (opcional)" htmlFor="numeroGuia" error={errors.numeroGuia?.message}>
-                <Input id="numeroGuia" inputMode="numeric" autoComplete="off" placeholder="Ej. 0040425" className="font-mono" {...register('numeroGuia')} />
+              <Campo label={numeroFijo ? 'N.º de guía' : 'N.º de guía (opcional)'} htmlFor="numeroGuia" error={errors.numeroGuia?.message}>
+                <Input
+                  id="numeroGuia"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  placeholder="Ej. 0040425"
+                  className="font-mono"
+                  readOnly={!!numeroFijo}
+                  aria-invalid={!!errors.numeroGuia}
+                  {...register('numeroGuia')}
+                />
                 {!errors.numeroGuia && (
-                  <p className="text-xs text-muted-foreground">Escribe el número impreso en la guía. Si lo dejas vacío, se asigna el siguiente.</p>
+                  <p className="text-xs text-muted-foreground">
+                    {numeroFijo
+                      ? 'Guía de talonario: se registra con este número.'
+                      : 'Escribe el número impreso en la guía. Si lo dejas vacío, se asigna el siguiente.'}
+                  </p>
                 )}
               </Campo>
               <Campo label="Fecha de la guía" htmlFor="fechaGuia" error={errors.fechaGuia?.message}>
@@ -380,13 +425,13 @@ export function NuevoEnvioDialog({
                   {...register('fechaGuia')}
                 />
                 {!errors.fechaGuia &&
-                  (fechaPosterior ? (
+                  (fechaPosterior || fechaAnterior ? (
                     <p id="fechaGuia-ayuda" className="text-xs font-medium text-foreground">
-                      Guía con fecha posterior: {fechaLarga(fechaGuia!)}
+                      Guía con fecha {fechaPosterior ? 'posterior' : 'anterior'}: {fechaLarga(fechaGuia!)}
                     </p>
                   ) : (
                     <p id="fechaGuia-ayuda" className="text-xs text-muted-foreground">
-                      Hoy, o una fecha posterior.
+                      {desdeTalonario ? `Desde el ${fechaMedia(limitesFecha.min)} (día del talonario).` : 'Hoy, o una fecha posterior.'}
                     </p>
                   ))}
               </Campo>

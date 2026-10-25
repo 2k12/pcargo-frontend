@@ -47,7 +47,11 @@ export function itemsSchema(tipos: Pick<TipoCarga, 'codigo' | 'nombre' | 'pesoMa
     .max(MAX_ITEMS, `Máximo ${MAX_ITEMS} ítems`)
 }
 
-export function crearEnvioSchema(tipos: TipoCarga[]) {
+/**
+ * `fechaMinima` (contrato v20): día de creación del talonario cuando se registra una guía en blanco; la
+ * fecha de la guía puede ir desde ese día (en lugar de desde hoy).
+ */
+export function crearEnvioSchema(tipos: TipoCarga[], { fechaMinima }: { fechaMinima?: string | null } = {}) {
   return z.object({
     remitenteNombre: z.string().trim().min(2, 'Requerido'),
     remitenteTelefono: telefonoSchema,
@@ -75,12 +79,12 @@ export function crearEnvioSchema(tipos: TipoCarga[]) {
         const r = leerCostoAdicional(v)
         if (r.error) ctx.addIssue({ code: 'custom', message: r.error })
       }),
-    // Contrato v18: fecha de la guía, hoy..hoy+90 (Ecuador); vacío → hoy.
+    // Contrato v18: fecha de la guía, hoy..hoy+90 (Ecuador); vacío → hoy. v20: desde el día del talonario.
     fechaGuia: z
       .string()
       .optional()
       .superRefine((v, ctx) => {
-        const error = validarFechaGuia(v)
+        const error = validarFechaGuia(v, Date.now(), fechaMinima)
         if (error) ctx.addIssue({ code: 'custom', message: error })
       }),
     // Cliente frecuente elegido, o guardar al remitente como cliente nuevo.

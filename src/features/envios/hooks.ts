@@ -76,6 +76,8 @@ export function useCrearEnvio() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: enviosKeys.all })
       qc.invalidateQueries({ queryKey: ['dashboard'] })
+      // Contrato v20: si el número era de un talonario, su guía pasa a USADA.
+      qc.invalidateQueries({ queryKey: ['talonarios'] })
     },
   })
 }

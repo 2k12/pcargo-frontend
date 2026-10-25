@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  NotebookPen,
   PackageSearch,
   PanelLeftClose,
   PanelLeftOpen,
@@ -68,6 +69,8 @@ const GRUPOS: { titulo: string; items: ItemNav[] }[] = [
       { to: '/clientes', label: 'Clientes', corto: 'Clientes', icon: Users, end: false },
       { to: '/caja', label: 'Caja', corto: 'Caja', icon: Wallet, end: false },
       { to: '/reportes', label: 'Reportes', corto: 'Reportes', icon: FileText, end: false, movil: false },
+      // Contrato v20: guías en blanco para llenar a mano en carretera.
+      { to: '/talonarios', label: 'Talonarios', corto: 'Talonarios', icon: NotebookPen, end: false, movil: false },
     ],
   },
   {

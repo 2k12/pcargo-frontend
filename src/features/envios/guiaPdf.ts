@@ -7,13 +7,13 @@ import type { jsPDF as JsPdf } from 'jspdf'
 import type { Envio } from '@/types/api'
 import { AVISOS_GUIA, datosGuia, EMPRESA_GUIA, TALON_GUIA, type DatosGuia, type ParteGuia } from './guiaImprimible'
 
-type Rgb = [number, number, number]
+export type Rgb = [number, number, number]
 // Azul marino sobre blanco, como la guía de imprenta; se imprime bien en blanco y negro.
-const AZUL: Rgb = [27, 42, 89]
+export const AZUL: Rgb = [27, 42, 89]
 const ROJO: Rgb = [200, 16, 46]
-const TINTA: Rgb = [25, 25, 25]
-const GRIS: Rgb = [110, 110, 110]
-const BLANCO: Rgb = [255, 255, 255]
+export const TINTA: Rgb = [25, 25, 25]
+export const GRIS: Rgb = [110, 110, 110]
+export const BLANCO: Rgb = [255, 255, 255]
 const AZUL_MARCA: Rgb = [0, 126, 193]
 // Verde del logo (--brand-green) con su texto oscuro (--brand-green-foreground): el blanco sobre verde no se lee.
 const VERDE_MARCA: Rgb = [161, 199, 52]
@@ -22,7 +22,7 @@ const TEXTO_SOBRE_VERDE: Rgb = [38, 52, 12]
 const ANCHO = 210
 const ALTO = 297
 const M = 6 // margen lateral
-const FIN = ANCHO - M
+export const FIN = ANCHO - M
 export const GUIAS_POR_HOJA = 4
 /** Alto de cada guía (un talón a lo ancho de la hoja). */
 export const ALTO_GUIA = 68
@@ -78,7 +78,7 @@ export async function cargarLogo(): Promise<Logo | null> {
 }
 
 /** Recorta el texto con «...» para que quepa en `max` mm con la fuente actual. */
-function ajustar(doc: JsPdf, texto: string, max: number): string {
+export function ajustar(doc: JsPdf, texto: string, max: number): string {
   if (doc.getTextWidth(texto) <= max) return texto
   let t = texto
   while (t.length > 1 && doc.getTextWidth(`${t}...`) > max) t = t.slice(0, -1)
@@ -86,20 +86,20 @@ function ajustar(doc: JsPdf, texto: string, max: number): string {
 }
 
 /** Parte el texto en líneas de `max` mm; si pasan de `lineas`, la última se recorta con «...». */
-function lineasHasta(doc: JsPdf, texto: string, max: number, lineas: number): string[] {
+export function lineasHasta(doc: JsPdf, texto: string, max: number, lineas: number): string[] {
   const todas = doc.splitTextToSize(texto, max) as string[]
   if (todas.length <= lineas) return todas
   return [...todas.slice(0, lineas - 1), ajustar(doc, `${todas[lineas - 1]}...`, max)]
 }
 
-function fuente(doc: JsPdf, tamano: number, estilo: 'normal' | 'bold' | 'italic' = 'normal', color: Rgb = TINTA) {
+export function fuente(doc: JsPdf, tamano: number, estilo: 'normal' | 'bold' | 'italic' = 'normal', color: Rgb = TINTA) {
   doc.setFont('helvetica', estilo)
   doc.setFontSize(tamano)
   doc.setTextColor(...color)
 }
 
 /** Baja el tamaño de la fuente (hasta `minimo`) para que el texto quepa entero en `max` mm. */
-function fuenteQueQuepa(doc: JsPdf, texto: string, max: number, tamano: number, minimo: number) {
+export function fuenteQueQuepa(doc: JsPdf, texto: string, max: number, tamano: number, minimo: number) {
   let t = tamano
   doc.setFontSize(t)
   while (t > minimo && doc.getTextWidth(texto) > max) {
@@ -114,31 +114,31 @@ function textoEspaciado(doc: JsPdf, texto: string, centroX: number, y: number, e
   doc.text(texto, centroX - ancho / 2, y, { charSpace: espacio })
 }
 
-function caja(doc: JsPdf, x: number, y: number, w: number, h: number) {
+export function caja(doc: JsPdf, x: number, y: number, w: number, h: number) {
   doc.setDrawColor(...AZUL)
   doc.setLineWidth(0.25)
   doc.rect(x, y, w, h, 'S')
 }
 
-function etiqueta(doc: JsPdf, texto: string, x: number, y: number, tamano = 5) {
+export function etiqueta(doc: JsPdf, texto: string, x: number, y: number, tamano = 5) {
   fuente(doc, tamano, 'bold', AZUL)
   doc.text(texto, x, y)
 }
 
-function lineaEscritura(doc: JsPdf, x1: number, x2: number, y: number) {
+export function lineaEscritura(doc: JsPdf, x1: number, x2: number, y: number) {
   doc.setDrawColor(...GRIS)
   doc.setLineWidth(0.15)
   doc.line(x1, y, x2, y)
 }
 
-function separadorVertical(doc: JsPdf, x: number, y1: number, y2: number) {
+export function separadorVertical(doc: JsPdf, x: number, y1: number, y2: number) {
   doc.setDrawColor(...AZUL)
   doc.setLineWidth(0.2)
   doc.line(x, y1, x, y2)
 }
 
 /** Rótulo + valor sobre una línea de escritura (el valor se recorta si no cabe). */
-function campo(doc: JsPdf, rotulo: string, valor: string, x: number, xFin: number, y: number, inicioValor: number) {
+export function campo(doc: JsPdf, rotulo: string, valor: string, x: number, xFin: number, y: number, inicioValor: number) {
   etiqueta(doc, rotulo, x, y, 5.6)
   lineaEscritura(doc, x + inicioValor - 1, xFin, y + 0.7)
   if (valor) {
@@ -147,7 +147,7 @@ function campo(doc: JsPdf, rotulo: string, valor: string, x: number, xFin: numbe
   }
 }
 
-function bloqueParte(doc: JsPdf, titulo: string, parte: ParteGuia, x: number, y: number, w: number, h: number) {
+export function bloqueParte(doc: JsPdf, titulo: string, parte: ParteGuia, x: number, y: number, w: number, h: number) {
   caja(doc, x, y, w, h)
   doc.setFillColor(...AZUL)
   doc.rect(x, y, w, 3.4, 'F')
@@ -161,7 +161,7 @@ function bloqueParte(doc: JsPdf, titulo: string, parte: ParteGuia, x: number, y:
   campo(doc, 'Teléfono:', parte.telefono, medio, fin, y + 13.4, 10.5)
 }
 
-function casilla(doc: JsPdf, x: number, y: number, texto: string, marcada: boolean) {
+export function casilla(doc: JsPdf, x: number, y: number, texto: string, marcada: boolean) {
   doc.setDrawColor(...AZUL)
   doc.setLineWidth(0.25)
   doc.rect(x, y, 2.1, 2.1, 'S')
@@ -176,7 +176,7 @@ function casilla(doc: JsPdf, x: number, y: number, texto: string, marcada: boole
 }
 
 /** REGISTRO | FECHA | HORA | OPERADOR con valores (o en blanco para llenar a mano). */
-function filaGestion(
+export function filaGestion(
   doc: JsPdf,
   titulo: string,
   valores: { fecha: string; hora: string; operador: string },
@@ -202,8 +202,21 @@ function filaGestion(
   })
 }
 
-/** Talón: la guía completa con las firmas del remitente y de quien recibe. */
-function dibujarTalon(doc: JsPdf, d: DatosGuia, logo: Logo | null, qr: string, T: number) {
+/** Alto de la banda y de la cabecera (logo, empresa, número y QR) del talón. */
+export const ALTO_ENCABEZADO = 3.6 + 10
+
+/**
+ * Banda (rótulo · `ruta` · número) y cabecera (logo · datos de la empresa · número y QR) del talón.
+ * La comparten la guía de un envío y la guía en blanco de un talonario (contrato v20).
+ */
+export function dibujarEncabezado(
+  doc: JsPdf,
+  d: Pick<DatosGuia, 'numero' | 'ruta' | 'urlSeguimiento'>,
+  logo: Logo | null,
+  qr: string,
+  T: number,
+  { rutaEspaciada = true }: { rutaEspaciada?: boolean } = {},
+) {
   const x0 = X_TALON
   const w = ANCHO_TALON
   const fin = FIN
@@ -216,8 +229,13 @@ function dibujarTalon(doc: JsPdf, d: DatosGuia, logo: Logo | null, qr: string, T
   const anchoTitulo = doc.getTextWidth(TALON_GUIA.titulo)
   fuente(doc, 5.2, 'normal', BLANCO)
   doc.text(` (${TALON_GUIA.detalle})`, x0 + 1.5 + anchoTitulo, T + 2.6)
-  fuente(doc, 6.3, 'bold', BLANCO)
-  textoEspaciado(doc, d.ruta, x0 + w / 2 + 4, T + 2.7, 0.5)
+  if (rutaEspaciada) {
+    fuente(doc, 6.3, 'bold', BLANCO)
+    textoEspaciado(doc, d.ruta, x0 + w / 2 + 4, T + 2.7, 0.5)
+  } else if (d.ruta) {
+    fuente(doc, 5.2, 'normal', BLANCO)
+    doc.text(ajustar(doc, d.ruta, 80), x0 + w / 2 + 4, T + 2.6, { align: 'center' })
+  }
   fuente(doc, 6, 'bold', BLANCO)
   doc.text(`GUÍA N.º ${d.numero}`, fin - 1.5, T + 2.6, { align: 'right' })
 
@@ -254,18 +272,31 @@ function dibujarTalon(doc: JsPdf, d: DatosGuia, logo: Logo | null, qr: string, T
   fuente(doc, 10, 'bold', ROJO)
   fuenteQueQuepa(doc, d.numero, qx - gx - 1.5, 10, 7)
   doc.text(d.numero, centroNumero, cy + 7.9, { align: 'center' })
+}
+
+/** Avisos de la guía en una sola línea, centrados en el ancho del talón. */
+export function dibujarAvisos(doc: JsPdf, y: number) {
+  const avisos = AVISOS_GUIA.join(' · ')
+  fuente(doc, 5, 'bold', AZUL)
+  fuenteQueQuepa(doc, avisos, ANCHO_TALON, 5, 3.4)
+  doc.text(avisos, X_TALON + ANCHO_TALON / 2, y, { align: 'center' })
+}
+
+/** Talón: la guía completa con las firmas del remitente y de quien recibe. */
+function dibujarTalon(doc: JsPdf, d: DatosGuia, logo: Logo | null, qr: string, T: number) {
+  const x0 = X_TALON
+  const w = ANCHO_TALON
+  const fin = FIN
+  dibujarEncabezado(doc, d, logo, qr, T)
 
   // Remitente | Destinatario
-  const py = cy + ch + 0.5
+  const py = T + ALTO_ENCABEZADO + 0.5
   const pw = (w - 2) / 2
   bloqueParte(doc, 'REMITENTE', d.remitente, x0, py, pw, 14.5)
   bloqueParte(doc, 'DESTINATARIO', d.destinatario, x0 + pw + 2, py, pw, 14.5)
 
   // Avisos en una sola línea
-  const avisos = AVISOS_GUIA.join(' · ')
-  fuente(doc, 5, 'bold', AZUL)
-  fuenteQueQuepa(doc, avisos, w, 5, 3.4)
-  doc.text(avisos, x0 + w / 2, py + 14.5 + 2.1, { align: 'center' })
+  dibujarAvisos(doc, py + 14.5 + 2.1)
 
   // Columna izquierda: piezas, peso y descripción, observaciones, aceptación del remitente
   const iy = py + 14.5 + 3
@@ -407,7 +438,7 @@ export async function qrDeGuia(url: string): Promise<string> {
   return QR.toDataURL(url, { errorCorrectionLevel: 'M', margin: 0, width: 300, color: { dark: '#1b2a59', light: '#ffffff' } })
 }
 
-async function cargarRecursos() {
+export async function cargarRecursos() {
   const [{ jsPDF }, logo] = await Promise.all([import('jspdf'), cargarLogo()])
   return { jsPDF, qrDe: qrDeGuia, logo }
 }
@@ -466,6 +497,12 @@ export function componerGuia(doc: JsPdf, d: DatosGuia, logo: Logo | null, qr: st
   doc.setProperties({ title: `Guía ${d.numero} - PCargo`, subject: 'Guía de encomienda', creator: 'PCargo' })
   const T = posicionGuia(posicion)
   dibujarTalon(doc, d, logo, qr, T)
+  lineasDeCorte(doc, posicion)
+}
+
+/** Líneas de corte hacia las guías vecinas de la posición indicada. */
+export function lineasDeCorte(doc: JsPdf, posicion: PosicionHoja): void {
+  const T = posicionGuia(posicion)
   if (posicion > 0) lineaCorte(doc, T - SEPARACION / 2)
   if (posicion < GUIAS_POR_HOJA - 1) lineaCorte(doc, T + ALTO_GUIA + SEPARACION / 2)
 }

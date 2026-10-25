@@ -21,6 +21,16 @@ describe('fecha de la guía (contrato v18)', () => {
     expect(validarFechaGuia('2026-13-01', AHORA)).toBe('Fecha inválida')
   })
 
+  it('guía de talonario (v20): acepta desde el día del talonario; un mínimo futuro o inválido no cambia nada', () => {
+    expect(rangoFechaGuia(AHORA, '2026-10-15')).toEqual({ min: '2026-10-15', max: '2027-01-20' })
+    expect(validarFechaGuia('2026-10-15', AHORA, '2026-10-15')).toBeNull()
+    expect(validarFechaGuia('2026-10-18', AHORA, '2026-10-15')).toBeNull()
+    expect(validarFechaGuia('2026-10-14', AHORA, '2026-10-15')).toBe('La fecha de la guía no puede ser anterior al día del talonario (15/10/2026)')
+    expect(rangoFechaGuia(AHORA, '2026-10-30').min).toBe('2026-10-22')
+    expect(rangoFechaGuia(AHORA, 'x').min).toBe('2026-10-22')
+    expect(validarFechaGuia('2026-10-21', AHORA, null)).toBe('La fecha de la guía no puede ser anterior a hoy')
+  })
+
   it('usa fechaGuia y, si falta, el día de registro en Ecuador', () => {
     const registro = { fecha: '2026-10-08T03:24:55.786Z', operador: null }
     expect(fechaGuiaDe({ registro, fechaGuia: '2026-10-15' })).toBe('2026-10-15')

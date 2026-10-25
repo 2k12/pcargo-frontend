@@ -789,3 +789,52 @@ export interface ResumenPortal {
   porFormaPago: { formaPago: FormaPago; envios: number; monto: number }[]
   porDia: { fecha: string; envios: number; monto: number }[]
 }
+
+// ── Talonarios de guías en blanco (contrato v20) ─────────────────────────────────────────────────
+
+export type EstadoGuiaTalonario = 'DISPONIBLE' | 'USADA' | 'ANULADA'
+
+export interface GuiaTalonario {
+  numeroGuia: number
+  estado: EstadoGuiaTalonario
+  /** Si USADA. */
+  envioId: string | null
+  /** Si ANULADA. */
+  motivo: string | null
+  /** Cuándo se usó o anuló. */
+  actualizadoEn: string | null
+}
+
+export interface TalonarioResumen {
+  id: string
+  desde: number
+  hasta: number
+  cantidad: number
+  nota: string | null
+  creadoEn: string
+  creadoPor: string | null
+  disponibles: number
+  usadas: number
+  anuladas: number
+}
+
+export interface Talonario extends TalonarioResumen {
+  /** En orden de número. */
+  guias: GuiaTalonario[]
+}
+
+/** `GET /talonarios/guia/:numeroGuia`: la guía con los datos de su talonario. */
+export interface GuiaDeTalonario extends GuiaTalonario {
+  talonarioId: string
+  nota: string | null
+  creadoEn: string
+}
+
+export interface NuevoTalonario {
+  /** 1–50. */
+  cantidad: number
+  /** 0–120. */
+  nota?: string
+}
+
+export type FiltroTalonarios = 'abiertos' | 'todos'

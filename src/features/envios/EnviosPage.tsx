@@ -14,6 +14,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useClientes } from '@/features/clientes/api'
 import { esFecha } from '@/features/dashboard/domain'
 import { rutaLabel, useRutas } from '@/features/rutas/hooks'
+import { talonariosApi } from '@/features/talonarios/api'
+import { avisoGuiaTalonario, guiaParaRegistrar, type GuiaParaRegistrar } from '@/features/talonarios/domain'
 import { useRepartidores } from '@/features/usuarios/hooks'
 import { useDebounced } from '@/hooks/useDebounced'
 import { useEsMovil } from '@/hooks/useMediaQuery'
@@ -160,6 +162,8 @@ export function EnviosPage() {
   /** En móvil cada control va con su etiqueta dentro de la hoja; en escritorio, en línea. */
   const campo = (label: string, control: ReactNode) => (esMovil ? <CampoFiltro label={label}>{control}</CampoFiltro> : control)
   const [seleccionado, setSeleccionado] = useState<string | null>(null)
+  const [guiaTalonario, setGuiaTalonario] = useState<GuiaParaRegistrar | null>(null)
+  const [registroAbierto, setRegistroAbierto] = useState(false)
   // /envios?guia=N (QR de la guía leído con la cámara del teléfono con la sesión abierta): abre ese envío.
   const guiaUrl = params.get('guia')
   useEffect(() => {
@@ -173,10 +177,17 @@ export function EnviosPage() {
     )
     const n = normalizarGuia(guiaUrl)
     if (!n) return
-    enviosApi
-      .porGuia(n)
-      .then((e) => (e ? setSeleccionado(e.id) : toast.error(`No hay ningún envío con la guía ${n}`)))
-      .catch((e) => toast.error(errorMessage(e)))
+    const abrir = async () => {
+      const envio = await enviosApi.porGuia(n)
+      if (envio) return setSeleccionado(envio.id)
+      // Contrato v20: una guía en blanco de talonario aún sin registrar se ofrece para registrarla.
+      const guia = await talonariosApi.porGuia(n)
+      if (guia?.estado === 'DISPONIBLE') {
+        setGuiaTalonario(guiaParaRegistrar(guia.numeroGuia, guia.creadoEn))
+        setRegistroAbierto(true)
+      } else toast.error(guia ? avisoGuiaTalonario(guia) : `No hay ningún envío con la guía ${n}`)
+    }
+    abrir().catch((e) => toast.error(errorMessage(e)))
   }, [guiaUrl, setParams])
   // Envíos marcados para imprimir sus guías juntas; se conservan al cambiar de página o de filtro.
   const [marcados, setMarcados] = useState<Map<string, Envio>>(() => new Map())
@@ -624,6 +635,7 @@ export function EnviosPage() {
 
       <SeleccionGuias envios={seleccion} onLimpiar={() => setMarcados(new Map())} />
       <EnvioDetailSheet envioId={seleccionado} onClose={() => setSeleccionado(null)} />
+      {guiaTalonario && <NuevoEnvioDialog abierto={registroAbierto} onAbiertoChange={setRegistroAbierto} guiaTalonario={guiaTalonario} />}
     </>
   )
 }

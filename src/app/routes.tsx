@@ -28,6 +28,10 @@ const DesarrolladoresPage = lazy(() =>
   import('@/features/desarrolladores/DesarrolladoresPage').then((m) => ({ default: m.DesarrolladoresPage })),
 )
 const ReportesPage = lazy(() => import('@/features/reportes/ReportesPage').then((m) => ({ default: m.ReportesPage })))
+const TalonariosPage = lazy(() => import('@/features/talonarios/TalonariosPage').then((m) => ({ default: m.TalonariosPage })))
+const TalonarioDetallePage = lazy(() =>
+  import('@/features/talonarios/TalonarioDetallePage').then((m) => ({ default: m.TalonarioDetallePage })),
+)
 const CajaPage = lazy(() => import('@/features/caja/CajaPage').then((m) => ({ default: m.CajaPage })))
 const UsuariosPage = lazy(() => import('@/features/usuarios/UsuariosPage').then((m) => ({ default: m.UsuariosPage })))
 const DatosPersonalesPage = lazy(() =>
@@ -89,6 +93,9 @@ export function AppRoutes() {
             <Route path="/clientes" element={<ClientesPage />} />
             <Route path="/caja" element={<CajaPage />} />
             <Route path="/reportes" element={<ReportesPage />} />
+            {/* Talonarios de guías en blanco (contrato v20): ADMIN y OPERADOR. */}
+            <Route path="/talonarios" element={<TalonariosPage />} />
+            <Route path="/talonarios/:id" element={<TalonarioDetallePage />} />
             <Route path="/rutas" element={<RutasPage />} />
             <Route path="/perfil" element={<PerfilPage />} />
             <Route element={<SoloAdmin />}>

@@ -15,18 +15,29 @@ export function sumarDias(fecha: string, dias: number): string {
   return new Date(Date.parse(`${fecha}T00:00:00Z`) + dias * DIA_MS).toISOString().slice(0, 10)
 }
 
-/** Límites del selector: hoy … hoy + 90 (Ecuador). */
-export function rangoFechaGuia(ahora: number = Date.now()): { min: string; max: string } {
-  const min = hoyEC(ahora)
-  return { min, max: sumarDias(min, MAX_DIAS_FECHA_GUIA) }
+/**
+ * Límites del selector: hoy … hoy + 90 (Ecuador). `minimo` (contrato v20: guía de talonario) adelanta el
+ * inicio al día en que se reservó el talonario; nunca lo retrasa más allá de hoy.
+ */
+export function rangoFechaGuia(ahora: number = Date.now(), minimo?: string | null): { min: string; max: string } {
+  const hoy = hoyEC(ahora)
+  const min = minimo && esFecha(minimo) && minimo < hoy ? minimo : hoy
+  return { min, max: sumarDias(hoy, MAX_DIAS_FECHA_GUIA) }
 }
 
-/** Valida la fecha elegida igual que el servidor. Devuelve el mensaje de error o `null`. */
-export function validarFechaGuia(fecha: string | undefined | null, ahora: number = Date.now()): string | null {
+/**
+ * Valida la fecha elegida igual que el servidor. Devuelve el mensaje de error o `null`.
+ * `minimo`: día (Ecuador) de creación del talonario, para las guías en blanco que se registran después (v20).
+ */
+export function validarFechaGuia(fecha: string | undefined | null, ahora: number = Date.now(), minimo?: string | null): string | null {
   if (!fecha) return null // vacío → hoy
   if (!esFecha(fecha)) return 'Fecha inválida'
-  const { min, max } = rangoFechaGuia(ahora)
-  if (fecha < min) return 'La fecha de la guía no puede ser anterior a hoy'
+  const { min, max } = rangoFechaGuia(ahora, minimo)
+  if (fecha < min) {
+    return min < hoyEC(ahora)
+      ? `La fecha de la guía no puede ser anterior al día del talonario (${fechaCorta(min)})`
+      : 'La fecha de la guía no puede ser anterior a hoy'
+  }
   if (fecha > max) return `La fecha de la guía puede ser como máximo ${MAX_DIAS_FECHA_GUIA} días después de hoy`
   return null
 }
