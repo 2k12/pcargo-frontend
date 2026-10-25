@@ -79,7 +79,7 @@ export function EntregasPage({ vista }: { vista: VistaReparto }) {
               {g.destino}
             </SectionLabel>
             {g.envios.map((e) => (
-              <EntregaCard key={e.id} envio={e} onEntregar={hojas.onEntregar} onMotivo={hojas.onMotivo} />
+              <EntregaCard key={e.id} envio={e} onEntregar={hojas.onEntregar} onMotivo={hojas.onMotivo} onCompletar={hojas.onCompletar} />
             ))}
           </section>
         ))

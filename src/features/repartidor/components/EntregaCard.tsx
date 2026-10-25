@@ -1,15 +1,16 @@
-import { Check, Loader2, MapPin, MessageCircle, Package, Phone, TriangleAlert, Truck, X } from 'lucide-react'
+import { Check, ClipboardPen, Loader2, MapPin, MessageCircle, Package, Phone, TriangleAlert, Truck, X } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { EstadoBadge } from '@/features/envios/components/EstadoBadge'
 import { piezasLabel, resumenItems, ZONA_LABEL } from '@/features/envios/domain'
+import { ATENCION_TONO } from '@/features/envios/ui'
 import { errorMessage } from '@/lib/api'
 import { SUPERFICIE } from '@/lib/estilos'
 import { formatCurrency, formatDateTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { EnvioReparto, EstadoReparto } from '@/types/api'
-import { accionesReparto, enlaceMapa, enlaceTelefono, enlaceWhatsApp, etiquetaAccion } from '../domain'
+import { accionesReparto, enlaceMapa, enlaceTelefono, enlaceWhatsApp, etiquetaAccion, faltantesEntrega } from '../domain'
 import { useCambiarEstadoReparto } from '../hooks'
 import type { EstadoConMotivo } from './MotivoSheet'
 
@@ -43,16 +44,21 @@ export function EntregaCard({
   envio,
   onEntregar,
   onMotivo,
+  onCompletar,
 }: {
   envio: EnvioReparto
   onEntregar: (e: EnvioReparto) => void
   onMotivo: (e: EnvioReparto, estado: EstadoConMotivo) => void
+  /** Completar o editar quién recibió y la foto de una entrega ya hecha (contrato v19). */
+  onCompletar: (e: EnvioReparto) => void
 }) {
   const cambiar = useCambiarEstadoReparto()
   const acciones = accionesReparto(envio.estado)
   const whatsapp = enlaceWhatsApp(envio.destinatario.telefono, `Hola, le saluda PCargo. Tengo su encomienda (guía ${envio.numeroGuia}).`)
   const principal = acciones.includes('ENTREGADO') ? 'ENTREGADO' : acciones.includes('EN_REPARTO') ? 'EN_REPARTO' : null
   const secundarias = acciones.filter((a): a is EstadoConMotivo => a === 'NO_ENTREGADO' || a === 'NOVEDAD')
+  const falta = faltantesEntrega(envio)
+  const pendientesPrueba = falta ? [falta.nombre && 'Falta nombre', falta.foto && 'Falta foto'].filter((t): t is string => !!t) : []
 
   const ejecutar = async (estado: EstadoReparto) => {
     if (estado === 'ENTREGADO') return onEntregar(envio)
@@ -107,8 +113,30 @@ export function EntregaCard({
       {envio.entrega && (envio.estado === 'ENTREGADO' || envio.estado === 'NO_ENTREGADO' || envio.estado === 'NOVEDAD') && (
         <p className="rounded-lg bg-muted/60 px-3 py-2 text-sm">
           {formatDateTime(envio.entrega.fecha)}
-          {envio.evidencia ? ` · recibió ${envio.evidencia.recibidoPor}` : envio.entrega.nota ? ` · ${envio.entrega.nota}` : ''}
+          {envio.evidencia?.recibidoPor
+            ? ` · recibió ${envio.evidencia.recibidoPor}`
+            : envio.entrega.nota
+              ? ` · ${envio.entrega.nota}`
+              : ''}
         </p>
+      )}
+
+      {falta && (
+        <div className="space-y-2">
+          {pendientesPrueba.length > 0 && (
+            <ul className="flex flex-wrap gap-1.5" aria-label="Pendiente de la entrega">
+              {pendientesPrueba.map((t) => (
+                <li key={t} className={cn('rounded-full px-2.5 py-0.5 text-sm font-medium', ATENCION_TONO)}>
+                  {t}
+                </li>
+              ))}
+            </ul>
+          )}
+          <Button variant="outline" className="h-12 w-full text-base" onClick={() => onCompletar(envio)}>
+            <ClipboardPen className="size-5" />
+            {pendientesPrueba.length > 0 ? 'Completar entrega' : 'Editar entrega'}
+          </Button>
+        </div>
       )}
 
       {envio.estado !== 'ENTREGADO' && (

@@ -65,3 +65,15 @@ export function etiquetaAccion(desde: Estado, hacia: EstadoReparto): string {
 /** Total por cobrar de una lista. */
 export const totalPorCobrar = (envios: Pick<EnvioReparto, 'porCobrar'>[]): number =>
   Math.round(envios.reduce((s, e) => s + e.porCobrar, 0) * 100) / 100
+
+/**
+ * Qué le falta a la prueba de una entrega ya hecha (contrato v19: nombre y foto por partes). `null` si el
+ * envío no está ENTREGADO.
+ */
+export function faltantesEntrega(
+  envio: Pick<EnvioReparto, 'estado' | 'evidencia'>,
+): { nombre: boolean; foto: boolean; hayFoto: boolean } | null {
+  if (envio.estado !== 'ENTREGADO') return null
+  const ev = envio.evidencia
+  return { nombre: !ev?.recibidoPor, foto: !ev?.conFoto, hayFoto: !!ev?.conFoto }
+}

@@ -35,7 +35,7 @@ export function envioDesdePortal(e: EnvioPortal, cliente: ClientePortal): Envio 
     registro: { fecha: e.creadoEn, operador: null },
     entrega: e.entrega ? { ...e.entrega, operador: null } : null,
     evidencia: e.evidencia
-      ? { recibidoPor: e.evidencia.recibidoPor, subidaEn: e.evidencia.subidaEn, tipo: 'image/jpeg', bytes: 0, subidaPor: null }
+      ? { recibidoPor: e.evidencia.recibidoPor, subidaEn: e.evidencia.subidaEn, tipo: null, bytes: null, subidaPor: null }
       : null,
     origen: { canal: 'PANEL', integracionId: null, integracion: null },
     referenciaExterna: e.referenciaExterna,

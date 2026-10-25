@@ -183,7 +183,7 @@ export function EnvioDetailSheet({ envioId, onClose }: { envioId: string | null;
       const actualizado = await cambiar.mutateAsync({ estado, nota })
       if (estado === 'ENTREGADO' && !actualizado.evidencia) {
         toast.success(`Guía ${actualizado.numeroGuia}: entregado`, {
-          description: 'Ahora sube la foto de la guía firmada como prueba de entrega.',
+          description: 'Si quieres, agrega quién recibió y la foto de la guía firmada (también puedes hacerlo después).',
         })
         setPedirEvidencia(actualizado.id)
       } else {

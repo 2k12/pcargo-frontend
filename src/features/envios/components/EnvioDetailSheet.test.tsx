@@ -75,7 +75,7 @@ describe('EnvioDetailSheet', () => {
     expect(screen.queryByRole('region', { name: 'Prueba de entrega' })).not.toBeInTheDocument()
   })
 
-  it('al marcar ENTREGADO pide la prueba de entrega y enfoca el nombre de quien recibió', async () => {
+  it('al marcar ENTREGADO ofrece la prueba de entrega (opcional, v19) y enfoca el nombre de quien recibió', async () => {
     const enReparto: Envio = { ...envio, estado: 'EN_REPARTO', entrega: null }
     const entregado: Envio = {
       ...envio,
@@ -90,7 +90,7 @@ describe('EnvioDetailSheet', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: 'Marcar entregado' }))
     const seccion = await screen.findByRole('region', { name: 'Prueba de entrega' })
-    expect(within(seccion).getByLabelText('Nombre de quien recibió')).toHaveFocus()
+    expect(within(seccion).getByLabelText('Nombre de quien recibió (opcional)')).toHaveFocus()
     expect(within(seccion).getByLabelText('Foto de la guía firmada')).toHaveAttribute('capture', 'environment')
   })
 

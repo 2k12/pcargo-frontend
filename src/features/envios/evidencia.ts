@@ -1,4 +1,4 @@
-// Evidencia de entrega (contrato v9): foto de la guía firmada + nombre de quien recibió.
+// Evidencia de entrega (contrato v9, por partes desde v19): foto de la guía firmada y/o nombre de quien recibió.
 // Validación y preparación de la foto en el navegador antes de subirla.
 import { z } from 'zod'
 
@@ -15,18 +15,47 @@ export const MENSAJE_FOTO_FALTA = 'Toma o elige la foto de la guía firmada'
 export const MENSAJE_FOTO_TIPO = 'La foto debe ser JPG, PNG o WebP'
 export const MENSAJE_FOTO_PESO = 'La foto pesa más de 5 MB; tómala con menos resolución'
 
-export const evidenciaSchema = z.object({
-  recibidoPor: z
-    .string()
-    .trim()
-    .min(2, 'Escribe el nombre de quien recibió (mínimo 2 caracteres)')
-    .max(120, 'Máximo 120 caracteres'),
-  foto: z
-    .custom<File>((v) => typeof File !== 'undefined' && v instanceof File, MENSAJE_FOTO_FALTA)
-    .refine((f) => (TIPOS_FOTO as readonly string[]).includes(f.type), MENSAJE_FOTO_TIPO),
-})
+export const MENSAJE_NOMBRE_CORTO = 'Escribe el nombre de quien recibió (mínimo 2 caracteres)'
+export const MENSAJE_NOMBRE_LARGO = 'Máximo 120 caracteres'
+export const MENSAJE_EVIDENCIA_VACIA = 'Escribe el nombre de quien recibió o sube la foto de la guía firmada'
+
+/** Nombre de quien recibió: opcional (v19), pero si se escribe, 2–120 caracteres sin contar espacios de los extremos. */
+export const nombreRecibioSchema = z
+  .string()
+  .trim()
+  .refine((v) => v === '' || v.length >= 2, MENSAJE_NOMBRE_CORTO)
+  .refine((v) => v.length <= 120, MENSAJE_NOMBRE_LARGO)
+
+export const esTipoFoto = (tipo: string) => (TIPOS_FOTO as readonly string[]).includes(tipo)
+
+const fotoSchema = z
+  .custom<File>((v) => typeof File !== 'undefined' && v instanceof File, MENSAJE_FOTO_FALTA)
+  .refine((f) => esTipoFoto(f.type), MENSAJE_FOTO_TIPO)
+
+/** Qué se edita: el nombre, la foto o ambos (al menos uno de los dos). */
+export type CamposEvidencia = 'ambos' | 'nombre' | 'foto'
+
+/** Esquema del formulario de evidencia (contrato v19: se guarda por partes). */
+export function esquemaEvidencia(campos: CamposEvidencia = 'ambos') {
+  return z
+    .object({ recibidoPor: nombreRecibioSchema, foto: fotoSchema.optional() })
+    .superRefine(({ recibidoPor, foto }, ctx) => {
+      if (campos === 'nombre' && !recibidoPor) ctx.addIssue({ code: 'custom', path: ['recibidoPor'], message: MENSAJE_NOMBRE_CORTO })
+      if (campos === 'foto' && !foto) ctx.addIssue({ code: 'custom', path: ['foto'], message: MENSAJE_FOTO_FALTA })
+      if (campos === 'ambos' && !recibidoPor && !foto)
+        ctx.addIssue({ code: 'custom', path: ['recibidoPor'], message: MENSAJE_EVIDENCIA_VACIA })
+    })
+}
+
+export const evidenciaSchema = esquemaEvidencia('ambos')
 
 export type EvidenciaFormValues = z.infer<typeof evidenciaSchema>
+
+/** Lo que se envía a `POST …/evidencia`: solo los campos presentes (al menos uno). */
+export interface DatosEvidencia {
+  foto?: FotoPreparada
+  recibidoPor?: string
+}
 
 /** Escala para que el lado mayor no pase de `max` (nunca agranda). */
 export function dimensionesEscaladas(ancho: number, alto: number, max = LADO_MAXIMO): { ancho: number; alto: number } {
@@ -89,4 +118,12 @@ export async function prepararFoto(
 export function formatBytes(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
   return `${(bytes / (1024 * 1024)).toLocaleString('es-EC', { maximumFractionDigits: 1 })} MB`
+}
+
+/** Qué le falta a una evidencia cargada por partes (v19), en texto para la UI; `null` si está completa. */
+export function faltanteEvidencia(e: { recibidoPor: string | null; tipo: string | null }): string | null {
+  if (!e.recibidoPor && !e.tipo) return 'falta el nombre y la foto'
+  if (!e.recibidoPor) return 'falta el nombre de quien recibió'
+  if (!e.tipo) return 'falta la foto de la guía firmada'
+  return null
 }

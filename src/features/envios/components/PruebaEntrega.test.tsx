@@ -2,6 +2,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Toaster } from '@/components/ui/sonner'
+import { toast } from 'sonner'
 import { tokenStorage } from '@/lib/api'
 import { jsonResponse, mockFetch, renderWithProviders } from '@/test/utils'
 import type { Envio, EvidenciaEntrega } from '@/types/api'
@@ -18,6 +19,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  toast.dismiss()
   vi.unstubAllGlobals()
   crear.mockClear()
   revocar.mockClear()
@@ -82,19 +84,57 @@ describe('PruebaEntrega — formulario', () => {
     expect(screen.queryByRole('region', { name: 'Prueba de entrega' })).not.toBeInTheDocument()
   })
 
-  it('valida nombre (2–120) y foto obligatoria antes de subir', async () => {
+  it('valida el nombre (2–120) si se escribe, aunque la foto sea opcional', async () => {
     const { fetchMock } = renderizar(entregado)
-    await userEvent.type(screen.getByLabelText('Nombre de quien recibió'), 'A')
+    await userEvent.type(screen.getByLabelText(/Nombre de quien recibió/), 'A')
     await userEvent.click(screen.getByRole('button', { name: 'Guardar prueba' }))
 
     expect(await screen.findByText('Escribe el nombre de quien recibió (mínimo 2 caracteres)')).toBeInTheDocument()
-    expect(screen.getByText('Toma o elige la foto de la guía firmada')).toBeInTheDocument()
+    expect(screen.queryByText('Toma o elige la foto de la guía firmada')).not.toBeInTheDocument()
     expect(posts(fetchMock)).toHaveLength(0)
+  })
+
+  it('sin nombre ni foto no guarda y pide al menos uno (v19)', async () => {
+    const { fetchMock } = renderizar(entregado)
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar prueba' }))
+    expect(await screen.findByText('Escribe el nombre de quien recibió o sube la foto de la guía firmada')).toBeInTheDocument()
+    expect(posts(fetchMock)).toHaveLength(0)
+  })
+
+  it('guarda solo el nombre, sin foto (v19)', async () => {
+    const { fetchMock } = renderizar(entregado, (url, init) =>
+      url.endsWith('/envios/e1/evidencia') && init?.method === 'POST'
+        ? jsonResponse({ ...entregado, evidencia: { ...evidencia, tipo: null, bytes: null }, historial: [] })
+        : jsonResponse({}),
+    )
+    await userEvent.type(screen.getByLabelText(/Nombre de quien recibió/), 'María Andrade')
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar prueba' }))
+
+    await waitFor(() => expect(posts(fetchMock)).toHaveLength(1))
+    const body = posts(fetchMock)[0]![1]!.body as FormData
+    expect(body.get('recibidoPor')).toBe('María Andrade')
+    expect(body.has('foto')).toBe(false)
+    expect(await screen.findByText('Prueba de entrega guardada')).toBeInTheDocument()
+  })
+
+  it('guarda solo la foto, sin nombre (v19)', async () => {
+    const { fetchMock } = renderizar(entregado, (url, init) =>
+      url.endsWith('/envios/e1/evidencia') && init?.method === 'POST'
+        ? jsonResponse({ ...entregado, evidencia: { ...evidencia, recibidoPor: null }, historial: [] })
+        : jsonResponse({}),
+    )
+    await userEvent.upload(screen.getByLabelText('Foto de la guía firmada'), foto())
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar prueba' }))
+
+    await waitFor(() => expect(posts(fetchMock)).toHaveLength(1))
+    const body = posts(fetchMock)[0]![1]!.body as FormData
+    expect(body.has('recibidoPor')).toBe(false)
+    expect((body.get('foto') as File).name).toBe('guia.jpg')
   })
 
   it('rechaza archivos que no son JPG, PNG o WebP', async () => {
     const { fetchMock } = renderizar(entregado)
-    await userEvent.type(screen.getByLabelText('Nombre de quien recibió'), 'María Andrade')
+    await userEvent.type(screen.getByLabelText(/Nombre de quien recibió/), 'María Andrade')
     fireEvent.change(screen.getByLabelText('Foto de la guía firmada'), {
       target: { files: [foto('application/pdf', 'guia.pdf')] },
     })
@@ -118,7 +158,7 @@ describe('PruebaEntrega — formulario', () => {
         ? jsonResponse({ ...entregado, evidencia, historial: [] })
         : jsonResponse({}),
     )
-    await userEvent.type(screen.getByLabelText('Nombre de quien recibió'), '  María Andrade ')
+    await userEvent.type(screen.getByLabelText(/Nombre de quien recibió/), '  María Andrade ')
     await userEvent.upload(screen.getByLabelText('Foto de la guía firmada'), foto())
     expect(screen.getByText('guia.jpg')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Guardar prueba' }))
@@ -143,7 +183,7 @@ describe('PruebaEntrega — formulario', () => {
         ? jsonResponse({ error: { code: 'ESTADO_INVALIDO', message: 'El envío no está entregado' } }, 422)
         : jsonResponse({}),
     )
-    await userEvent.type(screen.getByLabelText('Nombre de quien recibió'), 'María Andrade')
+    await userEvent.type(screen.getByLabelText(/Nombre de quien recibió/), 'María Andrade')
     await userEvent.upload(screen.getByLabelText('Foto de la guía firmada'), foto())
     await userEvent.click(screen.getByRole('button', { name: 'Guardar prueba' }))
     expect(await screen.findByText(/Solo se puede subir la prueba de un envío entregado/)).toBeInTheDocument()
@@ -155,7 +195,7 @@ describe('PruebaEntrega — formulario', () => {
         ? jsonResponse({ error: { code: 'VALIDACION', message: 'El archivo no es una imagen válida' } }, 400)
         : jsonResponse({}),
     )
-    await userEvent.type(screen.getByLabelText('Nombre de quien recibió'), 'María Andrade')
+    await userEvent.type(screen.getByLabelText(/Nombre de quien recibió/), 'María Andrade')
     await userEvent.upload(screen.getByLabelText('Foto de la guía firmada'), foto())
     await userEvent.click(screen.getByRole('button', { name: 'Guardar prueba' }))
     expect(await screen.findByText('Revisa la foto y el nombre: El archivo no es una imagen válida')).toBeInTheDocument()
@@ -188,11 +228,73 @@ describe('PruebaEntrega — con evidencia', () => {
     expect(revocar).toHaveBeenCalledWith('blob:evidencia-1')
   })
 
-  it('«Reemplazar foto» abre el formulario con el nombre actual', async () => {
-    renderizar(conEvidencia, (url) => (url.endsWith('/evidencia') ? imagen() : jsonResponse({})))
+  const conPost = (url: string, init?: RequestInit) =>
+    url.endsWith('/evidencia')
+      ? init?.method === 'POST'
+        ? jsonResponse({ ...conEvidencia, historial: [] })
+        : imagen()
+      : jsonResponse({})
+
+  it('«Reemplazar foto» abre solo la foto y envía solo la foto', async () => {
+    const { fetchMock } = renderizar(conEvidencia, conPost)
     await userEvent.click(screen.getByRole('button', { name: 'Reemplazar foto' }))
-    expect(screen.getByLabelText('Nombre de quien recibió')).toHaveValue('María Andrade')
+    expect(screen.queryByLabelText(/Nombre de quien recibió/)).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar foto' }))
+    expect(await screen.findByText('Toma o elige la foto de la guía firmada')).toBeInTheDocument()
+    expect(posts(fetchMock)).toHaveLength(0)
+
+    await userEvent.upload(screen.getByLabelText('Foto de la guía firmada'), foto())
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar foto' }))
+    await waitFor(() => expect(posts(fetchMock)).toHaveLength(1))
+    const body = posts(fetchMock)[0]![1]!.body as FormData
+    expect(body.has('recibidoPor')).toBe(false)
+    expect(body.get('foto')).toBeInstanceOf(File)
+  })
+
+  it('«Editar nombre» abre con el nombre actual y envía solo el nombre', async () => {
+    const { fetchMock } = renderizar(conEvidencia, conPost)
+    await userEvent.click(screen.getByRole('button', { name: 'Editar nombre' }))
+    const input = screen.getByLabelText(/Nombre de quien recibió/)
+    expect(input).toHaveValue('María Andrade')
+    expect(screen.queryByLabelText('Foto de la guía firmada')).not.toBeInTheDocument()
+
+    await userEvent.clear(input)
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar nombre' }))
+    expect(await screen.findByText('Escribe el nombre de quien recibió (mínimo 2 caracteres)')).toBeInTheDocument()
+
+    await userEvent.type(input, 'Rosa Andrade')
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar nombre' }))
+    await waitFor(() => expect(posts(fetchMock)).toHaveLength(1))
+    const body = posts(fetchMock)[0]![1]!.body as FormData
+    expect(body.get('recibidoPor')).toBe('Rosa Andrade')
+    expect(body.has('foto')).toBe(false)
+    expect(await screen.findByText('Nombre de quien recibió guardado')).toBeInTheDocument()
+  })
+
+  it('«Cancelar» vuelve a la vista de la evidencia', async () => {
+    renderizar(conEvidencia, conPost)
+    await userEvent.click(screen.getByRole('button', { name: 'Editar nombre' }))
     await userEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
-    expect(screen.getByRole('button', { name: 'Reemplazar foto' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Editar nombre' })).toBeInTheDocument()
+  })
+
+  it('solo nombre (v19): «Sin foto», no pide la imagen y ofrece «Subir foto»', () => {
+    const { fetchMock } = renderizar({ ...entregado, evidencia: { ...evidencia, tipo: null, bytes: null } })
+    const seccion = screen.getByRole('region', { name: 'Prueba de entrega' })
+    expect(within(seccion).getByText('María Andrade')).toBeInTheDocument()
+    expect(within(seccion).getByText('Sin foto')).toBeInTheDocument()
+    expect(within(seccion).getByRole('button', { name: 'Subir foto' })).toBeInTheDocument()
+    expect(fetchMock.mock.calls.some(([u]) => String(u).endsWith('/evidencia'))).toBe(false)
+  })
+
+  it('solo foto (v19): «Sin nombre», ofrece «Agregar nombre» y nunca muestra null', async () => {
+    renderizar({ ...entregado, evidencia: { ...evidencia, recibidoPor: null } }, (url) =>
+      url.endsWith('/evidencia') ? imagen() : jsonResponse({}),
+    )
+    const seccion = screen.getByRole('region', { name: 'Prueba de entrega' })
+    expect(within(seccion).getByText('Sin nombre')).toBeInTheDocument()
+    expect(await within(seccion).findByRole('img', { name: 'Guía firmada' })).toBeInTheDocument()
+    expect(within(seccion).getByRole('button', { name: 'Agregar nombre' })).toBeInTheDocument()
+    expect(seccion).not.toHaveTextContent('null')
   })
 })

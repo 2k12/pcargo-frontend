@@ -48,6 +48,8 @@ export const FORMA_PAGO_TONO: Record<FormaPago, string> = {
 
 /** Aviso de envíos que requieren gestión (no entregados / con novedad). */
 export const ATENCION_TONO = 'bg-amber-500/10 text-amber-800 dark:text-amber-200'
+/** Ícono de prueba de entrega incompleta (v19: falta el nombre o la foto). */
+export const EVIDENCIA_INCOMPLETA_TONO = 'text-amber-600 dark:text-amber-400'
 
 /** Estado de una entrega de webhook (contrato v10). */
 export const ENTREGA_WEBHOOK_TONO: Record<EstadoEntregaWebhook, string> = {

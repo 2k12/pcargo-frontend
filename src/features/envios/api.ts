@@ -10,6 +10,7 @@ import type {
   Pagina,
   TipoCarga,
 } from '@/types/api'
+import type { DatosEvidencia } from './evidencia'
 
 export const enviosApi = {
   listar: (filtros: FiltrosEnvios = {}) =>
@@ -39,11 +40,11 @@ export const enviosApi = {
   crear: (data: NuevoEnvio) => api.post<Envio>('/envios', data),
   cambiarEstado: (id: string, estado: Estado, nota?: string) =>
     api.patch<Envio>(`/envios/${id}/estado`, { estado, nota: nota || undefined }),
-  /** multipart/form-data: `foto` + `recibidoPor` (contrato v9); responde el envío con historial. */
-  subirEvidencia: (id: string, foto: Blob, nombreArchivo: string, recibidoPor: string) => {
+  /** multipart/form-data: `foto` y/o `recibidoPor` (contrato v19: al menos uno; solo se envía lo que venga). */
+  subirEvidencia: (id: string, { foto, recibidoPor }: DatosEvidencia) => {
     const fd = new FormData()
-    fd.append('recibidoPor', recibidoPor)
-    fd.append('foto', foto, nombreArchivo)
+    if (recibidoPor !== undefined) fd.append('recibidoPor', recibidoPor)
+    if (foto) fd.append('foto', foto.archivo, foto.nombre)
     return api.post<Envio>(`/envios/${id}/evidencia`, fd)
   },
   /** La foto se descarga con el token y se muestra como `blob:` (nunca hay URL pública). */

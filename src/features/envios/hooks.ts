@@ -3,6 +3,7 @@ import { useEsAdmin } from '@/features/auth/hooks'
 import { dashboardApi } from '@/features/dashboard/api'
 import { useIntegraciones } from '@/features/integraciones/hooks'
 import type { AsignacionRepartidor, Cotizacion, CotizacionRequest, Estado, FiltrosEnvios, NuevoEnvio } from '@/types/api'
+import type { DatosEvidencia } from './evidencia'
 import { enviosApi } from './api'
 import { registrarTiposCarga, TIPOS_CARGA_DEFAULT } from './domain'
 
@@ -103,8 +104,7 @@ export function useAsignarRepartidor() {
 export function useSubirEvidencia(id: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ foto, nombreArchivo, recibidoPor }: { foto: Blob; nombreArchivo: string; recibidoPor: string }) =>
-      enviosApi.subirEvidencia(id, foto, nombreArchivo, recibidoPor),
+    mutationFn: (datos: DatosEvidencia) => enviosApi.subirEvidencia(id, datos),
     onSuccess: (envio) => {
       qc.setQueryData(enviosKeys.detail(id), envio)
       qc.invalidateQueries({ queryKey: ['envios', 'list'] })

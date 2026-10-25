@@ -42,7 +42,7 @@ export function EnvioPortalSheet({ envioId, onClose }: { envioId: string | null;
               <span className="text-xl font-semibold tabular-nums">{formatCurrency(envio.costo)}</span>
             </div>
 
-            {envio.evidencia && (
+            {envio.evidencia?.recibidoPor && (
               <p className="flex items-center gap-2 rounded-xl bg-muted/40 px-3 py-2 text-sm" data-testid="recibido-por">
                 <CircleCheck className="size-4 shrink-0 text-brand-green-text" />
                 Recibió <strong className="font-medium">{envio.evidencia.recibidoPor}</strong>

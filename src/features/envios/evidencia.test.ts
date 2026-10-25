@@ -1,8 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   dimensionesEscaladas,
+  esquemaEvidencia,
+  faltanteEvidencia,
   MAX_BYTES_FOTO,
+  MENSAJE_EVIDENCIA_VACIA,
   MENSAJE_FOTO_PESO,
+  MENSAJE_NOMBRE_CORTO,
   prepararFoto,
   UMBRAL_COMPRESION,
 } from './evidencia'
@@ -53,5 +57,43 @@ describe('prepararFoto', () => {
     const reducida = new Blob([new Uint8Array(900_000)], { type: 'image/jpeg' })
     const resultado = await prepararFoto(archivo(8 * 1024 * 1024, 'foto.webp', 'image/webp'), async () => reducida)
     expect(resultado).toEqual({ archivo: reducida, nombre: 'foto.jpg' })
+  })
+})
+
+describe('esquemaEvidencia (v19: por partes)', () => {
+  const foto = new File([new Uint8Array(4)], 'guia.jpg', { type: 'image/jpeg' })
+  const errores = (r: { success: boolean; error?: { issues: { message: string }[] } }) =>
+    r.success ? [] : r.error!.issues.map((i) => i.message)
+
+  it('ambos: acepta solo nombre, solo foto o los dos', () => {
+    const s = esquemaEvidencia('ambos')
+    expect(s.safeParse({ recibidoPor: 'Ana' }).success).toBe(true)
+    expect(s.safeParse({ recibidoPor: '', foto }).success).toBe(true)
+    expect(s.safeParse({ recibidoPor: 'Ana', foto }).success).toBe(true)
+  })
+
+  it('ambos: sin nombre ni foto pide al menos uno', () => {
+    expect(errores(esquemaEvidencia('ambos').safeParse({ recibidoPor: '   ' }))).toEqual([MENSAJE_EVIDENCIA_VACIA])
+  })
+
+  it('el nombre, si se escribe, va de 2 a 120 caracteres sin contar los extremos', () => {
+    const s = esquemaEvidencia('ambos')
+    expect(errores(s.safeParse({ recibidoPor: ' A ', foto }))).toContain(MENSAJE_NOMBRE_CORTO)
+    expect(s.safeParse({ recibidoPor: 'x'.repeat(121), foto }).success).toBe(false)
+    expect(s.safeParse({ recibidoPor: `  ${'x'.repeat(120)}  ` }).success).toBe(true)
+  })
+
+  it('nombre / foto: exige el campo que se edita', () => {
+    expect(esquemaEvidencia('nombre').safeParse({ recibidoPor: '' }).success).toBe(false)
+    expect(esquemaEvidencia('foto').safeParse({ recibidoPor: '' }).success).toBe(false)
+    expect(esquemaEvidencia('foto').safeParse({ recibidoPor: '', foto }).success).toBe(true)
+  })
+})
+
+describe('faltanteEvidencia', () => {
+  it('dice qué falta o null si está completa', () => {
+    expect(faltanteEvidencia({ recibidoPor: 'Ana', tipo: 'image/jpeg' })).toBeNull()
+    expect(faltanteEvidencia({ recibidoPor: null, tipo: 'image/jpeg' })).toMatch(/nombre/)
+    expect(faltanteEvidencia({ recibidoPor: 'Ana', tipo: null })).toMatch(/foto/)
   })
 })

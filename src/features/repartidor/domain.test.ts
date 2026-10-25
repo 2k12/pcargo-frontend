@@ -9,6 +9,7 @@ import {
   enlaceTelefono,
   enlaceWhatsApp,
   etiquetaAccion,
+  faltantesEntrega,
   numeroGuiaDesdeQr,
   totalPorCobrar,
 } from './domain'
@@ -114,5 +115,18 @@ describe('repartidor — acciones según el estado', () => {
     expect(etiquetaAccion('EN_TRANSITO', 'EN_REPARTO')).toBe('Salir a reparto')
     expect(etiquetaAccion('NO_ENTREGADO', 'EN_REPARTO')).toBe('Reintentar')
     expect(etiquetaAccion('EN_REPARTO', 'ENTREGADO')).toBe('Entregado')
+  })
+})
+
+describe('repartidor — faltantes de una entrega (v19)', () => {
+  const ev = (recibidoPor: string | null, conFoto: boolean) => ({ recibidoPor, conFoto, subidaEn: '2026-10-18T15:00:00.000Z' })
+  it('solo aplica a envíos entregados', () => {
+    expect(faltantesEntrega({ estado: 'EN_REPARTO', evidencia: null })).toBeNull()
+  })
+  it('indica si falta el nombre, la foto o ambos', () => {
+    expect(faltantesEntrega({ estado: 'ENTREGADO', evidencia: null })).toEqual({ nombre: true, foto: true, hayFoto: false })
+    expect(faltantesEntrega({ estado: 'ENTREGADO', evidencia: ev(null, true) })).toEqual({ nombre: true, foto: false, hayFoto: true })
+    expect(faltantesEntrega({ estado: 'ENTREGADO', evidencia: ev('Ana', false) })).toEqual({ nombre: false, foto: true, hayFoto: false })
+    expect(faltantesEntrega({ estado: 'ENTREGADO', evidencia: ev('Ana', true) })).toEqual({ nombre: false, foto: false, hayFoto: true })
   })
 })

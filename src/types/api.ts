@@ -220,11 +220,14 @@ export interface GestionEntrega extends Gestion {
   nota: string | null
 }
 
-/** Foto de la guía firmada + nombre de quien recibió (contrato v9). */
+/**
+ * Foto de la guía firmada + nombre de quien recibió (contrato v9). Desde v19 se cargan por partes:
+ * `recibidoPor` es null si aún no se puso el nombre; `tipo`/`bytes` son null si aún no hay foto.
+ */
 export interface EvidenciaEntrega {
-  recibidoPor: string
-  tipo: 'image/jpeg' | 'image/png' | 'image/webp'
-  bytes: number
+  recibidoPor: string | null
+  tipo: 'image/jpeg' | 'image/png' | 'image/webp' | null
+  bytes: number | null
   /** ISO */
   subidaEn: string
   /** Operador que la subió. */
@@ -620,7 +623,7 @@ export interface EnvioReparto {
   /** Monto a cobrar al entregar (AL_COBRO aún no entregado); si no, 0. */
   porCobrar: number
   entrega: GestionEntrega | null
-  evidencia: { recibidoPor: string; subidaEn: string } | null
+  evidencia: { recibidoPor: string | null; conFoto: boolean; subidaEn: string } | null
   asignadoEn: string | null
   actualizadoEn: string
 }
@@ -741,7 +744,7 @@ export interface EnvioPortal {
   creadoEn: string
   actualizadoEn: string
   entrega: { resultado: ResultadoEntrega; fecha: string; nota: string | null } | null
-  evidencia: { recibidoPor: string; subidaEn: string } | null
+  evidencia: { recibidoPor: string | null; subidaEn: string } | null
   historial?: { estado: Estado; nota: string | null; fecha: string }[]
 }
 

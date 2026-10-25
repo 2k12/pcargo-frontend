@@ -100,7 +100,7 @@ export function BuscarGuiaSheet({
               {noEncontrada ? `La guía ${numero} no está asignada a ti.` : errorMessage(error)}
             </p>
           )}
-          {numero && envio && <EntregaCard envio={envio} onEntregar={hojas.onEntregar} onMotivo={hojas.onMotivo} />}
+          {numero && envio && <EntregaCard envio={envio} onEntregar={hojas.onEntregar} onMotivo={hojas.onMotivo} onCompletar={hojas.onCompletar} />}
         </div>
       </HojaInferior>
       {hojas.hojas}

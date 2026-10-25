@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { DatosEvidencia } from '@/features/envios/evidencia'
 import type { EstadoReparto, VistaReparto } from '@/types/api'
 import { repartidorApi } from './api'
 
@@ -34,8 +35,7 @@ export function useCambiarEstadoReparto() {
 export function useSubirEvidenciaReparto() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, foto, nombreArchivo, recibidoPor }: { id: string; foto: Blob; nombreArchivo: string; recibidoPor: string }) =>
-      repartidorApi.subirEvidencia(id, foto, nombreArchivo, recibidoPor),
+    mutationFn: ({ id, ...datos }: DatosEvidencia & { id: string }) => repartidorApi.subirEvidencia(id, datos),
     onSuccess: () => qc.invalidateQueries({ queryKey: repartoKeys.all }),
   })
 }

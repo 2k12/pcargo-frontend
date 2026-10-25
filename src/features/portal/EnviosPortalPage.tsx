@@ -160,7 +160,7 @@ export function EnviosPortalPage() {
                 </TableCell>
                 <TableCell className="py-3">
                   <EstadoPunto estado={e.estado} />
-                  {e.evidencia && <span className="block text-xs text-muted-foreground">Recibió {e.evidencia.recibidoPor}</span>}
+                  {e.evidencia?.recibidoPor && <span className="block text-xs text-muted-foreground">Recibió {e.evidencia.recibidoPor}</span>}
                 </TableCell>
                 <TableCell className="py-3 text-right">
                   <span className="block tabular-nums">{formatCurrency(e.costo)}</span>
