@@ -12,6 +12,7 @@ afterEach(() => {
 const envio: Envio = {
   id: '30f4b9af-89f6-45c0-aa6d-c505fdb4c0eb',
   numeroGuia: 7,
+  guiaFisica: null,
   clienteId: null,
   remitente: { nombre: 'Textiles Atuntaqui S.A.', telefono: '0991112233', direccion: 'Sucre 5-12' },
   destinatario: { nombre: 'Almacén El Sol', telefono: '0994445566', direccion: 'Av. 10 de Agosto N20-15, Quito' },
@@ -117,6 +118,21 @@ describe('EnvioDetailSheet', () => {
     renderWithProviders(<EnvioDetailSheet envioId={envio.id} onClose={vi.fn()} />)
     expect(await screen.findByTestId('origen-badge')).toHaveTextContent('Panel')
     expect(screen.queryByTestId('referencia-externa')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('guia-fisica')).not.toBeInTheDocument()
+  })
+
+  it('muestra la guía física antigua copiable junto al número del sistema (contrato v21)', async () => {
+    const user = userEvent.setup()
+    const conFisica: Envio = { ...envio, numeroGuia: 12, guiaFisica: 40425 }
+    mockFetch((url) => (url.endsWith(`/envios/${envio.id}`) ? jsonResponse(conFisica) : jsonResponse({}, 404)))
+    renderWithProviders(<EnvioDetailSheet envioId={envio.id} onClose={vi.fn()} />)
+
+    const fisica = await screen.findByTestId('guia-fisica')
+    expect(screen.getByRole('heading', { name: /Guía 12/ })).toBeInTheDocument()
+    expect(fisica).toHaveTextContent('Guía física (papel antiguo)')
+    expect(fisica).toHaveTextContent('0040425')
+    await user.click(within(fisica).getByRole('button', { name: 'Copiar número de guía física' }))
+    expect(await navigator.clipboard.readText()).toBe('40425')
   })
 })
 

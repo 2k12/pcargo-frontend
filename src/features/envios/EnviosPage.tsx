@@ -26,6 +26,7 @@ import { cn } from '@/lib/utils'
 import type { Envio, Estado, FormaPago } from '@/types/api'
 import { CambioEstadoRapido } from './components/CambioEstadoRapido'
 import { ConEvidencia } from './components/ConEvidencia'
+import { ElegirGuiaDialog } from './components/ElegirGuiaDialog'
 import { EnvioDetailSheet } from './components/EnvioDetailSheet'
 import { EscanearGuiaDialog } from './components/EscanearGuiaDialog'
 import { FechaGuiaTexto } from './components/FechaGuiaTexto'
@@ -37,6 +38,7 @@ import { enviosApi } from './api'
 import { ESTADO_LABEL, ESTADOS, FORMA_PAGO_LABEL, FORMAS_PAGO, piezasLabel, resumenItems } from './domain'
 import { rangoFechaGuia } from './fechaGuia'
 import { normalizarGuia } from './guia'
+import { numeroGuiaImpreso } from './guiaImprimible'
 import { useEnvios, useOpcionesIntegracion } from './hooks'
 import { ImportarEnviosDialog } from './importacion/ImportarEnviosDialog'
 
@@ -164,22 +166,39 @@ export function EnviosPage() {
   const [seleccionado, setSeleccionado] = useState<string | null>(null)
   const [guiaTalonario, setGuiaTalonario] = useState<GuiaParaRegistrar | null>(null)
   const [registroAbierto, setRegistroAbierto] = useState(false)
-  // /envios?guia=N (QR de la guía leído con la cámara del teléfono con la sesión abierta): abre ese envío.
+  // Envíos con el número buscado cuando hay que elegir (número del sistema de uno y guía física de otro, v21).
+  const [eleccion, setEleccion] = useState<{ numero: string; envios: Envio[] } | null>(null)
+  // /envios?guia=N (QR de la guía leído con la cámara, o la búsqueda rápida de la barra superior): abre ese envío.
+  // Con &envio=<id> (la búsqueda rápida ya lo resolvió) se abre directo, sin volver a buscar.
   const guiaUrl = params.get('guia')
+  const envioUrl = params.get('envio')
+  // Parámetros de un solo uso: se aplican al llegar (durante el render) y el efecto los quita de la URL.
+  const qUrl = params.get('q')
+  const [urlAtendida, setUrlAtendida] = useState<{ envio: string | null; q: string | null }>({ envio: null, q: null })
+  if (envioUrl !== urlAtendida.envio || qUrl !== urlAtendida.q) {
+    setUrlAtendida({ envio: envioUrl, q: qUrl })
+    if (envioUrl && envioUrl !== urlAtendida.envio) setSeleccionado(envioUrl)
+    // /envios?q=texto (búsqueda rápida con texto): pasa al buscador de la página.
+    if (qUrl !== null && qUrl !== urlAtendida.q) setBusqueda(qUrl)
+  }
   useEffect(() => {
-    if (guiaUrl === null) return
+    if (guiaUrl === null && envioUrl === null) return
     setParams(
       (p) => {
         p.delete('guia')
+        p.delete('envio')
         return p
       },
       { replace: true },
     )
-    const n = normalizarGuia(guiaUrl)
+    if (envioUrl) return
+    const n = normalizarGuia(guiaUrl ?? '')
     if (!n) return
     const abrir = async () => {
-      const envio = await enviosApi.porGuia(n)
-      if (envio) return setSeleccionado(envio.id)
+      // Contrato v21: por número del sistema o por guía física (0, 1 o 2 envíos).
+      const envios = await enviosApi.buscarGuia(n)
+      if (envios.length === 1) return setSeleccionado(envios[0]!.id)
+      if (envios.length > 1) return setEleccion({ numero: n, envios })
       // Contrato v20: una guía en blanco de talonario aún sin registrar se ofrece para registrarla.
       const guia = await talonariosApi.porGuia(n)
       if (guia?.estado === 'DISPONIBLE') {
@@ -188,7 +207,18 @@ export function EnviosPage() {
       } else toast.error(guia ? avisoGuiaTalonario(guia) : `No hay ningún envío con la guía ${n}`)
     }
     abrir().catch((e) => toast.error(errorMessage(e)))
-  }, [guiaUrl, setParams])
+  }, [guiaUrl, envioUrl, setParams])
+  useEffect(() => {
+    if (qUrl === null) return
+    setParams(
+      (p) => {
+        p.delete('q')
+        p.delete('pagina')
+        return p
+      },
+      { replace: true },
+    )
+  }, [qUrl, setParams])
   // Envíos marcados para imprimir sus guías juntas; se conservan al cambiar de página o de filtro.
   const [marcados, setMarcados] = useState<Map<string, Envio>>(() => new Map())
   const alternarMarcado = (e: Envio) =>
@@ -527,7 +557,8 @@ export function EnviosPage() {
                   </span>
                   <span className="mt-0.5 flex items-center justify-between gap-3 text-xs text-muted-foreground">
                     <span className="truncate">
-                      <span className="font-mono">{e.numeroGuia}</span> · {rutaLabel(e.ruta)}
+                      <span className="font-mono">{e.numeroGuia}</span>
+                      {e.guiaFisica && <span className="font-mono"> (física {numeroGuiaImpreso(e.guiaFisica)})</span>} · {rutaLabel(e.ruta)}
                     </span>
                     <PagoTexto formaPago={e.formaPago} />
                   </span>
@@ -581,6 +612,9 @@ export function EnviosPage() {
                   </TableCell>
                   <TableCell className="py-3 align-top">
                     <span className="block font-mono text-sm tabular-nums">{e.numeroGuia}</span>
+                    {e.guiaFisica && (
+                      <span className="block font-mono text-xs text-muted-foreground tabular-nums">Física {numeroGuiaImpreso(e.guiaFisica)}</span>
+                    )}
                     <OrigenBadge origen={e.origen} ocultarPanel className="mt-1 max-w-36" />
                   </TableCell>
                   <TableCell className="max-w-64 py-3 align-top">
@@ -635,6 +669,17 @@ export function EnviosPage() {
 
       <SeleccionGuias envios={seleccion} onLimpiar={() => setMarcados(new Map())} />
       <EnvioDetailSheet envioId={seleccionado} onClose={() => setSeleccionado(null)} />
+      {eleccion && (
+        <ElegirGuiaDialog
+          numero={eleccion.numero}
+          envios={eleccion.envios}
+          onElegir={(e) => {
+            setEleccion(null)
+            setSeleccionado(e.id)
+          }}
+          onCerrar={() => setEleccion(null)}
+        />
+      )}
       {guiaTalonario && <NuevoEnvioDialog abierto={registroAbierto} onAbiertoChange={setRegistroAbierto} guiaTalonario={guiaTalonario} />}
     </>
   )

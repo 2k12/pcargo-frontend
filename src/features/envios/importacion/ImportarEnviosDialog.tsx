@@ -92,7 +92,7 @@ function Importador({ onCerrar }: { onCerrar: () => void }) {
   const [guiaEnfocada, setGuiaEnfocada] = useState<string | null>(null)
   const [progreso, setProgreso] = useState({ hechos: 0, total: 0 })
   const [creados, setCreados] = useState<Envio[]>([])
-  /** Errores del servidor por envío (clave del grupo), p. ej. un N.º de guía ya usado. */
+  /** Errores del servidor por envío (clave del grupo), p. ej. una guía física ya usada. */
   const [fallos, setFallos] = useState<Map<string, string>>(new Map())
 
   const resultado = useMemo(() => validarImportacion(filas, { tipos, rutas }), [filas, tipos, rutas])
@@ -501,7 +501,7 @@ function TablaEditable({
                         value={f.valores[c.clave]}
                         onChange={(ev) => onEditar(f.id, c.clave, ev.target.value)}
                         list={LISTA[c.clave]}
-                        inputMode={c.clave === 'cantidad' || c.clave === 'numeroGuia' || c.clave === 'envio' ? 'numeric' : c.clave === 'pesoKg' || c.clave === 'costoAdicional' ? 'decimal' : undefined}
+                        inputMode={c.clave === 'cantidad' || c.clave === 'guiaFisica' || c.clave === 'envio' ? 'numeric' : c.clave === 'pesoKg' || c.clave === 'costoAdicional' ? 'decimal' : undefined}
                         aria-label={`${c.titulo}, fila ${f.filaExcel ?? 'nueva'}`}
                         aria-invalid={!!msg}
                         title={msg ?? (heredado ? 'Se toma de la primera fila del envío' : undefined)}
@@ -509,7 +509,7 @@ function TablaEditable({
                         className={cn(
                           'h-8 rounded-md bg-transparent px-2 outline-none transition-colors placeholder:text-muted-foreground/50',
                           'hover:bg-muted/70 focus:bg-background focus:ring-1 focus:ring-ring',
-                          (c.clave === 'numeroGuia' || c.clave === 'envio') && 'font-mono tabular-nums',
+                          (c.clave === 'guiaFisica' || c.clave === 'envio') && 'font-mono tabular-nums',
                           (c.clave === 'cantidad' || c.clave === 'pesoKg' || c.clave === 'costoAdicional') && 'text-right tabular-nums',
                           msg && 'bg-destructive/5 text-destructive ring-1 ring-destructive/40 hover:bg-destructive/10',
                         )}
@@ -596,7 +596,7 @@ function VistaGuias({ envios, enfocada, onVerTodas }: { envios: Envio[]; enfocad
       <div className="flex items-center gap-3 px-5 py-2 text-xs text-muted-foreground">
         <span className="mr-auto">
           {enfocada ? 'Una guía' : `${plural(envios.length, 'guía', 'guías')} · ${plural(Math.ceil(envios.length / GUIAS_POR_HOJA), 'hoja A4', 'hojas A4')}`}
-          {' · las guías sin número lo reciben al importar'}
+          {' · el número del sistema se asigna al importar'}
         </span>
         {enfocada && (
           <Button variant="link" size="sm" className="h-auto px-0 text-xs" onClick={onVerTodas}>

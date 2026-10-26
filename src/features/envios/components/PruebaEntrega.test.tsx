@@ -36,6 +36,7 @@ const evidencia: EvidenciaEntrega = {
 const entregado: Envio = {
   id: 'e1',
   numeroGuia: 40461,
+  guiaFisica: null,
   clienteId: null,
   remitente: { nombre: 'Ana', telefono: '0991112233', direccion: null },
   destinatario: { nombre: 'Luis', telefono: '0994445566', direccion: 'Quito centro' },

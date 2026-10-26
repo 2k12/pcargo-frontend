@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CLAVE_MENU } from '@/hooks/useMenuMinimizado'
 import { tokenStorage } from '@/lib/api'
-import { jsonResponse, mockFetch, renderWithProviders } from '@/test/utils'
+import { jsonResponse, mockFetch, renderWithProviders, simularMovil } from '@/test/utils'
 import { AppShell } from './AppShell'
 
 vi.mock('next-themes', () => ({ useTheme: () => ({ resolvedTheme: 'light', setTheme: vi.fn() }) }))
@@ -135,5 +135,24 @@ describe('AppShell — opciones solo para ADMIN', () => {
     expect(nombres).toEqual(['Reportes', 'Talonarios', 'Cobertura y tarifas', 'Rastreo de envíos', expect.stringContaining('Mi perfil')])
     expect(within(document.getElementById('menu-lateral')!).queryByRole('link', { name: 'Tarifas y tipos de carga' })).not.toBeInTheDocument()
     expect(within(document.getElementById('menu-lateral')!).queryByRole('link', { name: 'Integraciones' })).not.toBeInTheDocument()
+  })
+})
+
+describe('AppShell — búsqueda rápida de guías (contrato v21)', () => {
+  it('en escritorio la barra superior tiene el campo «Buscar guía» con el atajo «/»', async () => {
+    menuLateral()
+    const barra = screen.getByRole('banner')
+    const campo = within(barra).getByRole('searchbox', { name: 'Buscar guía' })
+    await userEvent.keyboard('/')
+    expect(campo).toHaveFocus()
+  })
+
+  it('en móvil es una lupa que despliega el campo sobre la barra', async () => {
+    simularMovil()
+    menuLateral()
+    const barra = screen.getByRole('banner')
+    expect(within(barra).queryByRole('searchbox')).not.toBeInTheDocument()
+    await userEvent.click(within(barra).getByRole('button', { name: 'Buscar guía' }))
+    expect(within(barra).getByRole('searchbox', { name: 'Buscar guía' })).toHaveFocus()
   })
 })

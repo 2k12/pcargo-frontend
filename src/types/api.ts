@@ -238,8 +238,10 @@ export interface Envio {
   id: string
   /** Cliente frecuente que envía; null si es ocasional. */
   clienteId: string | null
-  /** Número de la guía física (contrato v4). */
+  /** v21: número del sistema (consecutivo corto o guía de talonario). */
   numeroGuia: number
+  /** v21: número de la guía física antigua (papel preimpreso), si la tuvo. */
+  guiaFisica: number | null
   remitente: { nombre: string; telefono: string; direccion: string | null }
   destinatario: { nombre: string; telefono: string; direccion: string }
   ruta: { id: number; origen: string; destino: string }
@@ -286,8 +288,10 @@ export interface NuevoEnvio {
   /** Por defecto URBANA. */
   zona?: Zona
   descripcion?: string
-  /** Guía física; vacío → el sistema asigna el consecutivo. */
+  /** Solo guías de talonario; vacío → el sistema asigna el consecutivo. */
   numeroGuia?: string
+  /** v21: número de guía física antigua (opcional, único). */
+  guiaFisica?: string | number | null
   /** v15: recargo en USD (≥ 0, hasta 2 decimales) que se suma al costo; por defecto 0. Solo panel. */
   costoAdicional?: number
   /** Cliente frecuente elegido. */
@@ -609,6 +613,8 @@ export type VistaReparto = 'pendientes' | 'hoy'
 export interface EnvioReparto {
   id: string
   numeroGuia: number
+  /** v21: número de la guía física antigua, si la tuvo. */
+  guiaFisica: number | null
   estado: Estado
   remitente: { nombre: string; telefono: string; direccion: string | null }
   destinatario: { nombre: string; telefono: string; direccion: string }

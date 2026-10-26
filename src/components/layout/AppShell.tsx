@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useAuth, useEsAdmin } from '@/features/auth/hooks'
 import { ROL_LABEL } from '@/features/auth/roles'
+import { BuscarGuiaRapida } from '@/features/envios/components/BuscarGuiaRapida'
 import { useMenuMinimizado } from '@/hooks/useMenuMinimizado'
 import { iniciales } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -335,7 +336,9 @@ export function AppShell() {
           <Link to="/panel" aria-label="Ir al resumen" className="md:hidden">
             <LogoMark className="size-8" />
           </Link>
-          <div className="ml-auto flex items-center gap-1">
+          <div className="ml-auto flex min-w-0 items-center gap-1">
+            {/* Contrato v21: búsqueda rápida por número del sistema o guía física. */}
+            <BuscarGuiaRapida />
             <ThemeToggle />
             <UserMenu />
           </div>

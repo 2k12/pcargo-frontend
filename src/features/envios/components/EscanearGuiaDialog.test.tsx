@@ -7,13 +7,13 @@ import { EscanearGuiaDialog } from './EscanearGuiaDialog'
 
 afterEach(() => vi.unstubAllGlobals())
 
-const pagina = (datos: { id: string; numeroGuia: number }[]) =>
-  jsonResponse({ datos, pagina: 1, porPagina: 100, total: datos.length, totalPaginas: 1 })
+/** Respuesta de GET /envios/buscar-guia/:numero (contrato v21). */
+const pagina = (datos: { id: string; numeroGuia: number }[]) => jsonResponse(datos)
 
 describe('EscanearGuiaDialog (panel)', () => {
   it('con el número escrito o el enlace del QR abre el envío de esa guía exacta', async () => {
     const fetch = mockFetch((url) =>
-      url.includes('/envios?') ? pagina([{ id: 'otro', numeroGuia: 140461 }, { id: 'e1', numeroGuia: 40461 }]) : jsonResponse({}, 404),
+      url.includes('/envios/buscar-guia/') ? pagina([{ id: 'e1', numeroGuia: 40461 }]) : jsonResponse({}, 404),
     )
     const onEncontrado = vi.fn()
     renderWithProviders(<EscanearGuiaDialog onEncontrado={onEncontrado} />)
@@ -23,7 +23,7 @@ describe('EscanearGuiaDialog (panel)', () => {
     await userEvent.type(screen.getByRole('textbox', { name: 'Número de guía' }), 'https://pcargo.ec/seguimiento/0040461{Enter}')
 
     await vi.waitFor(() => expect(onEncontrado).toHaveBeenCalledWith('e1'))
-    expect(String(fetch.mock.calls[0]![0])).toContain('q=40461')
+    expect(String(fetch.mock.calls[0]![0])).toContain('/envios/buscar-guia/40461')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
@@ -46,7 +46,7 @@ describe('EscanearGuiaDialog (panel)', () => {
   it('si el número no es envío pero es de un talonario (v20): disponible → «Registrar esta guía»; anulada → motivo', async () => {
     const creadoEn = new Date(Date.now() - 2 * 86_400_000).toISOString()
     const fetch = mockFetch((url) => {
-      if (url.includes('/envios?')) return pagina([])
+      if (url.includes('/envios/buscar-guia/')) return pagina([])
       if (url.endsWith('/talonarios/guia/40501')) {
         return jsonResponse({ numeroGuia: 40501, estado: 'DISPONIBLE', envioId: null, motivo: null, actualizadoEn: null, talonarioId: 't1', nota: 'Camión Quito', creadoEn })
       }

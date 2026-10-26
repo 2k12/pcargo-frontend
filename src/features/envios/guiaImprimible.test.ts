@@ -7,6 +7,7 @@ const ORIGEN = 'https://pcargo.ec'
 const base: Envio = {
   id: 'e1',
   numeroGuia: 40461,
+  guiaFisica: null,
   clienteId: null,
   remitente: { nombre: 'Textiles Atuntaqui', telefono: '0991112233', direccion: null },
   destinatario: { nombre: 'Almacén El Sol', telefono: '0994445566', direccion: 'Av. 10 de Agosto N20-15' },
@@ -217,6 +218,16 @@ describe('datosGuia', () => {
       referenciaExterna: ' PED-1001 ',
     }
     expect(datosGuia(porApi, ORIGEN).referenciaExterna).toBe('PED-1001')
+  })
+})
+
+describe('datosGuia — guía física (contrato v21)', () => {
+  it('vacía si el envío no tuvo guía de papel; con ceros si la tuvo, sin cambiar el número del sistema', () => {
+    expect(datosGuia(base, ORIGEN).guiaFisica).toBe('')
+    const d = datosGuia({ ...base, numeroGuia: 12, guiaFisica: 40425 }, ORIGEN)
+    expect(d.guiaFisica).toBe('0040425')
+    expect(d.numero).toBe('0000012')
+    expect(d.urlSeguimiento).toBe('https://pcargo.ec/seguimiento/12')
   })
 })
 

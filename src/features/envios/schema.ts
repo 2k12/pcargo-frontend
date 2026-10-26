@@ -66,8 +66,13 @@ export function crearEnvioSchema(tipos: TipoCarga[], { fechaMinima }: { fechaMin
     zona: z.enum(['URBANA', 'RURAL'], { message: 'Selecciona la zona' }),
     formaPago: z.enum(['PAGADO', 'AL_COBRO', 'CONTRATO', 'SEGURO'], { message: 'Selecciona la forma de pago' }),
     descripcion: z.string().trim().max(200).optional(),
-    // Guía física (opcional): solo dígitos, admite ceros a la izquierda.
+    // Número del sistema: solo se llena (de solo lectura) al registrar una guía de talonario (v20).
     numeroGuia: z
+      .string()
+      .optional()
+      .refine((v) => !v?.trim() || normalizarGuia(v) !== null, MENSAJE_GUIA_INVALIDA),
+    // v21: número de una guía física antigua (opcional): solo dígitos, admite ceros a la izquierda.
+    guiaFisica: z
       .string()
       .optional()
       .refine((v) => !v?.trim() || normalizarGuia(v) !== null, MENSAJE_GUIA_INVALIDA),
@@ -141,6 +146,7 @@ export function toNuevoEnvio(v: EnvioFormValues): NuevoEnvio {
     zona: v.zona,
     descripcion: v.descripcion || undefined,
     ...(v.numeroGuia?.trim() ? { numeroGuia: normalizarGuia(v.numeroGuia)! } : {}),
+    ...(v.guiaFisica?.trim() ? { guiaFisica: normalizarGuia(v.guiaFisica)! } : {}),
     ...(costoAdicional > 0 ? { costoAdicional } : {}),
     // Contrato v18: siempre se envía (null → hoy en el servidor).
     fechaGuia: v.fechaGuia?.trim() || null,

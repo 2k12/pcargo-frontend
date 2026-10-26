@@ -65,10 +65,10 @@ describe('EnviosPage', () => {
     await vi.waitFor(() => expect(urls().at(-1)).not.toContain('estado='))
   })
 
-  it('con ?guia= (QR leído con la sesión abierta) abre el detalle de ese envío y limpia la URL', async () => {
+  it('con ?guia= (QR leído con la sesión abierta) busca con buscar-guia, abre el detalle de ese envío y limpia la URL', async () => {
     const fetch = mockFetch((url) => {
       if (/\/envios\/e5$/.test(url)) return jsonResponse({ ...envio(5), historial: [] })
-      if (url.includes('q=40005')) return jsonResponse({ ...vacia, datos: [envio(5)], total: 1, totalPaginas: 1 })
+      if (url.endsWith('/envios/buscar-guia/40005')) return jsonResponse([envio(5)])
       return jsonResponse(url.includes('/envios') ? vacia : [])
     })
     renderWithProviders(<EnviosPage />, { route: '/envios?guia=0040005', path: '/envios' })
@@ -76,6 +76,65 @@ describe('EnviosPage', () => {
     const detalle = await screen.findByRole('dialog')
     await vi.waitFor(() => expect(detalle).toHaveTextContent('40005'))
     expect(urlsEnvios(fetch).some((u) => u.includes('/envios/e5'))).toBe(true)
+    // Ya no se busca la guía con ?q= (contrato v21).
+    expect(urlsEnvios(fetch).some((u) => u.includes('q=40005'))).toBe(false)
+  })
+
+  it('con ?guia= que es número del sistema de uno y guía física de otro, pide elegir (contrato v21)', async () => {
+    const sistema = { ...envio(1), id: 'es', numeroGuia: 40425, guiaFisica: null }
+    const fisica = { ...envio(2), id: 'ef', numeroGuia: 12, guiaFisica: 40425 }
+    mockFetch((url) => {
+      if (url.endsWith('/envios/buscar-guia/40425')) return jsonResponse([sistema, fisica])
+      if (/\/envios\/ef$/.test(url)) return jsonResponse({ ...fisica, historial: [] })
+      return jsonResponse(url.includes('/envios') ? vacia : [])
+    })
+    renderWithProviders(<EnviosPage />, { route: '/envios?guia=40425', path: '/envios' })
+
+    const eleccion = await screen.findByRole('dialog', { name: '¿Cuál guía 40425?' })
+    expect(within(eleccion).getByRole('button', { name: /N\.º sistema 40425/ })).toBeInTheDocument()
+    await userEvent.click(within(eleccion).getByRole('button', { name: /Guía física 40425/ }))
+    expect(await screen.findByRole('heading', { name: /Guía 12/ })).toBeInTheDocument()
+    expect(await screen.findByTestId('guia-fisica')).toHaveTextContent('0040425')
+  })
+
+  it('con ?guia= sin envío: talonario disponible → registrarla; si no, avisa', async () => {
+    const creadoEn = new Date().toISOString()
+    mockFetch((url) => {
+      if (url.includes('/envios/buscar-guia/')) return jsonResponse([])
+      if (url.endsWith('/talonarios/guia/501')) {
+        return jsonResponse({ numeroGuia: 501, estado: 'DISPONIBLE', envioId: null, motivo: null, actualizadoEn: null, talonarioId: 't1', nota: null, creadoEn })
+      }
+      if (url.includes('/talonarios/guia/')) return jsonResponse({ error: { code: 'NO_ENCONTRADO', message: 'No existe' } }, 404)
+      return jsonResponse(url.includes('/envios') ? vacia : [])
+    })
+    renderWithProviders(<EnviosPage />, { route: '/envios?guia=501', path: '/envios' })
+    expect(await screen.findByRole('dialog', { name: /Registrar guía 0000501/ })).toBeInTheDocument()
+  })
+
+  it('con ?envio=<id> (búsqueda rápida ya resuelta) abre el envío sin volver a buscar; ?q= llena el buscador', async () => {
+    const fetch = mockFetch((url) => {
+      if (/\/envios\/e5$/.test(url)) return jsonResponse({ ...envio(5), historial: [] })
+      return jsonResponse(url.includes('/envios') ? vacia : [])
+    })
+    renderWithProviders(<EnviosPage />, { route: '/envios?guia=40005&envio=e5', path: '/envios' })
+    await vi.waitFor(() => expect(screen.getByRole('dialog')).toHaveTextContent('40005'))
+    expect(urlsEnvios(fetch).some((u) => u.includes('buscar-guia'))).toBe(false)
+  })
+
+  it('con ?q=texto pone el texto en el buscador y lo consulta', async () => {
+    const fetch = mockFetch((url) => jsonResponse(url.includes('/envios') ? vacia : []))
+    renderWithProviders(<EnviosPage />, { route: '/envios?q=Ana%20P%C3%A9rez', path: '/envios' })
+    expect(await screen.findByRole('textbox', { name: 'Buscar envíos' })).toHaveValue('Ana Pérez')
+    await vi.waitFor(() => expect(urlsEnvios(fetch).at(-1)).toContain('q=Ana+P%C3%A9rez'))
+  })
+
+  it('muestra la guía física bajo el número del sistema en la tabla (contrato v21)', async () => {
+    mockFetch((url) =>
+      jsonResponse(url.includes('/envios') ? { ...vacia, datos: [{ ...envio(1), numeroGuia: 12, guiaFisica: 40425 }, envio(2)], total: 2, totalPaginas: 1 } : []),
+    )
+    renderWithProviders(<EnviosPage />, { route: '/envios', path: '/envios' })
+    expect(await screen.findByText('Física 0040425')).toBeInTheDocument()
+    expect(screen.getAllByText(/^Física /)).toHaveLength(1)
   })
 
   it('pide al servidor solo la página visible y navega entre páginas', async () => {

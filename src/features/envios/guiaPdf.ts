@@ -353,6 +353,14 @@ function dibujarTalon(doc: JsPdf, d: DatosGuia, logo: Logo | null, qr: string, T
     fuente(doc, 5.8, 'bold')
     doc.text(ajustar(doc, d.referenciaExterna, x0 + iw - 1.2 - xValor), xValor, oy + 2.2)
   }
+  if (d.guiaFisica) {
+    // Contrato v21: el número de la guía de papel antigua, para cruzarla con el número del sistema.
+    const rotulo = 'GUÍA FÍSICA:'
+    const xg = d.referenciaExterna ? x0 + iw - 80 : x0 + iw - 40
+    etiqueta(doc, rotulo, xg, oy + 2.2, 4.4)
+    fuente(doc, 5.8, 'bold')
+    doc.text(d.guiaFisica, xg + doc.getTextWidth(rotulo) + 1, oy + 2.2)
+  }
   lineaEscritura(doc, x0 + 1.2, x0 + iw - 1.2, oy + 5)
 
   const ry = oy + 6

@@ -12,6 +12,7 @@ import type { Envio, Estado, Zona } from '@/types/api'
 import { adicionalDe, totalConAdicional } from '../costoAdicional'
 import { esEstadoFinal, ESTADO_LABEL, nombreTipoCarga, piezasLabel, ZONA_LABEL } from '../domain'
 import { fechaGuiaDe, fechaGuiaDistinta, fechaMedia } from '../fechaGuia'
+import { numeroGuiaImpreso } from '../guiaImprimible'
 import { useAsignarRepartidor, useCambiarEstado, useEnvio } from '../hooks'
 import { iconoTipoCarga } from '../ui'
 import { AsignarRepartidorMenu } from './AsignarRepartidorMenu'
@@ -243,6 +244,16 @@ export function EnvioDetailSheet({ envioId, onClose }: { envioId: string | null;
                 <ShieldCheck className="size-3.5 shrink-0" />
                 Datos personales eliminados el {formatDate(envio.anonimizadoEn)}. Se conservan guía, ruta, costos y estados.
               </p>
+            )}
+
+            {envio.guiaFisica && (
+              <div className="flex items-center justify-between gap-2 rounded-xl bg-muted/40 px-3 py-2" data-testid="guia-fisica">
+                <p className="min-w-0 text-sm">
+                  <span className="block text-xs text-muted-foreground">Guía física (papel antiguo)</span>
+                  <span className="block truncate font-mono tabular-nums">{numeroGuiaImpreso(envio.guiaFisica)}</span>
+                </p>
+                <BotonCopiar valor={String(envio.guiaFisica)} etiqueta="Copiar número de guía física" />
+              </div>
             )}
 
             {envio.referenciaExterna && (

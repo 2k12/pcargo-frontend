@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { EstadoBadge } from '@/features/envios/components/EstadoBadge'
 import { piezasLabel, resumenItems, ZONA_LABEL } from '@/features/envios/domain'
+import { numeroGuiaImpreso } from '@/features/envios/guiaImprimible'
 import { ATENCION_TONO } from '@/features/envios/ui'
 import { errorMessage } from '@/lib/api'
 import { SUPERFICIE } from '@/lib/estilos'
@@ -75,7 +76,11 @@ export function EntregaCard({
     <article className={cn('space-y-3 p-4', SUPERFICIE)} aria-label={`Guía ${envio.numeroGuia}`}>
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="font-mono text-sm text-muted-foreground tabular-nums">Guía {envio.numeroGuia}</p>
+          <p className="font-mono text-sm text-muted-foreground tabular-nums">
+            Guía {envio.numeroGuia}
+            {/* Contrato v21: el número impreso en la guía de papel antigua, para reconocer el paquete. */}
+            {envio.guiaFisica && <span data-testid="guia-fisica"> · física {numeroGuiaImpreso(envio.guiaFisica)}</span>}
+          </p>
           <h3 className="truncate text-lg leading-tight font-semibold">{envio.destinatario.nombre}</h3>
         </div>
         <EstadoBadge estado={envio.estado} />

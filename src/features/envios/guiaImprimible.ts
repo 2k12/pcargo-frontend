@@ -65,6 +65,8 @@ export interface DatosGuia {
   descripcion: string
   /** Número de pedido de la empresa (envíos por API, contrato v10); vacío si no hay. */
   referenciaExterna: string
+  /** v21: número de la guía física antigua («0040425»); vacío si no hay. */
+  guiaFisica: string
   pago: { etiqueta: string; marcada: boolean }[]
   /** Etiqueta de la forma de pago del envío («AL COBRO», «PAGADO»…). */
   formaPago: string
@@ -181,6 +183,7 @@ export function datosGuia(
     peso: formatoPeso(envio.pesoTotalKg),
     descripcion: envio.descripcion?.trim() ?? '',
     referenciaExterna: envio.referenciaExterna?.trim() ?? '',
+    guiaFisica: envio.guiaFisica ? numeroGuiaImpreso(envio.guiaFisica) : '',
     pago: CASILLAS_PAGO.map((c) => ({ etiqueta: c.etiqueta, marcada: c.formaPago === envio.formaPago })),
     formaPago: CASILLAS_PAGO.find((c) => c.formaPago === envio.formaPago)?.etiqueta ?? '',
     cobrarAlEntregar: envio.formaPago === 'AL_COBRO',

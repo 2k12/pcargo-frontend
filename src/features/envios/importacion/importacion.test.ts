@@ -66,7 +66,7 @@ describe('normalización y búsqueda', () => {
 
 describe('validarImportacion', () => {
   it('una fila válida produce la solicitud de POST /envios con su costo', () => {
-    const r = validarImportacion([fila('a', { numeroGuia: '0040461', zona: 'Rural', descripcion: ' Ropa ' })], ctx)
+    const r = validarImportacion([fila('a', { guiaFisica: '0040461', zona: 'Rural', descripcion: ' Ropa ' })], ctx)
     expect(r.filasConError).toBe(0)
     expect(r.validos).toHaveLength(1)
     expect(r.validos[0]!.solicitud).toEqual({
@@ -77,18 +77,19 @@ describe('validarImportacion', () => {
       formaPago: 'AL_COBRO',
       zona: 'RURAL',
       descripcion: 'Ropa',
-      numeroGuia: '40461',
+      guiaFisica: '40461',
     })
+    expect(r.validos[0]!.solicitud).not.toHaveProperty('numeroGuia')
     expect(r.validos[0]!.costo).toBe(6)
   })
 
   it('marca cada celda con su error y no arma la solicitud', () => {
     const r = validarImportacion(
-      [fila('a', { remitenteTelefono: 'abc', destino: 'Otavalo', tipoCarga: 'Sobre', pesoKg: '2', cantidad: '0', formaPago: 'efectivo', numeroGuia: '12a' })],
+      [fila('a', { remitenteTelefono: 'abc', destino: 'Otavalo', tipoCarga: 'Sobre', pesoKg: '2', cantidad: '0', formaPago: 'efectivo', guiaFisica: '12a' })],
       ctx,
     )
     expect(r.errores.get('a')).toEqual({
-      numeroGuia: 'Solo números (hasta 12 dígitos)',
+      guiaFisica: 'Solo números (hasta 12 dígitos)',
       remitenteTelefono: 'Teléfono inválido',
       destino: 'No hay ruta Ibarra → Otavalo',
       cantidad: 'Entero de 1 a 999',
@@ -99,9 +100,9 @@ describe('validarImportacion', () => {
     expect(r.filasConError).toBe(1)
   })
 
-  it('filas con el mismo N.º de guía son un envío con varios tipos; sus datos deben coincidir', () => {
+  it('filas con el mismo N.º de guía física son un envío con varios tipos; sus datos deben coincidir', () => {
     const r = validarImportacion(
-      [fila('a', { numeroGuia: '40461' }), fila('b', { numeroGuia: '0040461', tipoCarga: 'Sobre', cantidad: '1', pesoKg: '0.2' }), fila('c')],
+      [fila('a', { guiaFisica: '40461' }), fila('b', { guiaFisica: '0040461', tipoCarga: 'Sobre', cantidad: '1', pesoKg: '0.2' }), fila('c')],
       ctx,
     )
     expect(r.envios).toHaveLength(2)
@@ -111,8 +112,8 @@ describe('validarImportacion', () => {
     ])
     expect(r.validos[0]!.totalPiezas).toBe(3)
 
-    const distinta = validarImportacion([fila('a', { numeroGuia: '5' }), fila('b', { numeroGuia: '5', destinatarioNombre: 'Otro' })], ctx)
-    expect(distinta.errores.get('b')!.destinatarioNombre).toBe('Debe coincidir con la primera fila de la guía 5')
+    const distinta = validarImportacion([fila('a', { guiaFisica: '5' }), fila('b', { guiaFisica: '5', destinatarioNombre: 'Otro' })], ctx)
+    expect(distinta.errores.get('b')!.destinatarioNombre).toBe('Debe coincidir con la primera fila de la guía física 5')
     expect(distinta.validos).toHaveLength(0)
   })
 
@@ -142,21 +143,22 @@ describe('validarImportacion', () => {
         { tipoCarga: 'PAQUETE', cantidad: 1, pesoKg: 3 },
       ],
     })
-    expect(r.validos[0]!.solicitud!.numeroGuia).toBeUndefined()
+    expect(r.validos[0]!.solicitud!).not.toHaveProperty('guiaFisica')
+    expect(r.validos[0]!.solicitud!).not.toHaveProperty('numeroGuia')
     expect(r.validos[0]!.totalPiezas).toBe(3)
     // La fila adicional toma de la primera lo que dejó vacío (la vista previa lo muestra en gris).
     expect(r.heredados.get('b')).toMatchObject({ remitenteNombre: 'Textiles Atuntaqui', destino: 'Quito', formaPago: 'Al cobro' })
     expect(r.heredados.has('a')).toBe(false)
   })
 
-  it('si la fila adicional llena un dato distinto, lo marca; un N.º de guía no puede estar en dos envíos', () => {
+  it('si la fila adicional llena un dato distinto, lo marca; una guía física no puede estar en dos envíos', () => {
     const r = validarImportacion(
-      [fila('a', { envio: '1' }), fila('b', { envio: '1', destino: 'Ibarra' }), fila('c', { envio: '2', numeroGuia: '9' }), fila('d', { envio: '3', numeroGuia: '009' })],
+      [fila('a', { envio: '1' }), fila('b', { envio: '1', destino: 'Ibarra' }), fila('c', { envio: '2', guiaFisica: '9' }), fila('d', { envio: '3', guiaFisica: '009' })],
       ctx,
     )
     expect(r.errores.get('b')!.destino).toBe('Debe coincidir con la primera fila del envío 1')
-    expect(r.errores.get('c')!.numeroGuia).toBe('La guía 9 está en otro envío')
-    expect(r.errores.get('d')!.numeroGuia).toBe('La guía 9 está en otro envío')
+    expect(r.errores.get('c')!.guiaFisica).toBe('La guía física 9 está en otro envío')
+    expect(r.errores.get('d')!.guiaFisica).toBe('La guía física 9 está en otro envío')
     expect(r.validos).toHaveLength(0)
   })
 
@@ -186,6 +188,7 @@ describe('validarImportacion', () => {
     const e = envioBorrador(r.validos[0]!, TIPOS, 'Operador', new Date('2026-10-18T15:00:00Z'))!
     expect(e).toMatchObject({
       numeroGuia: 0,
+      guiaFisica: null,
       ruta: { id: 7, origen: 'Ibarra', destino: 'Quito' },
       costo: 6,
       items: [{ tipoCarga: 'PAQUETE', cantidad: 2, pesoKg: 1.5, costoUnitario: 3, subtotal: 6 }],
@@ -201,7 +204,13 @@ describe('mapearEncabezados', () => {
       'Origen', 'Destino', 'Tipo de carga', 'Cantidad', 'Peso (kg)', 'Forma de pago', 'Guía',
     ])
     expect(faltan).toEqual([])
-    expect(indices).toMatchObject({ destinatarioNombre: 0, remitenteNombre: 1, pesoKg: 9, numeroGuia: 11 })
+    expect(indices).toMatchObject({ destinatarioNombre: 0, remitenteNombre: 1, pesoKg: 9, guiaFisica: 11 })
+  })
+
+  it('la columna de guía física se reconoce con su nombre nuevo y con el de plantillas anteriores (v21)', () => {
+    for (const h of ['N.º de guía física', 'Guía física', 'N.º guía', 'No. guía']) {
+      expect(mapearEncabezados([h]).indices.guiaFisica).toBe(0)
+    }
   })
 
   it('informa las columnas obligatorias que faltan', () => {

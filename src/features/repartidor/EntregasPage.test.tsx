@@ -12,6 +12,7 @@ afterEach(() => {
 const reparto = (id: string, numeroGuia: number, estado: Estado, extra: Partial<EnvioReparto> = {}): EnvioReparto => ({
   id,
   numeroGuia,
+  guiaFisica: null,
   estado,
   remitente: { nombre: 'Textiles Atuntaqui', telefono: '0991112233', direccion: null },
   destinatario: { nombre: `Cliente ${numeroGuia}`, telefono: '0994445566', direccion: 'Av. Amazonas N20-15' },
@@ -32,7 +33,7 @@ const reparto = (id: string, numeroGuia: number, estado: Estado, extra: Partial<
 })
 
 const pendientes = [
-  reparto('e1', 40461, 'EN_REPARTO', { formaPago: 'AL_COBRO', porCobrar: 12.5 }),
+  reparto('e1', 40461, 'EN_REPARTO', { formaPago: 'AL_COBRO', porCobrar: 12.5, guiaFisica: 501 }),
   reparto('e2', 40462, 'EN_TRANSITO', { ruta: { id: 2, origen: 'Ibarra', destino: 'Otavalo' } }),
 ]
 
@@ -77,6 +78,9 @@ describe('EntregasPage — app del repartidor', () => {
     expect(screen.getByRole('region', { name: 'Destino Otavalo' })).toBeInTheDocument()
     const tarjeta = within(quito).getByRole('article', { name: 'Guía 40461' })
     expect(within(tarjeta).getByText(/Cobrar .*12,50/)).toBeInTheDocument()
+    // Contrato v21: la guía física antigua junto al número del sistema; sin ella no se muestra nada.
+    expect(within(tarjeta).getByTestId('guia-fisica')).toHaveTextContent('física 0000501')
+    expect(within(screen.getByRole('article', { name: 'Guía 40462' })).queryByTestId('guia-fisica')).not.toBeInTheDocument()
     expect(within(tarjeta).getByRole('link', { name: 'Llamar' })).toHaveAttribute('href', 'tel:0994445566')
     expect(within(tarjeta).getByRole('link', { name: 'WhatsApp' }).getAttribute('href')).toMatch(/^https:\/\/wa\.me\/593994445566\?text=/)
     expect(within(tarjeta).getByRole('link', { name: /Av\. Amazonas/ }).getAttribute('href')).toContain('google.com/maps/search')

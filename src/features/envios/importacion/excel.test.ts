@@ -49,7 +49,7 @@ describe('plantilla de Excel', () => {
     expect(filas).toHaveLength(2)
     expect(filas[0]).toMatchObject({
       filaExcel: 2,
-      valores: { numeroGuia: '40461', remitenteNombre: 'Ana', remitenteTelefono: '0991112233', cantidad: '2', pesoKg: '1.5', costoAdicional: '1.5', descripcion: 'Ropa' },
+      valores: { guiaFisica: '40461', remitenteNombre: 'Ana', remitenteTelefono: '0991112233', cantidad: '2', pesoKg: '1.5', costoAdicional: '1.5', descripcion: 'Ropa' },
     })
     expect(filas[1]).toMatchObject({ filaExcel: 4, valores: { zona: 'Rural', remitenteTelefono: '062950111', costoAdicional: '' } })
   })

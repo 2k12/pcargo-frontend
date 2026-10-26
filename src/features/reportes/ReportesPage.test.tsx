@@ -42,9 +42,9 @@ function servidor(delDia: Envio[], otras: Envio[] = []) {
   return mockFetch((url) => {
     const u = new URL(url, 'http://x')
     if (u.pathname.endsWith('/envios') && u.searchParams.get('desde')) return jsonResponse(pagina(delDia))
-    if (u.pathname.endsWith('/envios') && u.searchParams.get('q')) {
-      return jsonResponse(pagina(otras.filter((e) => String(e.numeroGuia) === u.searchParams.get('q'))))
-    }
+    // Contrato v21: la guía se busca con GET /envios/buscar-guia/:numero.
+    const buscada = u.pathname.match(/\/envios\/buscar-guia\/(\d+)$/)?.[1]
+    if (buscada) return jsonResponse(otras.filter((e) => String(e.numeroGuia) === buscada))
     return jsonResponse({ error: { code: 'NO_ENCONTRADO', message: 'no' } }, 404)
   })
 }

@@ -9,7 +9,7 @@ import { MAX_CANTIDAD, MAX_ITEMS } from '../schema'
 
 export type ClaveColumna =
   | 'envio'
-  | 'numeroGuia'
+  | 'guiaFisica'
   | 'remitenteNombre'
   | 'remitenteTelefono'
   | 'remitenteDireccion'
@@ -41,11 +41,11 @@ export interface Columna {
 
 /**
  * Formato de la plantilla: una fila por tipo de carga. Las filas con el mismo «Envío» (o, sin él, el mismo N.º de
- * guía) son un solo envío con varios tipos de carga; en las filas adicionales basta el tipo, la cantidad y el peso.
+ * guía física) son un solo envío con varios tipos de carga; en las filas adicionales basta el tipo, la cantidad y el peso.
  */
 export const COLUMNAS: Columna[] = [
   { clave: 'envio', titulo: 'Envío', requerida: false, ayuda: 'Agrupa las filas de un mismo envío (1, 2, 3…). Para mandar varios tipos de carga juntos (p. ej. 2 cartones y 1 paquete al mismo destinatario) pon el mismo número en esas filas: en las filas adicionales basta llenar Tipo de carga, Cantidad y Peso. Vacío: cada fila es un envío.', ejemplo: '1', ancho: 7, texto: true },
-  { clave: 'numeroGuia', titulo: 'N.º guía', requerida: false, ayuda: 'Número impreso en la guía física. Vacío: se asigna el siguiente. Sin columna «Envío», las filas con el mismo número forman un solo envío.', ejemplo: '0040461', ancho: 11, texto: true },
+  { clave: 'guiaFisica', titulo: 'N.º de guía física', requerida: false, ayuda: 'Solo si usas una guía de papel antigua: el número impreso en ella. El número del sistema se asigna solo. Sin columna «Envío», las filas con el mismo número forman un solo envío.', ejemplo: '0040461', ancho: 12, texto: true },
   { clave: 'remitenteNombre', titulo: 'Remitente', requerida: true, ayuda: 'Nombre de quien envía (2–120 caracteres).', ejemplo: 'Textiles Atuntaqui', ancho: 22 },
   { clave: 'remitenteTelefono', titulo: 'Teléfono remitente', requerida: true, ayuda: '7 a 15 dígitos; puede llevar espacios, guiones o +.', ejemplo: '0991112233', ancho: 15, texto: true },
   { clave: 'remitenteDireccion', titulo: 'Dirección remitente', requerida: false, ayuda: 'Opcional (hasta 200 caracteres). Se imprime en la guía.', ejemplo: 'Calle Bolívar 12-34', ancho: 22 },
@@ -136,7 +136,7 @@ const TELEFONO = /^[0-9+\s-]{7,15}$/
  * primera fila); si se llenan, deben coincidir con ella.
  */
 const CLAVES_ENVIO: ClaveColumna[] = [
-  'numeroGuia',
+  'guiaFisica',
   'remitenteNombre',
   'remitenteTelefono',
   'remitenteDireccion',
@@ -152,12 +152,13 @@ const CLAVES_ENVIO: ClaveColumna[] = [
 ]
 
 export interface EnvioImportado {
-  /** Clave del grupo: el «Envío», si no el N.º de guía normalizado o, sin ninguno, el id de la fila. */
+  /** Clave del grupo: el «Envío», si no el N.º de guía física normalizado o, sin ninguno, el id de la fila. */
   clave: string
-  /** Cómo se nombra el envío en los mensajes: «del envío 1», «de la guía 40461» o null (fila suelta). */
+  /** Cómo se nombra el envío en los mensajes: «del envío 1», «de la guía física 40461» o null (fila suelta). */
   nombre: string | null
   filas: string[]
-  numeroGuia: string | null
+  /** v21: número de la guía física antigua (normalizado), si la fila lo trae. */
+  guiaFisica: string | null
   ruta: Ruta | undefined
   /** Solicitud lista para POST /envios; null si alguna de sus filas tiene errores. */
   solicitud: NuevoEnvio | null
@@ -192,7 +193,7 @@ function validarFila(v: ValoresFila, ctx: ContextoValidacion): Partial<Record<Cl
     if (t.length < min) e[clave] = t ? `Mínimo ${min} caracteres` : requerido
     else if (t.length > max) e[clave] = `Máximo ${max} caracteres`
   }
-  if (v.numeroGuia.trim() && normalizarGuia(v.numeroGuia) === null) e.numeroGuia = 'Solo números (hasta 12 dígitos)'
+  if (v.guiaFisica.trim() && normalizarGuia(v.guiaFisica) === null) e.guiaFisica = 'Solo números (hasta 12 dígitos)'
   largo('remitenteNombre', 2, 120, 'Falta el remitente')
   if (!TELEFONO.test(v.remitenteTelefono.trim())) e.remitenteTelefono = v.remitenteTelefono.trim() ? 'Teléfono inválido' : 'Falta el teléfono'
   if (v.remitenteDireccion.trim().length > 200) e.remitenteDireccion = 'Máximo 200 caracteres'
@@ -240,22 +241,22 @@ export function calcularCosto(items: ItemSolicitud[], zona: Zona, tipos: TipoCar
 
 /** ¿Mismo dato del envío? La guía se compara por su número («0040461» = «40461»); el resto, sin tildes ni mayúsculas. */
 const mismoDato = (c: ClaveColumna, a: string, b: string) => {
-  if (c === 'numeroGuia') return normalizarGuia(a) === normalizarGuia(b)
+  if (c === 'guiaFisica') return normalizarGuia(a) === normalizarGuia(b)
   // «1,5» = «1.50»: se compara el monto.
   if (c === 'costoAdicional') return leerCostoAdicional(a).valor === leerCostoAdicional(b).valor
   return normalizar(a) === normalizar(b)
 }
 
-/** A qué envío pertenece una fila: por «Envío»; si no, por N.º de guía; si no, a ninguno (va sola). */
+/** A qué envío pertenece una fila: por «Envío»; si no, por N.º de guía física; si no, a ninguno (va sola). */
 function grupoDeFila(v: ValoresFila): { clave: string; nombre: string } | null {
   const envio = v.envio.trim()
   if (envio) return { clave: `envio:${normalizar(envio)}`, nombre: `del envío ${envio}` }
-  const guia = normalizarGuia(v.numeroGuia)
-  return guia ? { clave: `guia:${guia}`, nombre: `de la guía ${guia}` } : null
+  const guia = normalizarGuia(v.guiaFisica)
+  return guia ? { clave: `guia:${guia}`, nombre: `de la guía física ${guia}` } : null
 }
 
 /**
- * Valida todas las filas y las agrupa en envíos: las filas con el mismo «Envío» (o, sin él, el mismo N.º de guía)
+ * Valida todas las filas y las agrupa en envíos: las filas con el mismo «Envío» (o, sin él, el mismo N.º de guía física)
  * son un envío con varios tipos de carga. Sus filas adicionales pueden dejar vacíos los datos del envío
  * (remitente, destinatario, ruta, pago…), que se toman de la primera; si los llenan, deben coincidir.
  */
@@ -291,18 +292,18 @@ export function validarImportacion(filas: FilaImportacion[], ctx: ContextoValida
     }
   }
 
-  // Un N.º de guía solo puede estar en un envío (si no, el servidor rechazaría el segundo).
+  // Una guía física solo puede estar en un envío (si no, el servidor rechazaría el segundo).
   const enviosPorGuia = new Map<string, Set<string>>()
   for (const [clave, g] of grupos) {
     for (const f of g.filas) {
-      const guia = normalizarGuia(f.valores.numeroGuia)
+      const guia = normalizarGuia(f.valores.guiaFisica)
       if (guia) enviosPorGuia.set(guia, (enviosPorGuia.get(guia) ?? new Set()).add(clave))
     }
   }
   for (const g of grupos.values()) {
     for (const f of g.filas) {
-      const guia = normalizarGuia(f.valores.numeroGuia)
-      if (guia && enviosPorGuia.get(guia)!.size > 1) errores.get(f.id)!.numeroGuia ??= `La guía ${guia} está en otro envío`
+      const guia = normalizarGuia(f.valores.guiaFisica)
+      if (guia && enviosPorGuia.get(guia)!.size > 1) errores.get(f.id)!.guiaFisica ??= `La guía física ${guia} está en otro envío`
     }
   }
 
@@ -324,8 +325,8 @@ export function validarImportacion(filas: FilaImportacion[], ctx: ContextoValida
       if (tipo && cantidad !== null && peso !== null) items.push({ tipoCarga: tipo.codigo, cantidad, pesoKg: peso })
     }
     const sinErrores = miembros.every((f) => Object.keys(errores.get(f.id)!).length === 0)
-    // La guía puede venir en cualquier fila del envío (las demás la dejan vacía).
-    const numeroGuia = miembros.map((f) => normalizarGuia(f.valores.numeroGuia)).find((g) => g !== null) ?? null
+    // La guía física puede venir en cualquier fila del envío (las demás la dejan vacía).
+    const guiaFisica = miembros.map((f) => normalizarGuia(f.valores.guiaFisica)).find((g) => g !== null) ?? null
     const formaPago = resolverFormaPago(v.formaPago)
     const costoAdicional = leerCostoAdicional(v.costoAdicional).valor ?? 0
     const solicitud: NuevoEnvio | null =
@@ -346,7 +347,8 @@ export function validarImportacion(filas: FilaImportacion[], ctx: ContextoValida
             formaPago,
             zona,
             descripcion: v.descripcion.trim() || undefined,
-            numeroGuia: numeroGuia ?? undefined,
+            // v21: el número del sistema lo asigna el servidor; la guía antigua va aparte.
+            ...(guiaFisica ? { guiaFisica } : {}),
             ...(costoAdicional > 0 ? { costoAdicional } : {}),
           }
         : null
@@ -354,7 +356,7 @@ export function validarImportacion(filas: FilaImportacion[], ctx: ContextoValida
       clave,
       nombre,
       filas: miembros.map((f) => f.id),
-      numeroGuia,
+      guiaFisica,
       ruta,
       solicitud,
       costo: calcularCosto(items, zona, ctx.tipos, costoAdicional),
@@ -371,7 +373,7 @@ export function validarImportacion(filas: FilaImportacion[], ctx: ContextoValida
 
 /**
  * Vista previa: agrega una fila de carga al envío de `filaId` (justo después de su última fila). Si ese envío aún
- * no tiene «Envío» ni N.º de guía, se le asigna el siguiente número de «Envío» libre para que queden unidas.
+ * no tiene «Envío» ni N.º de guía física, se le asigna el siguiente número de «Envío» libre para que queden unidas.
  */
 export function agregarCargaAlEnvio(filas: FilaImportacion[], filaId: string, nuevoId: string): FilaImportacion[] {
   const base = filas.find((f) => f.id === filaId)
@@ -381,7 +383,7 @@ export function agregarCargaAlEnvio(filas: FilaImportacion[], filaId: string, nu
   let resultado = filas
   const nueva = filaVacia(nuevoId)
   if (base.valores.envio.trim()) nueva.valores.envio = base.valores.envio.trim()
-  else if (g) nueva.valores.numeroGuia = base.valores.numeroGuia.trim()
+  else if (g) nueva.valores.guiaFisica = base.valores.guiaFisica.trim()
   else {
     const usados = filas.map((f) => Number(f.valores.envio.trim())).filter((n) => Number.isInteger(n) && n > 0)
     const envio = String(Math.max(0, ...usados) + 1)
@@ -404,7 +406,8 @@ export function mapearEncabezados(encabezados: string[]): { indices: Partial<Rec
   const alias = (c: Columna) => {
     const base = [c.titulo, c.clave, c.titulo.replace(/\s*\(.*\)$/, '')]
     if (c.clave === 'pesoKg') base.push('Peso (kg)', 'Peso')
-    if (c.clave === 'numeroGuia') base.push('Guía', 'N° guía', 'No. guía', 'Numero de guia')
+    // Plantillas anteriores a v21 llamaban «N.º guía» a esta columna (era el número impreso en la guía física).
+    if (c.clave === 'guiaFisica') base.push('N.º guía física', 'N° guía física', 'Guía física', 'N.º guía', 'Guía', 'N° guía', 'No. guía', 'Numero de guia')
     if (c.clave === 'envio') base.push('N.º envío', 'N° envío', 'No. envío', 'Grupo', 'Pedido')
     if (c.clave === 'costoAdicional') base.push('Adicional', 'Recargo', 'Costo adicional (USD)', 'Valor adicional')
     return base.map(normalizar)
@@ -420,7 +423,7 @@ export function mapearEncabezados(encabezados: string[]): { indices: Partial<Rec
 
 /**
  * Envío provisional (aún no creado) para previsualizar su guía: mismos datos que se enviarán, costo
- * calculado con el catálogo y número de guía 0 si se asignará al crearlo.
+ * calculado con el catálogo y número de guía 0 (el sistema lo asigna al crearlo).
  */
 export function envioBorrador(e: EnvioImportado, tipos: TipoCargaPublico[], operador: string | null, ahora = new Date()): Envio | null {
   const s = e.solicitud
@@ -435,7 +438,8 @@ export function envioBorrador(e: EnvioImportado, tipos: TipoCargaPublico[], oper
   const fecha = ahora.toISOString()
   return {
     id: `borrador-${e.clave}`,
-    numeroGuia: e.numeroGuia ? Number(e.numeroGuia) : 0,
+    numeroGuia: 0,
+    guiaFisica: e.guiaFisica ? Number(e.guiaFisica) : null,
     clienteId: null,
     remitente: { nombre: s.remitente.nombre, telefono: s.remitente.telefono, direccion: s.remitente.direccion ?? null },
     destinatario: s.destinatario,

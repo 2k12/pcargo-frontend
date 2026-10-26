@@ -30,12 +30,14 @@ export const enviosApi = {
     }),
   obtener: (id: string) => api.get<Envio>(`/envios/${id}`),
   /**
-   * Envío con ese número de guía (ya normalizado), o null. `q` con solo dígitos busca la guía exacta, pero también
-   * coincide en teléfonos y referencias: se elige el de número idéntico.
+   * Contrato v21: envíos cuyo número del sistema **o** guía física es `numero` (0, 1 o 2; primero el del sistema).
+   * Acepta ceros a la izquierda; texto no numérico → 400.
    */
+  buscarGuia: (numero: string) => api.get<Envio[]>(`/envios/buscar-guia/${encodeURIComponent(numero)}`),
+  /** El envío de esa guía (número del sistema; si no hay, guía física), o null. */
   porGuia: async (numero: string): Promise<Envio | null> => {
-    const { datos } = await api.get<Pagina<Envio>>('/envios', { q: numero, porPagina: 100 })
-    return datos.find((e) => String(e.numeroGuia) === numero) ?? null
+    const envios = await enviosApi.buscarGuia(numero)
+    return envios[0] ?? null
   },
   crear: (data: NuevoEnvio) => api.post<Envio>('/envios', data),
   cambiarEstado: (id: string, estado: Estado, nota?: string) =>

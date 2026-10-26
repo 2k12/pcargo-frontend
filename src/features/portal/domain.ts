@@ -17,6 +17,7 @@ export function envioDesdePortal(e: EnvioPortal, cliente: ClientePortal): Envio 
   return {
     id: e.id,
     numeroGuia: e.numeroGuia,
+    guiaFisica: null,
     clienteId: cliente.id,
     remitente: { nombre: cliente.nombre, telefono: cliente.telefono, direccion: cliente.direccion },
     destinatario: e.destinatario,

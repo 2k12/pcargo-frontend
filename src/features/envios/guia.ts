@@ -1,3 +1,4 @@
+import type { Envio } from '@/types/api'
 // Número de guía (contrato v4): solo dígitos; los ceros a la izquierda no cuentan (0040425 = 40425).
 export const MAX_DIGITOS_GUIA = 12
 
@@ -30,3 +31,15 @@ export function numeroGuiaDesdeQr(texto: string): string | null {
 export const etiquetaGuia = (n: number): string => `Guía ${n}`
 
 export const MENSAJE_GUIA_INVALIDA = 'Ingresa solo los números de la guía (puedes incluir los ceros de adelante)'
+
+/** Cómo coincide un envío con el número buscado (contrato v21): por el número del sistema o por la guía física. */
+export function tipoCoincidencia(envio: Pick<Envio, 'numeroGuia'>, numero: string): 'sistema' | 'fisica' {
+  return String(envio.numeroGuia) === numero ? 'sistema' : 'fisica'
+}
+
+/** «N.º sistema 40425» o «Guía física 40425». */
+export const etiquetaCoincidencia = (envio: Pick<Envio, 'numeroGuia'>, numero: string) =>
+  `${tipoCoincidencia(envio, numero) === 'sistema' ? 'N.º sistema' : 'Guía física'} ${numero}`
+
+/** Ruta que abre en Envíos un envío ya encontrado por su número (búsqueda rápida). */
+export const rutaEnvio = (numero: string, envio: Pick<Envio, 'id'>) => `/envios?guia=${numero}&envio=${encodeURIComponent(envio.id)}`

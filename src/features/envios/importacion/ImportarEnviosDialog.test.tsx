@@ -15,7 +15,7 @@ async function excel(filas: unknown[][]): Promise<File> {
   const libro = new ExcelJS.Workbook()
   const hoja = libro.addWorksheet('Envíos')
   hoja.addRow([
-    'N.º guía', 'Remitente *', 'Teléfono remitente *', 'Dirección remitente', 'Destinatario *', 'Teléfono destinatario *',
+    'N.º de guía física', 'Remitente *', 'Teléfono remitente *', 'Dirección remitente', 'Destinatario *', 'Teléfono destinatario *',
     'Dirección destinatario *', 'Origen *', 'Destino *', 'Zona', 'Tipo de carga *', 'Cantidad *', 'Peso por unidad (kg) *',
     'Forma de pago *', 'Descripción',
   ])
@@ -34,8 +34,8 @@ function servidor() {
     if (url.endsWith('/envios') && init?.method === 'POST') {
       const body = JSON.parse(String(init.body))
       creados.push(body)
-      if (body.numeroGuia === '777') return jsonResponse({ error: { code: 'CONFLICTO', message: 'Ya existe un envío con la guía 777' } }, 409)
-      return jsonResponse({ ...body, id: `e${numero}`, numeroGuia: Number(body.numeroGuia ?? ++numero), items: [] }, 201)
+      if (body.guiaFisica === '777') return jsonResponse({ error: { code: 'CONFLICTO', message: 'Ya existe un envío con la guía física 777' } }, 409)
+      return jsonResponse({ ...body, id: `e${numero}`, numeroGuia: ++numero, guiaFisica: body.guiaFisica ? Number(body.guiaFisica) : null, items: [] }, 201)
     }
     return jsonResponse([])
   })
@@ -82,7 +82,7 @@ describe('ImportarEnviosDialog', () => {
   }, 20_000)
 
   it('lo que el servidor rechaza queda en la tabla con su motivo para reintentar', async () => {
-    servidor()
+    const { creados } = servidor()
     renderWithProviders(<ImportarEnviosDialog />)
     await userEvent.click(screen.getByRole('button', { name: /Importar/ }))
     const dialogo = await screen.findByRole('dialog', { name: 'Importar envíos' })
@@ -96,11 +96,14 @@ describe('ImportarEnviosDialog', () => {
     await userEvent.click(await within(dialogo).findByRole('button', { name: 'Importar 2 guías' }))
     expect(await within(dialogo).findByText('1 guía creada')).toBeInTheDocument()
     expect(within(dialogo).getByText(/1 guía no se pudo crear; quedan 1 fila por revisar/)).toBeInTheDocument()
+    // v21: el número de la columna es la guía física; el número del sistema lo asigna el servidor.
+    expect(creados[0]).toMatchObject({ guiaFisica: '777' })
+    expect(creados[0]).not.toHaveProperty('numeroGuia')
 
     await userEvent.click(within(dialogo).getByRole('button', { name: 'Revisar y reintentar' }))
-    expect(within(dialogo).getByRole('textbox', { name: 'N.º guía, fila 2' })).toHaveValue('777')
+    expect(within(dialogo).getByRole('textbox', { name: 'N.º de guía física, fila 2' })).toHaveValue('777')
     expect(within(dialogo).queryByRole('textbox', { name: 'Remitente, fila 3' })).not.toBeInTheDocument()
-    expect(within(dialogo).getByTitle('Ya existe un envío con la guía 777')).toBeInTheDocument()
+    expect(within(dialogo).getByTitle('Ya existe un envío con la guía física 777')).toBeInTheDocument()
   }, 20_000)
 
   it('con la columna «Envío», 2 cartones y 1 paquete para el mismo destinatario son una sola guía', async () => {
@@ -110,6 +113,7 @@ describe('ImportarEnviosDialog', () => {
     const dialogo = await screen.findByRole('dialog', { name: 'Importar envíos' })
     const libro = new ExcelJS.Workbook()
     const hoja = libro.addWorksheet('Envíos')
+    // Plantilla anterior a v21: «N.º guía» se sigue leyendo como la guía física.
     hoja.addRow([
       'Envío', 'N.º guía', 'Remitente *', 'Teléfono remitente *', 'Dirección remitente', 'Destinatario *', 'Teléfono destinatario *',
       'Dirección destinatario *', 'Origen *', 'Destino *', 'Zona', 'Tipo de carga *', 'Cantidad *', 'Peso por unidad (kg) *', 'Forma de pago *',

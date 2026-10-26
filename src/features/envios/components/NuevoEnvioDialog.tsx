@@ -47,6 +47,7 @@ const BASE = {
   descripcion: '',
   remitenteDireccion: '',
   numeroGuia: '',
+  guiaFisica: '',
   costoAdicional: '',
   clienteId: '',
   guardarCliente: false,
@@ -66,6 +67,9 @@ const defaults = (numeroFijo?: number): Partial<EnvioFormValues> => ({
 
 /** Mensaje del 422 GUIA_ANULADA (contrato v20): el número es de un talonario y se anuló. */
 export const MENSAJE_GUIA_ANULADA = 'Esta guía está anulada en su talonario: no se puede registrar. Usa otra guía.'
+
+/** 409 de `guiaFisica` (contrato v21) cuando el servidor no trae mensaje. */
+export const MENSAJE_GUIA_FISICA_REPETIDA = 'Esta guía física ya está registrada en otro envío.'
 
 const conCliente = (c: Cliente, numeroFijo?: number) =>
   ({
@@ -265,6 +269,11 @@ export function NuevoEnvioDialog({
         toast.error(MENSAJE_GUIA_ANULADA)
         return
       }
+      // v21: la guía física es única; si ya está en otro envío, el error va en su campo.
+      if (e instanceof ApiError && e.status === 409 && !numeroFijo && values.guiaFisica?.trim()) {
+        setError('guiaFisica', { message: e.message || MENSAJE_GUIA_FISICA_REPETIDA }, { shouldFocus: true })
+        return
+      }
       toast.error(errorMessage(e))
     }
   }
@@ -394,25 +403,40 @@ export function NuevoEnvioDialog({
 
           <Paso n={3} titulo="Carga">
             <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_11rem]">
-              <Campo label={numeroFijo ? 'N.º de guía' : 'N.º de guía (opcional)'} htmlFor="numeroGuia" error={errors.numeroGuia?.message}>
-                <Input
-                  id="numeroGuia"
-                  inputMode="numeric"
-                  autoComplete="off"
-                  placeholder="Ej. 0040425"
-                  className="font-mono"
-                  readOnly={!!numeroFijo}
-                  aria-invalid={!!errors.numeroGuia}
-                  {...register('numeroGuia')}
-                />
-                {!errors.numeroGuia && (
-                  <p className="text-xs text-muted-foreground">
-                    {numeroFijo
-                      ? 'Guía de talonario: se registra con este número.'
-                      : 'Escribe el número impreso en la guía. Si lo dejas vacío, se asigna el siguiente.'}
-                  </p>
-                )}
-              </Campo>
+              {numeroFijo ? (
+                <Campo label="N.º de guía" htmlFor="numeroGuia" error={errors.numeroGuia?.message}>
+                  <Input
+                    id="numeroGuia"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    className="font-mono"
+                    readOnly
+                    aria-invalid={!!errors.numeroGuia}
+                    {...register('numeroGuia')}
+                  />
+                  {!errors.numeroGuia && (
+                    <p className="text-xs text-muted-foreground">Guía de talonario: se registra con este número.</p>
+                  )}
+                </Campo>
+              ) : (
+                <Campo label="N.º de guía física (opcional)" htmlFor="guiaFisica" error={errors.guiaFisica?.message}>
+                  <Input
+                    id="guiaFisica"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    placeholder="Ej. 0040425"
+                    className="font-mono"
+                    aria-invalid={!!errors.guiaFisica}
+                    aria-describedby="guiaFisica-ayuda"
+                    {...register('guiaFisica')}
+                  />
+                  {!errors.guiaFisica && (
+                    <p id="guiaFisica-ayuda" className="text-xs text-muted-foreground">
+                      Solo si usas una guía de papel antigua. El número del sistema se asigna solo.
+                    </p>
+                  )}
+                </Campo>
+              )}
               <Campo label="Fecha de la guía" htmlFor="fechaGuia" error={errors.fechaGuia?.message}>
                 <Input
                   id="fechaGuia"
